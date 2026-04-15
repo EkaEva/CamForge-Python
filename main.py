@@ -1026,10 +1026,13 @@ class CamSimulator:
 
         if saved:
             self.status_var.set(f"已保存: {', '.join(saved)} → {folder}")
+        elif self.dl_anim.get():
+            self.status_var.set("GIF 正在导出中...")
 
     def _export_gif(self, filepath, folder, saved_list):
         """在后台线程中导出GIF动画，显示进度对话框"""
         import threading
+        from io import BytesIO
         from PIL import Image as PILImage
 
         data = self.sim_data
@@ -1138,7 +1141,13 @@ class CamSimulator:
             except Exception as exc:
                 gif_result['error'] = str(exc)
             finally:
-                self.root.after(0, progress_win.destroy)
+                def _on_done():
+                    progress_win.destroy()
+                    if gif_result['error']:
+                        self.status_var.set(f"GIF导出失败: {gif_result['error']}")
+                    else:
+                        self.status_var.set(f"已保存: {', '.join(saved_list)} → {folder}")
+                self.root.after(0, _on_done)
 
         thread = threading.Thread(target=generate, daemon=True)
         thread.start()
