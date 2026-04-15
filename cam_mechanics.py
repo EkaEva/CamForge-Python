@@ -72,7 +72,7 @@ def compute_rise(delta_arr, delta_0, h, omega, law):
         v = h * omega / delta_0 * (30 * t ** 2 - 60 * t ** 3 + 30 * t ** 4)
         a = h * omega ** 2 / delta_0 ** 2 * (60 * t - 180 * t ** 2 + 120 * t ** 3)
     else:
-        raise ValueError(f"未知的运动规律编号: {law}")
+        raise ValueError(f"error.unknown_law|{law}")
 
     return s, v, a
 
@@ -140,7 +140,7 @@ def compute_return(delta_arr, delta_ret, h, omega, law):
         v = -h * omega / delta_ret * (30 * t ** 2 - 60 * t ** 3 + 30 * t ** 4)
         a = -h * omega ** 2 / delta_ret ** 2 * (60 * t - 180 * t ** 2 + 120 * t ** 3)
     else:
-        raise ValueError(f"未知的运动规律编号: {law}")
+        raise ValueError(f"error.unknown_law|{law}")
 
     return s, v, a
 
@@ -459,25 +459,34 @@ def validate_params(delta_0, delta_01, delta_ret, delta_02, h, r_0, e, omega):
     Returns
     -------
     ok : bool
-    error_msg : str or None
+    error : str or tuple or None
+        str: error key (e.g. "error.angles_sum")
+        tuple: (error_key, name_key) for parameterized errors
+        None: no error
     """
-    if abs(delta_0 + delta_01 + delta_ret + delta_02 - 360) > 0.01:
-        return False, "四角之和必须为360°"
+    _ANGLE_NAME_KEYS = [
+        ('sidebar.label.delta_0', delta_0),
+        ('sidebar.label.delta_01', delta_01),
+        ('sidebar.label.delta_ret', delta_ret),
+        ('sidebar.label.delta_02', delta_02),
+    ]
 
-    for name, val in [('推程运动角', delta_0), ('远休止角', delta_01),
-                      ('回程运动角', delta_ret), ('近休止角', delta_02)]:
+    if abs(delta_0 + delta_01 + delta_ret + delta_02 - 360) > 0.01:
+        return False, "error.angles_sum"
+
+    for name_key, val in _ANGLE_NAME_KEYS:
         if val != int(val):
-            return False, f"{name}必须为整数"
+            return False, ("error.angle_integer", name_key)
         if val <= 1:
-            return False, f"{name}必须>1°"
+            return False, ("error.angle_min", name_key)
 
     if h <= 0:
-        return False, "推杆最大位移必须大于0"
+        return False, "error.h_positive"
     if r_0 <= 0:
-        return False, "基圆半径必须大于0"
+        return False, "error.r0_positive"
     if omega <= 0:
-        return False, "凸轮角速度必须大于0"
+        return False, "error.omega_positive"
     if abs(e) >= r_0:
-        return False, "偏距必须小于基圆半径"
+        return False, "error.e_lt_r0"
 
     return True, None

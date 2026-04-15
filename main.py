@@ -21,21 +21,12 @@ from cam_mechanics import (
     DEG2RAD,
 )
 
+from i18n import t, SUPPORTED_LANGS, DEFAULT_LANG, FONT_MAP, LANG_DISPLAY_NAMES, get_motion_law_list, get_rotation_list, get_offset_dir_list, get_lang_display_list, detect_mpl_fonts
+
 import sys
 import platform
 
-
-def _detect_chinese_fonts():
-    """检测系统可用的中文字体，返回优先级列表"""
-    system = platform.system()
-    if system == 'Windows':
-        return ['SimHei', 'Microsoft YaHei', 'FangSong']
-    elif system == 'Darwin':  # macOS
-        return ['PingFang SC', 'Heiti SC', 'STHeiti', 'Arial Unicode MS']
-    else:  # Linux
-        return ['WenQuanYi Micro Hei', 'Noto Sans CJK SC', 'Droid Sans Fallback']
-
-plt.rcParams['font.sans-serif'] = _detect_chinese_fonts() + ['DejaVu Sans']
+plt.rcParams['font.sans-serif'] = detect_mpl_fonts(DEFAULT_LANG)
 plt.rcParams['axes.unicode_minus'] = False
 
 # ---------------------------------------------------------------------------
@@ -53,12 +44,6 @@ ANIM_BASE_DELAY_MS = 200     # 动画基准帧间隔（毫秒，速度=1时）
 GIF_DURATION_MS = 30         # GIF 每帧时长（毫秒）
 GIF_DPI = 80                 # GIF 导出 DPI
 STATIC_DPI = 150             # 静态图导出 DPI
-
-# 运动规律名称映射
-MOTION_LAW_NAMES = {
-    1: '等速运动', 2: '等加速等减速', 3: '简谐运动',
-    4: '摆线运动', 5: '五次多项式',
-}
 
 
 def generate_random_params():
@@ -94,7 +79,13 @@ class CamSimulator:
 
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("CamForge - 凸轮仿真")
+        self.root.title(t("app.title", DEFAULT_LANG))
+
+        self.lang = DEFAULT_LANG
+        self._tk_font_family = FONT_MAP[DEFAULT_LANG]["tk"]
+        self._translatable = {}  # key -> (widget, font_size)
+        self._pause_state = "paused"
+
         # 跨平台窗口最大化
         if platform.system() == 'Windows':
             try:
@@ -130,6 +121,68 @@ class CamSimulator:
         self.root.after(50, self._refresh_sidebar)
 
     # ===================================================================
+    # i18n helpers
+    # ===================================================================
+
+    def _reg(self, key, widget, font_size=None):
+        """Register a widget for language-switch updates"""
+        self._translatable[key] = (widget, font_size)
+
+    def _law_name(self, law_id):
+        """Get motion law name in current language"""
+        return t(f"law.{law_id}", self.lang)
+
+    def _on_language_change(self, event=None):
+        """Handle language switch"""
+        idx = self.popup_lang.current()
+        new_lang = SUPPORTED_LANGS[idx]
+        if new_lang == self.lang:
+            return
+        self.lang = new_lang
+        self._tk_font_family = FONT_MAP[new_lang]["tk"]
+        self._apply_language()
+        self._update_mpl_fonts(new_lang)
+        if self.sim_data is not None:
+            self._plot_static()
+            if self._anim_artists is not None:
+                self._init_info_panel()
+                self.ax_anim.set_title(t("plot.title.animation", self.lang), fontsize=12)
+                self.canvas.draw_idle()
+
+    def _apply_language(self):
+        """Update all registered widgets for current language"""
+        for key, (widget, font_size) in self._translatable.items():
+            text = t(key, self.lang)
+            try:
+                widget.config(text=text)
+            except tk.TclError:
+                pass
+            if font_size is not None:
+                try:
+                    widget.config(font=(self._tk_font_family, font_size))
+                except tk.TclError:
+                    pass
+        # Update combobox values (preserve current index)
+        tc_idx = self.popup_tc.current()
+        hc_idx = self.popup_hc.current()
+        sn_idx = self.popup_sn.current()
+        pz_idx = self.popup_pz.current()
+        self.popup_tc.config(values=get_motion_law_list(self.lang))
+        self.popup_hc.config(values=get_motion_law_list(self.lang))
+        self.popup_sn.config(values=get_rotation_list(self.lang))
+        self.popup_pz.config(values=get_offset_dir_list(self.lang))
+        self.popup_tc.current(tc_idx)
+        self.popup_hc.current(hc_idx)
+        self.popup_sn.current(sn_idx)
+        self.popup_pz.current(pz_idx)
+        self.root.title(t("app.title", self.lang))
+
+    def _update_mpl_fonts(self, lang):
+        """Update matplotlib font config"""
+        plt.rcParams['font.sans-serif'] = detect_mpl_fonts(lang)
+        plt.rcParams['axes.unicode_minus'] = False
+
+    # ===================================================================
     # GUI 构建
     # ===================================================================
 
@@ -160,186 +213,220 @@ class CamSimulator:
         main_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # ---- 侧边栏 ----
-        lbl_font = ('Microsoft YaHei', 10)
-        ent_font = ('Microsoft YaHei', 10)
+        lbl_font = (self._tk_font_family, 10)
+        ent_font = (self._tk_font_family, 10)
         lbl_kw = {'font': lbl_font, 'bg': '#f8fafc', 'anchor': 'w'}
         ent_kw = {'font': ent_font, 'width': 14}
 
         # Logo
-        tk.Label(sidebar, text="CamForge", font=('Microsoft YaHei', 16, 'bold'),
+        tk.Label(sidebar, text="CamForge", font=(self._tk_font_family, 16, 'bold'),
                  fg='#2563eb', bg='#f8fafc', anchor='w').pack(fill=tk.X, padx=16, pady=(16, 20))
 
-        # ---- 运动参数组 ----
-        self._sidebar_group(sidebar, "运动参数")
+        # ---- 语言选择组 ----
+        self._sidebar_group(sidebar, t("sidebar.group.language", self.lang), i18n_key="sidebar.group.language")
+        self.popup_lang = ttk.Combobox(sidebar, values=get_lang_display_list(), state='readonly', width=14)
+        self.popup_lang.current(SUPPORTED_LANGS.index(DEFAULT_LANG))
+        self.popup_lang.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.popup_lang.bind('<<ComboboxSelected>>', self._on_language_change)
 
-        self._sidebar_item(sidebar, "推程运动角 (°)", lbl_kw)
+        # ---- 运动参数组 ----
+        self._sidebar_group(sidebar, t("sidebar.group.motion", self.lang), i18n_key="sidebar.group.motion")
+
+        self._sidebar_item(sidebar, t("sidebar.label.delta_0", self.lang), lbl_kw, i18n_key="sidebar.label.delta_0")
         self.entry_delta_0 = tk.Entry(sidebar, **ent_kw)
         self.entry_delta_0.insert(0, "90")
         self.entry_delta_0.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "远休止角 (°)", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.delta_01", self.lang), lbl_kw, i18n_key="sidebar.label.delta_01")
         self.entry_delta_01 = tk.Entry(sidebar, **ent_kw)
         self.entry_delta_01.insert(0, "60")
         self.entry_delta_01.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "回程运动角 (°)", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.delta_ret", self.lang), lbl_kw, i18n_key="sidebar.label.delta_ret")
         self.entry_delta_ret = tk.Entry(sidebar, **ent_kw)
         self.entry_delta_ret.insert(0, "120")
         self.entry_delta_ret.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "近休止角 (°)", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.delta_02", self.lang), lbl_kw, i18n_key="sidebar.label.delta_02")
         self.entry_delta_02 = tk.Entry(sidebar, **ent_kw)
         self.entry_delta_02.insert(0, "90")
         self.entry_delta_02.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "推杆最大位移 (mm)", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.h", self.lang), lbl_kw, i18n_key="sidebar.label.h")
         self.entry_h = tk.Entry(sidebar, **ent_kw)
         self.entry_h.insert(0, "10")
         self.entry_h.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "凸轮角速度 (rad/s)", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.omega", self.lang), lbl_kw, i18n_key="sidebar.label.omega")
         self.entry_omega = tk.Entry(sidebar, **ent_kw)
         self.entry_omega.insert(0, "1")
         self.entry_omega.pack(fill=tk.X, padx=16, pady=(0, 8))
 
         # ---- 几何参数组 ----
-        self._sidebar_group(sidebar, "几何参数")
+        self._sidebar_group(sidebar, t("sidebar.group.geometry", self.lang), i18n_key="sidebar.group.geometry")
 
-        self._sidebar_item(sidebar, "基圆半径 (mm)", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.r_0", self.lang), lbl_kw, i18n_key="sidebar.label.r_0")
         self.entry_r0 = tk.Entry(sidebar, **ent_kw)
         self.entry_r0.insert(0, "40")
         self.entry_r0.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "偏距 (mm)", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.e", self.lang), lbl_kw, i18n_key="sidebar.label.e")
         self.entry_e = tk.Entry(sidebar, **ent_kw)
         self.entry_e.insert(0, "5")
         self.entry_e.pack(fill=tk.X, padx=16, pady=(0, 8))
 
         # ---- 运动规律组 ----
-        self._sidebar_group(sidebar, "运动规律")
+        self._sidebar_group(sidebar, t("sidebar.group.law", self.lang), i18n_key="sidebar.group.law")
 
-        motion_laws = ['等速运动', '等加速等减速', '简谐运动规律',
-                       '摆线运动规律', '五次多项式运动规律']
+        motion_laws = get_motion_law_list(self.lang)
         combo_kw = {'state': 'readonly', 'width': 14}
 
-        self._sidebar_item(sidebar, "推程规律", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.tc_law", self.lang), lbl_kw, i18n_key="sidebar.label.tc_law")
         self.popup_tc = ttk.Combobox(sidebar, values=motion_laws, **combo_kw)
         self.popup_tc.current(0)
         self.popup_tc.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "回程规律", lbl_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.hc_law", self.lang), lbl_kw, i18n_key="sidebar.label.hc_law")
         self.popup_hc = ttk.Combobox(sidebar, values=motion_laws, **combo_kw)
         self.popup_hc.current(0)
         self.popup_hc.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "旋向", lbl_kw)
-        self.popup_sn = ttk.Combobox(sidebar, values=['顺时针', '逆时针'], **combo_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.rotation", self.lang), lbl_kw, i18n_key="sidebar.label.rotation")
+        self.popup_sn = ttk.Combobox(sidebar, values=get_rotation_list(self.lang), **combo_kw)
         self.popup_sn.current(0)
         self.popup_sn.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        self._sidebar_item(sidebar, "偏距方向", lbl_kw)
-        self.popup_pz = ttk.Combobox(sidebar, values=['正偏距', '负偏距'], **combo_kw)
+        self._sidebar_item(sidebar, t("sidebar.label.offset_dir", self.lang), lbl_kw, i18n_key="sidebar.label.offset_dir")
+        self.popup_pz = ttk.Combobox(sidebar, values=get_offset_dir_list(self.lang), **combo_kw)
         self.popup_pz.current(0)
         self.popup_pz.pack(fill=tk.X, padx=16, pady=(0, 8))
 
         # ---- 动态显示组 ----
-        self._sidebar_group(sidebar, "动态显示")
+        self._sidebar_group(sidebar, t("sidebar.group.display", self.lang), i18n_key="sidebar.group.display")
 
-        cb_kw = {'font': ('Microsoft YaHei', 10), 'anchor': 'w', 'bg': '#f8fafc'}
+        cb_kw = {'font': (self._tk_font_family, 10), 'anchor': 'w', 'bg': '#f8fafc'}
 
         self.show_tangent = tk.BooleanVar(value=False)
-        tk.Checkbutton(sidebar, text="切线", variable=self.show_tangent,
-                       **cb_kw).pack(fill=tk.X, padx=16, pady=1)
+        cb_tangent = tk.Checkbutton(sidebar, text=t("sidebar.cb.tangent", self.lang), variable=self.show_tangent,
+                       **cb_kw)
+        cb_tangent.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.tangent", cb_tangent, font_size=10)
 
         self.show_normal = tk.BooleanVar(value=False)
-        tk.Checkbutton(sidebar, text="法线", variable=self.show_normal,
-                       **cb_kw).pack(fill=tk.X, padx=16, pady=1)
+        cb_normal = tk.Checkbutton(sidebar, text=t("sidebar.cb.normal", self.lang), variable=self.show_normal,
+                       **cb_kw)
+        cb_normal.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.normal", cb_normal, font_size=10)
 
         self.show_arc = tk.BooleanVar(value=False)
-        tk.Checkbutton(sidebar, text="压力角弧线", variable=self.show_arc,
-                       command=self._on_arc_toggle, **cb_kw).pack(fill=tk.X, padx=16, pady=1)
+        cb_arc = tk.Checkbutton(sidebar, text=t("sidebar.cb.arc", self.lang), variable=self.show_arc,
+                       command=self._on_arc_toggle, **cb_kw)
+        cb_arc.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.arc", cb_arc, font_size=10)
 
         self.show_boundaries = tk.BooleanVar(value=False)
-        tk.Checkbutton(sidebar, text="角度分界线", variable=self.show_boundaries,
-                       **cb_kw).pack(fill=tk.X, padx=16, pady=1)
+        cb_boundaries = tk.Checkbutton(sidebar, text=t("sidebar.cb.boundaries", self.lang), variable=self.show_boundaries,
+                       **cb_kw)
+        cb_boundaries.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.boundaries", cb_boundaries, font_size=10)
 
         self.show_grid = tk.BooleanVar(value=False)
-        tk.Checkbutton(sidebar, text="网格线", variable=self.show_grid,
-                       command=self._on_grid_toggle, **cb_kw).pack(fill=tk.X, padx=16, pady=1)
+        cb_grid = tk.Checkbutton(sidebar, text=t("sidebar.cb.grid", self.lang), variable=self.show_grid,
+                       command=self._on_grid_toggle, **cb_kw)
+        cb_grid.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.grid", cb_grid, font_size=10)
 
         # ---- 右侧主区域：按钮 + 图表 ----
         # 按钮栏
         toolbar = tk.Frame(main_area, bg='#ffffff', pady=6)
         toolbar.pack(fill=tk.X, padx=12, pady=(8, 0))
 
-        btn_kw = {'font': ('Microsoft YaHei', 10), 'width': 10, 'height': 1,
+        btn_kw = {'font': (self._tk_font_family, 10), 'width': 10, 'height': 1,
                   'relief': tk.FLAT, 'cursor': 'hand2', 'bd': 0}
 
-        self.btn_start = tk.Button(toolbar, text="开始仿真", command=self._on_start,
+        self.btn_start = tk.Button(toolbar, text=t("toolbar.btn.start", self.lang), command=self._on_start,
                                    bg='#10b981', fg='white', activebackground='#059669',
                                    **btn_kw)
         self.btn_start.pack(side=tk.LEFT, padx=(0, 6))
+        self._reg("toolbar.btn.start", self.btn_start, font_size=10)
 
-        self.btn_pause = tk.Button(toolbar, text="暂停", command=self._on_pause,
+        self.btn_pause = tk.Button(toolbar, text=t("toolbar.btn.pause", self.lang), command=self._on_pause,
                                    bg='#f59e0b', fg='white', activebackground='#d97706',
                                    **btn_kw)
         self.btn_pause.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.pause", self.btn_pause, font_size=10)
 
-        self.btn_clear_params = tk.Button(toolbar, text="清除参数",
+        self.btn_clear_params = tk.Button(toolbar, text=t("toolbar.btn.clear_params", self.lang),
                                           command=self._on_clear_params,
                                           bg='#ffffff', fg='#475569',
                                           activebackground='#f1f5f9',
                                           relief=tk.FLAT, bd=1,
-                                          font=('Microsoft YaHei', 10), width=10, height=1)
+                                          font=(self._tk_font_family, 10), width=10, height=1)
         self.btn_clear_params.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.clear_params", self.btn_clear_params, font_size=10)
 
-        self.btn_clear_plots = tk.Button(toolbar, text="清除图像",
+        self.btn_clear_plots = tk.Button(toolbar, text=t("toolbar.btn.clear_plots", self.lang),
                                          command=self._on_clear_plots,
                                          bg='#ffffff', fg='#475569',
                                          activebackground='#f1f5f9',
                                          relief=tk.FLAT, bd=1,
-                                         font=('Microsoft YaHei', 10), width=10, height=1)
+                                         font=(self._tk_font_family, 10), width=10, height=1)
         self.btn_clear_plots.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.clear_plots", self.btn_clear_plots, font_size=10)
 
-        self.btn_random = tk.Button(toolbar, text="随机凸轮",
+        self.btn_random = tk.Button(toolbar, text=t("toolbar.btn.random", self.lang),
                                     command=self._on_random,
                                     bg='#ffffff', fg='#475569',
                                     activebackground='#f1f5f9',
                                     relief=tk.FLAT, bd=1,
-                                    font=('Microsoft YaHei', 10), width=10, height=1)
+                                    font=(self._tk_font_family, 10), width=10, height=1)
         self.btn_random.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.random", self.btn_random, font_size=10)
 
-        self.btn_download = tk.Button(toolbar, text="下载图片",
+        self.btn_download = tk.Button(toolbar, text=t("toolbar.btn.download", self.lang),
                                       command=self._on_download,
                                       bg='#2563eb', fg='white',
                                       activebackground='#1d4ed8',
                                       relief=tk.FLAT, bd=0,
-                                      font=('Microsoft YaHei', 10), width=10, height=1,
+                                      font=(self._tk_font_family, 10), width=10, height=1,
                                       cursor='hand2')
         self.btn_download.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.download", self.btn_download, font_size=10)
 
         # 下载勾选项
-        dl_cb_kw = {'font': ('Microsoft YaHei', 9), 'bg': '#ffffff', 'anchor': 'w'}
+        dl_cb_kw = {'font': (self._tk_font_family, 9), 'bg': '#ffffff', 'anchor': 'w'}
         self.dl_s = tk.BooleanVar(value=True)
-        tk.Checkbutton(toolbar, text="位移", variable=self.dl_s, **dl_cb_kw).pack(side=tk.LEFT, padx=2)
+        cb_dl_s = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_s", self.lang), variable=self.dl_s, **dl_cb_kw)
+        cb_dl_s.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_s", cb_dl_s, font_size=9)
         self.dl_v = tk.BooleanVar(value=True)
-        tk.Checkbutton(toolbar, text="速度", variable=self.dl_v, **dl_cb_kw).pack(side=tk.LEFT, padx=2)
+        cb_dl_v = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_v", self.lang), variable=self.dl_v, **dl_cb_kw)
+        cb_dl_v.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_v", cb_dl_v, font_size=9)
         self.dl_a = tk.BooleanVar(value=True)
-        tk.Checkbutton(toolbar, text="加速度", variable=self.dl_a, **dl_cb_kw).pack(side=tk.LEFT, padx=2)
+        cb_dl_a = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_a", self.lang), variable=self.dl_a, **dl_cb_kw)
+        cb_dl_a.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_a", cb_dl_a, font_size=9)
         self.dl_profile = tk.BooleanVar(value=True)
-        tk.Checkbutton(toolbar, text="廓形", variable=self.dl_profile, **dl_cb_kw).pack(side=tk.LEFT, padx=2)
+        cb_dl_profile = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_profile", self.lang), variable=self.dl_profile, **dl_cb_kw)
+        cb_dl_profile.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_profile", cb_dl_profile, font_size=9)
         self.dl_anim = tk.BooleanVar(value=True)
-        tk.Checkbutton(toolbar, text="动态图", variable=self.dl_anim, **dl_cb_kw).pack(side=tk.LEFT, padx=2)
+        cb_dl_anim = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_anim", self.lang), variable=self.dl_anim, **dl_cb_kw)
+        cb_dl_anim.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_anim", cb_dl_anim, font_size=9)
 
         # 速度滑块（靠右，标签在左滑块在右）
         speed_frame = tk.Frame(toolbar, bg='#ffffff')
         speed_frame.pack(side=tk.RIGHT, padx=(0, 8))
-        tk.Label(speed_frame, text="仿真速度:", font=('Microsoft YaHei', 10),
-                 bg='#ffffff').pack(side=tk.LEFT, padx=(0, 4))
+        lbl_speed = tk.Label(speed_frame, text=t("toolbar.label.speed", self.lang), font=(self._tk_font_family, 10),
+                 bg='#ffffff')
+        lbl_speed.pack(side=tk.LEFT, padx=(0, 4))
+        self._reg("toolbar.label.speed", lbl_speed, font_size=10)
         self.speed_var = tk.IntVar(value=3)
         self.speed_scale = tk.Scale(speed_frame, from_=1, to=10, orient=tk.HORIZONTAL,
                                     variable=self.speed_var, length=120,
-                                    font=('Microsoft YaHei', 9), bg='#ffffff',
+                                    font=(self._tk_font_family, 9), bg='#ffffff',
                                     highlightthickness=0)
         self.speed_scale.pack(side=tk.LEFT)
 
@@ -349,12 +436,12 @@ class CamSimulator:
 
         self.status_var = tk.StringVar()
         self.status_label = tk.Label(status_bar, textvariable=self.status_var, fg='#ef4444',
-                                     font=('Microsoft YaHei', 10), anchor='w', bg='#ffffff')
+                                     font=(self._tk_font_family, 10), anchor='w', bg='#ffffff')
         self.status_label.pack(side=tk.LEFT)
 
         self.alpha_var = tk.StringVar()
         self.alpha_label = tk.Label(status_bar, textvariable=self.alpha_var,
-                                    font=('Microsoft YaHei', 11, 'bold'), anchor='w', bg='#ffffff')
+                                    font=(self._tk_font_family, 11, 'bold'), anchor='w', bg='#ffffff')
         self.alpha_label.pack(side=tk.LEFT, padx=16)
 
         # ---- 图表区 ----
@@ -418,17 +505,23 @@ class CamSimulator:
         self._sb_canvas.configure(scrollregion=self._sb_canvas.bbox('all'))
         self._sb_canvas.itemconfig(self._sb_win, width=self._sb_canvas.winfo_width())
 
-    def _sidebar_group(self, parent, title):
+    def _sidebar_group(self, parent, title, i18n_key=None):
         """侧边栏分组标题"""
         frame = tk.Frame(parent, bg='#f8fafc')
         frame.pack(fill=tk.X, padx=16, pady=(12, 4))
-        tk.Label(frame, text=title, font=('Microsoft YaHei', 9),
-                 fg='#64748b', bg='#f8fafc', anchor='w').pack(fill=tk.X)
+        lbl = tk.Label(frame, text=title, font=(self._tk_font_family, 9),
+                 fg='#64748b', bg='#f8fafc', anchor='w')
+        lbl.pack(fill=tk.X)
         tk.Frame(frame, height=1, bg='#e2e8f0').pack(fill=tk.X, pady=(2, 0))
+        if i18n_key:
+            self._reg(i18n_key, lbl, font_size=9)
 
-    def _sidebar_item(self, parent, text, lbl_kw):
+    def _sidebar_item(self, parent, text, lbl_kw, i18n_key=None):
         """侧边栏参数标签"""
-        tk.Label(parent, text=text, **lbl_kw).pack(fill=tk.X, padx=16, pady=(4, 0))
+        lbl = tk.Label(parent, text=text, **lbl_kw)
+        lbl.pack(fill=tk.X, padx=16, pady=(4, 0))
+        if i18n_key:
+            self._reg(i18n_key, lbl, font_size=10)
 
     # ===================================================================
     # 参数读取与校验
@@ -448,7 +541,7 @@ class CamSimulator:
                 'omega': float(self.entry_omega.get()),
             }
         except ValueError:
-            self.status_var.set("请输入完整的参数数据")
+            self.status_var.set(t("status.incomplete_params", self.lang))
             return None
 
         ok, err = validate_params(
@@ -456,7 +549,12 @@ class CamSimulator:
             vals['h'], vals['r_0'], vals['e'], vals['omega']
         )
         if not ok:
-            self.status_var.set(err)
+            if isinstance(err, tuple):
+                key, name_key = err
+                name = t(name_key, self.lang)
+                self.status_var.set(t(key, self.lang, name=name))
+            else:
+                self.status_var.set(t(err, self.lang))
             return None
 
         # 读取下拉菜单
@@ -512,12 +610,12 @@ class CamSimulator:
 
         # 压力角超限警告
         if max_alpha > MAX_PRESSURE_ANGLE:
-            self.status_var.set(f"警告：最大压力角 {max_alpha:.1f}° 超过推荐值 {MAX_PRESSURE_ANGLE:.0f}°")
+            self.status_var.set(t("status.warning_max_alpha", self.lang, val=max_alpha, threshold=MAX_PRESSURE_ANGLE))
 
         # 行程过大警告（h > r_0 时凸轮形状可能不合理）
         if params['h'] > params['r_0']:
             self.status_var.set(
-                f"警告：推杆行程({params['h']:.1f})大于基圆半径({params['r_0']:.1f})，凸轮形状可能不合理")
+                t("status.warning_h_gt_r0", self.lang, h=params['h'], r0=params['r_0']))
 
         # 保存计算结果
         self.sim_data = {
@@ -554,8 +652,8 @@ class CamSimulator:
         Rmax = data['Rmax']
 
         # 运动规律名称
-        tc_name = MOTION_LAW_NAMES.get(data.get('tc_law', 1), '')
-        hc_name = MOTION_LAW_NAMES.get(data.get('hc_law', 1), '')
+        tc_name = self._law_name(data.get('tc_law', 1))
+        hc_name = self._law_name(data.get('hc_law', 1))
 
         for ax in [self.ax_s, self.ax_v, self.ax_a, self.ax_profile]:
             ax.clear()
@@ -564,7 +662,9 @@ class CamSimulator:
         self.ax_s.plot(delta_deg, s, 'r-', linewidth=1.5)
         for b in pb[1:-1]:
             self.ax_s.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-        self.ax_s.set_title(rf'推杆位移 $s$（推程:{tc_name} 回程:{hc_name}）', fontsize=10)
+        self.ax_s.set_title(
+            rf'{t("plot.title.displacement", self.lang)}（{t("plot.subtitle.rise", self.lang)}:{tc_name} {t("plot.subtitle.return", self.lang)}:{hc_name}）',
+            fontsize=10)
         self.ax_s.set_xlabel(r'$\theta$ (°)')
         self.ax_s.set_ylabel(r'$s$ (mm)')
         self.ax_s.set_xlim(0, 360)
@@ -576,7 +676,7 @@ class CamSimulator:
         self.ax_v.plot(delta_deg, v, 'r-', linewidth=1.5)
         for b in pb[1:-1]:
             self.ax_v.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-        self.ax_v.set_title(r'推杆速度 $v$', fontsize=11)
+        self.ax_v.set_title(t("plot.title.velocity", self.lang), fontsize=11)
         self.ax_v.set_xlabel(r'$\theta$ (°)')
         self.ax_v.set_ylabel(r'$v$ (mm/s)')
         self.ax_v.set_xlim(0, 360)
@@ -590,7 +690,7 @@ class CamSimulator:
         self.ax_a.plot(delta_deg, a, 'r-', linewidth=1.5)
         for b in pb[1:-1]:
             self.ax_a.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-        self.ax_a.set_title(r'推杆加速度 $a$', fontsize=11)
+        self.ax_a.set_title(t("plot.title.acceleration", self.lang), fontsize=11)
         self.ax_a.set_xlabel(r'$\theta$ (°)')
         self.ax_a.set_ylabel(r'$a$ (mm/s$^2$)')
         self.ax_a.set_xlim(0, 360)
@@ -601,11 +701,11 @@ class CamSimulator:
         self.ax_a.grid(True)
 
         # ---- 凸轮廓形图 ----
-        self.ax_profile.plot(x, y, 'r-', linewidth=2, label='廓形')
+        self.ax_profile.plot(x, y, 'r-', linewidth=2, label=t("plot.legend.profile", self.lang))
         self.ax_profile.plot(data['x_base'], data['y_base'],
-                             'm-', linewidth=1, label='基圆')
+                             'm-', linewidth=1, label=t("plot.legend.base_circle", self.lang))
         self.ax_profile.plot(data['x_offset'], data['y_offset'],
-                             'c-', linewidth=1, label='偏距圆')
+                             'c-', linewidth=1, label=t("plot.legend.offset_circle", self.lang))
 
         n = len(x)
         for b_deg in pb[1:-1]:
@@ -614,7 +714,7 @@ class CamSimulator:
                 self.ax_profile.plot([0, x[idx]], [0, y[idx]],
                                      'k-', linewidth=0.8)
 
-        self.ax_profile.set_title(r'凸轮廓形', fontsize=11)
+        self.ax_profile.set_title(t("plot.title.profile", self.lang), fontsize=11)
         self.ax_profile.set_xlabel(r'$x$ (mm)')
         self.ax_profile.set_ylabel(r'$y$ (mm)')
         self.ax_profile.grid(True)
@@ -672,7 +772,7 @@ class CamSimulator:
         ax.set_ylim(-Rmax - r_0, Rmax + r_0)
         ax.set_aspect('equal')
         ax.grid(self.show_grid.get())
-        ax.set_title('凸轮动态仿真', fontsize=12)
+        ax.set_title(t("plot.title.animation", self.lang), fontsize=12)
         ax.set_xlabel(r'$x$ (mm)')
         ax.set_ylabel(r'$y$ (mm)')
 
@@ -705,11 +805,11 @@ class CamSimulator:
         ax.set_frame_on(False)
 
         info_items = [
-            ('delta', r'转角 $\theta$'),
-            ('alpha', r'压力角 $\alpha$'),
-            ('s', r'位移 $s$'),
-            ('h', r'行程 $h$'),
-            ('s0', r'初始位移 $s_{0}$'),
+            ('delta', t("info.label.delta", self.lang)),
+            ('alpha', t("info.label.alpha", self.lang)),
+            ('s',     t("info.label.s", self.lang)),
+            ('h',     t("info.label.h", self.lang)),
+            ('s0',    t("info.label.s0", self.lang)),
         ]
         self._info_labels = {}
         for idx, (key, name) in enumerate(info_items):
@@ -723,7 +823,8 @@ class CamSimulator:
         self.animating = True
         self.paused = False
         self.current_frame = 0
-        self.btn_pause.config(text="暂停")
+        self.btn_pause.config(text=t("toolbar.btn.pause", self.lang))
+        self._pause_state = "paused"
         self._init_anim_artists()
         self._animate_frame()
 
@@ -741,12 +842,13 @@ class CamSimulator:
         if self.animating:
             self.paused = not self.paused
             if self.paused:
-                self.btn_pause.config(text="继续")
+                self.btn_pause.config(text=t("toolbar.btn.resume", self.lang))
+                self._pause_state = "paused_running"
             else:
-                self.btn_pause.config(text="暂停")
+                self.btn_pause.config(text=t("toolbar.btn.pause", self.lang))
+                self._pause_state = "paused"
                 self._animate_frame()
-        elif self.sim_data is not None and self.btn_pause.cget('text') == "重播":
-            # 动画已结束，点击重播
+        elif self.sim_data is not None and self._pause_state == "replay":
             self._start_animation()
 
     def _animate_frame(self):
@@ -774,13 +876,19 @@ class CamSimulator:
 
         if i >= N:
             self.animating = False
-            self.btn_pause.config(text="重播")
-            self.alpha_var.set(f"最大压力角={data['max_alpha']:.2f}°")
-            self._info_labels['delta'].set_text(r'转角 $\theta$: 360°/360°')
-            self._info_labels['alpha'].set_text(rf'压力角 $\alpha$: {data["max_alpha"]:.2f}°')
-            self._info_labels['s'].set_text(rf'位移 $s$: 0.00 mm')
-            self._info_labels['h'].set_text(rf'行程 $h$: {h:.1f} mm')
-            self._info_labels['s0'].set_text(rf'初始位移 $s_{{0}}$: {s_0:.2f} mm')
+            self.btn_pause.config(text=t("toolbar.btn.replay", self.lang))
+            self._pause_state = "replay"
+            self.alpha_var.set(t("status.max_alpha", self.lang, val=data['max_alpha']))
+            label_delta = t("info.label.delta", self.lang)
+            label_alpha = t("info.label.alpha", self.lang)
+            label_s = t("info.label.s", self.lang)
+            label_h = t("info.label.h", self.lang)
+            label_s0 = t("info.label.s0", self.lang)
+            self._info_labels['delta'].set_text(rf'{label_delta}: 360°/360°')
+            self._info_labels['alpha'].set_text(rf'{label_alpha}: {data["max_alpha"]:.2f}°')
+            self._info_labels['s'].set_text(rf'{label_s}: 0.00 mm')
+            self._info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
+            self._info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
             self.canvas.draw_idle()
             return
 
@@ -861,12 +969,17 @@ class CamSimulator:
             artists['arc'].set_data([], [])
             artists['center'].set_data([], [])
 
-        # ---- 信息面板（图框外 tkinter 标签）----
-        self._info_labels['delta'].set_text(rf'转角 $\theta$: {i:3d}°/360°')
-        self._info_labels['alpha'].set_text(rf'压力角 $\alpha$: {alpha_i:.1f}°')
-        self._info_labels['s'].set_text(rf'位移 $s$: {frame["s_i"]:.2f} mm')
-        self._info_labels['h'].set_text(rf'行程 $h$: {h:.1f} mm')
-        self._info_labels['s0'].set_text(rf'初始位移 $s_{{0}}$: {s_0:.2f} mm')
+        # ---- 信息面板 ----
+        label_delta = t("info.label.delta", self.lang)
+        label_alpha = t("info.label.alpha", self.lang)
+        label_s = t("info.label.s", self.lang)
+        label_h = t("info.label.h", self.lang)
+        label_s0 = t("info.label.s0", self.lang)
+        self._info_labels['delta'].set_text(rf'{label_delta}: {i:3d}°/360°')
+        self._info_labels['alpha'].set_text(rf'{label_alpha}: {alpha_i:.1f}°')
+        self._info_labels['s'].set_text(rf'{label_s}: {frame["s_i"]:.2f} mm')
+        self._info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
+        self._info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
 
         # 仅每N帧刷新一次画布，减少卡顿
         if i % ANIM_FRAME_SKIP == 0:
@@ -908,14 +1021,14 @@ class CamSimulator:
         # 检查是否有勾选
         if not any([self.dl_s.get(), self.dl_v.get(), self.dl_a.get(),
                      self.dl_profile.get(), self.dl_anim.get()]):
-            self.status_var.set("请至少勾选一项要下载的图片")
+            self.status_var.set(t("status.no_download_selection", self.lang))
             return
 
         if self.sim_data is None:
-            self.status_var.set("请先运行仿真再下载")
+            self.status_var.set(t("status.run_first", self.lang))
             return
 
-        folder = filedialog.askdirectory(title="选择保存文件夹")
+        folder = filedialog.askdirectory(title=t("export.folder_dialog.title", self.lang))
         if not folder:
             return
 
@@ -933,16 +1046,17 @@ class CamSimulator:
             ax_s.plot(delta_deg, s, 'r-', linewidth=1.5)
             for b in pb[1:-1]:
                 ax_s.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-            ax_s.set_title(r'推杆位移 $s$', fontsize=11)
+            ax_s.set_title(t("plot.title.displacement", self.lang), fontsize=11)
             ax_s.set_xlabel(r'$\theta$ (°)')
             ax_s.set_ylabel(r'$s$ (mm)')
             ax_s.set_xlim(0, 360)
             ax_s.set_ylim(0, data['h'] * 1.15)
             ax_s.set_xticks(range(0, 361, 60))
             ax_s.grid(True)
-            fig_s.savefig(os.path.join(folder, 'displacement.png'), dpi=dpi, bbox_inches='tight')
+            filename_s = t("export.filename.displacement", self.lang) + ".png"
+            fig_s.savefig(os.path.join(folder, filename_s), dpi=dpi, bbox_inches='tight')
             plt.close(fig_s)
-            saved.append('displacement.png')
+            saved.append(filename_s)
 
         # ---- 速度曲线 ----
         if self.dl_v.get():
@@ -954,7 +1068,7 @@ class CamSimulator:
             ax_v.plot(delta_deg, v, 'r-', linewidth=1.5)
             for b in pb[1:-1]:
                 ax_v.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-            ax_v.set_title(r'推杆速度 $v$', fontsize=11)
+            ax_v.set_title(t("plot.title.velocity", self.lang), fontsize=11)
             ax_v.set_xlabel(r'$\theta$ (°)')
             ax_v.set_ylabel(r'$v$ (mm/s)')
             ax_v.set_xlim(0, 360)
@@ -963,9 +1077,10 @@ class CamSimulator:
                 ax_v.set_ylim(-v_max, v_max)
             ax_v.set_xticks(range(0, 361, 60))
             ax_v.grid(True)
-            fig_v.savefig(os.path.join(folder, 'velocity.png'), dpi=dpi, bbox_inches='tight')
+            filename_v = t("export.filename.velocity", self.lang) + ".png"
+            fig_v.savefig(os.path.join(folder, filename_v), dpi=dpi, bbox_inches='tight')
             plt.close(fig_v)
-            saved.append('velocity.png')
+            saved.append(filename_v)
 
         # ---- 加速度曲线 ----
         if self.dl_a.get():
@@ -977,7 +1092,7 @@ class CamSimulator:
             ax_a.plot(delta_deg, a, 'r-', linewidth=1.5)
             for b in pb[1:-1]:
                 ax_a.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-            ax_a.set_title(r'推杆加速度 $a$', fontsize=11)
+            ax_a.set_title(t("plot.title.acceleration", self.lang), fontsize=11)
             ax_a.set_xlabel(r'$\theta$ (°)')
             ax_a.set_ylabel(r'$a$ (mm/s$^2$)')
             ax_a.set_xlim(0, 360)
@@ -986,9 +1101,10 @@ class CamSimulator:
                 ax_a.set_ylim(-a_max, a_max)
             ax_a.set_xticks(range(0, 361, 60))
             ax_a.grid(True)
-            fig_a.savefig(os.path.join(folder, 'acceleration.png'), dpi=dpi, bbox_inches='tight')
+            filename_a = t("export.filename.acceleration", self.lang) + ".png"
+            fig_a.savefig(os.path.join(folder, filename_a), dpi=dpi, bbox_inches='tight')
             plt.close(fig_a)
-            saved.append('acceleration.png')
+            saved.append(filename_a)
 
         # ---- 凸轮廓形 ----
         if self.dl_profile.get():
@@ -999,14 +1115,14 @@ class CamSimulator:
             n = len(x)
             fig_p = Figure(figsize=(6, 6), dpi=dpi)
             ax_p = fig_p.add_subplot(111)
-            ax_p.plot(x, y, 'r-', linewidth=2, label='廓形')
-            ax_p.plot(data['x_base'], data['y_base'], 'm-', linewidth=1, label='基圆')
-            ax_p.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1, label='偏距圆')
+            ax_p.plot(x, y, 'r-', linewidth=2, label=t("plot.legend.profile", self.lang))
+            ax_p.plot(data['x_base'], data['y_base'], 'm-', linewidth=1, label=t("plot.legend.base_circle", self.lang))
+            ax_p.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1, label=t("plot.legend.offset_circle", self.lang))
             for b_deg in pb[1:-1]:
                 idx = int(b_deg)
                 if idx < n:
                     ax_p.plot([0, x[idx]], [0, y[idx]], 'k-', linewidth=0.8)
-            ax_p.set_title(r'凸轮廓形', fontsize=11)
+            ax_p.set_title(t("plot.title.profile", self.lang), fontsize=11)
             ax_p.set_xlabel(r'$x$ (mm)')
             ax_p.set_ylabel(r'$y$ (mm)')
             ax_p.grid(True)
@@ -1015,25 +1131,30 @@ class CamSimulator:
             ax_p.set_ylim(-Rmax - r_0, Rmax + r_0)
             ax_p.set_aspect('equal')
             ax_p.legend(fontsize=8, loc='upper right')
-            fig_p.savefig(os.path.join(folder, 'cam_profile.png'), dpi=dpi, bbox_inches='tight')
+            filename_p = t("export.filename.profile", self.lang) + ".png"
+            fig_p.savefig(os.path.join(folder, filename_p), dpi=dpi, bbox_inches='tight')
             plt.close(fig_p)
-            saved.append('cam_profile.png')
+            saved.append(filename_p)
 
         # 动态图：保存完整360帧为GIF（后台线程，避免UI冻结）
         if self.dl_anim.get():
-            filepath = os.path.join(folder, 'cam_animation.gif')
+            filename_anim = t("export.filename.animation", self.lang) + ".gif"
+            filepath = os.path.join(folder, filename_anim)
             self._export_gif(filepath, folder, saved)
 
         if saved:
-            self.status_var.set(f"已保存: {', '.join(saved)} → {folder}")
+            self.status_var.set(t("status.saved", self.lang, files=', '.join(saved), folder=folder))
         elif self.dl_anim.get():
-            self.status_var.set("GIF 正在导出中...")
+            self.status_var.set(t("status.gif_exporting", self.lang))
 
     def _export_gif(self, filepath, folder, saved_list):
         """在后台线程中导出GIF动画，显示进度对话框"""
         import threading
         from io import BytesIO
         from PIL import Image as PILImage
+
+        # Capture lang for thread safety
+        lang = self.lang
 
         data = self.sim_data
         s = data['s']
@@ -1051,16 +1172,16 @@ class CamSimulator:
 
         # 进度对话框
         progress_win = tk.Toplevel(self.root)
-        progress_win.title("导出GIF")
+        progress_win.title(t("export.gif_dialog.title", lang))
         progress_win.geometry("320x100")
         progress_win.resizable(False, False)
         progress_win.transient(self.root)
         progress_win.grab_set()
-        tk.Label(progress_win, text="正在生成动态图GIF，请稍候...",
-                 font=('Microsoft YaHei', 10)).pack(pady=(12, 4))
+        tk.Label(progress_win, text=t("export.gif_dialog.message", lang),
+                 font=(self._tk_font_family, 10)).pack(pady=(12, 4))
         progress_bar = ttk.Progressbar(progress_win, length=280, mode='determinate', maximum=N)
         progress_bar.pack(pady=4)
-        progress_label = tk.Label(progress_win, text="0 / 360", font=('Microsoft YaHei', 9))
+        progress_label = tk.Label(progress_win, text="0 / 360", font=(self._tk_font_family, 9))
         progress_label.pack()
 
         # 线程间共享状态
@@ -1074,6 +1195,14 @@ class CamSimulator:
 
                 first_frame = None
                 append_frames = []
+
+                # Pre-compute translated labels for GIF
+                label_delta_gif = t("info.label.delta", lang)
+                label_alpha_gif = t("info.label.alpha", lang)
+                label_s_gif = t("info.label.s", lang)
+                label_h_gif = t("info.label.h", lang)
+                label_s0_gif = t("info.label.s0", lang)
+                title_anim_gif = t("plot.title.animation", lang)
 
                 for i in range(N):
                     angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
@@ -1099,18 +1228,18 @@ class CamSimulator:
                     ax_gif.set_xlim(xlim)
                     ax_gif.set_ylim(ylim)
                     ax_gif.set_aspect('equal')
-                    ax_gif.set_title(f'凸轮动态仿真  {i:3d}°/360°', fontsize=11)
+                    ax_gif.set_title(f'{title_anim_gif}  {i:3d}°/360°', fontsize=11)
 
                     ax_info_gif.clear()
                     ax_info_gif.set_xticks([])
                     ax_info_gif.set_yticks([])
                     ax_info_gif.set_frame_on(False)
                     info_items = [
-                        (0.95, r'转角 $\theta$: ' + f'{i:3d}' + r'°/360°'),
-                        (0.85, r'压力角 $\alpha$: ' + f'{alpha_i:.1f}°'),
-                        (0.75, r'位移 $s$: ' + f'{frame_data["s_i"]:.2f} mm'),
-                        (0.65, r'行程 $h$: ' + f'{h:.1f} mm'),
-                        (0.55, rf'初始位移 $s_{{0}}$: {s_0:.2f} mm'),
+                        (0.95, rf'{label_delta_gif}: {i:3d}°/360°'),
+                        (0.85, rf'{label_alpha_gif}: {alpha_i:.1f}°'),
+                        (0.75, rf'{label_s_gif}: {frame_data["s_i"]:.2f} mm'),
+                        (0.65, rf'{label_h_gif}: {h:.1f} mm'),
+                        (0.55, rf'{label_s0_gif}: {s_0:.2f} mm'),
                     ]
                     for y_pos, text in info_items:
                         ax_info_gif.text(0.05, y_pos, text, transform=ax_info_gif.transAxes,
@@ -1137,16 +1266,16 @@ class CamSimulator:
                 if first_frame is not None:
                     first_frame.save(filepath, save_all=True, append_images=append_frames,
                                      duration=GIF_DURATION_MS, loop=0)
-                saved_list.append('cam_animation.gif')
+                saved_list.append(os.path.basename(filepath))
             except Exception as exc:
                 gif_result['error'] = str(exc)
             finally:
                 def _on_done():
                     progress_win.destroy()
                     if gif_result['error']:
-                        self.status_var.set(f"GIF导出失败: {gif_result['error']}")
+                        self.status_var.set(t("status.gif_failed", lang, error=gif_result['error']))
                     else:
-                        self.status_var.set(f"已保存: {', '.join(saved_list)} → {folder}")
+                        self.status_var.set(t("status.saved", lang, files=', '.join(saved_list), folder=folder))
                 self.root.after(0, _on_done)
 
         thread = threading.Thread(target=generate, daemon=True)

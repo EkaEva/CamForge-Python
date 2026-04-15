@@ -60,7 +60,7 @@ class TestComputeRise:
     def test_rise_unknown_law_raises(self, common_params):
         """未知运动规律应抛出异常"""
         delta_arr, delta_0, h, omega = common_params
-        with pytest.raises(ValueError, match="未知的运动规律编号"):
+        with pytest.raises(ValueError, match="error.unknown_law"):
             compute_rise(delta_arr, delta_0, h, omega, 6)
 
 
@@ -93,7 +93,7 @@ class TestComputeReturn:
     def test_return_unknown_law_raises(self, common_params):
         """未知运动规律应抛出异常"""
         delta_arr, delta_ret, h, omega = common_params
-        with pytest.raises(ValueError, match="未知的运动规律编号"):
+        with pytest.raises(ValueError, match="error.unknown_law"):
             compute_return(delta_arr, delta_ret, h, omega, 0)
 
 
@@ -335,35 +335,39 @@ class TestValidateParams:
         """四角之和不为360应失败"""
         ok, err = validate_params(90, 90, 90, 91, 10, 40, 5, 1)
         assert ok is False
-        assert "360" in err
+        assert err == "error.angles_sum"
 
     def test_non_integer_angle(self):
         """非整数角度应失败"""
         ok, err = validate_params(90.5, 60, 120, 89.5, 10, 40, 5, 1)
         assert ok is False
-        assert "整数" in err
+        assert isinstance(err, tuple) and err[0] == "error.angle_integer"
 
     def test_angle_too_small(self):
         """角度<=1应失败"""
         ok, err = validate_params(1, 120, 120, 119, 10, 40, 5, 1)
         assert ok is False
+        assert isinstance(err, tuple) and err[0] == "error.angle_min"
 
     def test_negative_stroke(self):
         """行程<=0应失败"""
         ok, err = validate_params(90, 60, 120, 90, 0, 40, 5, 1)
         assert ok is False
-        ok2, _ = validate_params(90, 60, 120, 90, -5, 40, 5, 1)
+        assert err == "error.h_positive"
+        ok2, err2 = validate_params(90, 60, 120, 90, -5, 40, 5, 1)
         assert ok2 is False
 
     def test_negative_base_radius(self):
         """基圆半径<=0应失败"""
         ok, err = validate_params(90, 60, 120, 90, 10, 0, 5, 1)
         assert ok is False
+        assert err == "error.r0_positive"
 
     def test_offset_exceeds_base_radius(self):
         """偏距>=基圆半径应失败"""
         ok, err = validate_params(90, 60, 120, 90, 10, 40, 40, 1)
         assert ok is False
+        assert err == "error.e_lt_r0"
         ok2, _ = validate_params(90, 60, 120, 90, 10, 40, 41, 1)
         assert ok2 is False
 
@@ -371,3 +375,4 @@ class TestValidateParams:
         """角速度<=0应失败"""
         ok, err = validate_params(90, 60, 120, 90, 10, 40, 5, 0)
         assert ok is False
+        assert err == "error.omega_positive"

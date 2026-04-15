@@ -1,3 +1,5 @@
+中文 | [English](README.en.md) | [日本語](README.ja.md)
+
 <div align="center">
 
 # CamForge
