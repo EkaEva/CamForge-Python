@@ -358,28 +358,31 @@ class CamSimulator:
 
         self.btn_clear_params = tk.Button(toolbar, text=t("toolbar.btn.clear_params", self.lang),
                                           command=self._on_clear_params,
-                                          bg='#ffffff', fg='#475569',
-                                          activebackground='#f1f5f9',
-                                          relief=tk.FLAT, bd=1,
-                                          font=(self._tk_font_family, 10), width=10, height=1)
+                                          bg='#64748b', fg='white',
+                                          activebackground='#475569',
+                                          relief=tk.FLAT, bd=0,
+                                          font=(self._tk_font_family, 10), width=10, height=1,
+                                          cursor='hand2')
         self.btn_clear_params.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.clear_params", self.btn_clear_params, font_size=10)
 
         self.btn_clear_plots = tk.Button(toolbar, text=t("toolbar.btn.clear_plots", self.lang),
                                          command=self._on_clear_plots,
-                                         bg='#ffffff', fg='#475569',
-                                         activebackground='#f1f5f9',
-                                         relief=tk.FLAT, bd=1,
-                                         font=(self._tk_font_family, 10), width=10, height=1)
+                                         bg='#94a3b8', fg='white',
+                                         activebackground='#64748b',
+                                         relief=tk.FLAT, bd=0,
+                                         font=(self._tk_font_family, 10), width=10, height=1,
+                                         cursor='hand2')
         self.btn_clear_plots.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.clear_plots", self.btn_clear_plots, font_size=10)
 
         self.btn_random = tk.Button(toolbar, text=t("toolbar.btn.random", self.lang),
                                     command=self._on_random,
-                                    bg='#ffffff', fg='#475569',
-                                    activebackground='#f1f5f9',
-                                    relief=tk.FLAT, bd=1,
-                                    font=(self._tk_font_family, 10), width=10, height=1)
+                                    bg='#8b5cf6', fg='white',
+                                    activebackground='#7c3aed',
+                                    relief=tk.FLAT, bd=0,
+                                    font=(self._tk_font_family, 10), width=10, height=1,
+                                    cursor='hand2')
         self.btn_random.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.random", self.btn_random, font_size=10)
 
@@ -1149,6 +1152,7 @@ class CamSimulator:
 
     def _export_gif(self, filepath, folder, saved_list):
         """在后台线程中导出GIF动画，显示进度对话框"""
+        import os
         import threading
         from io import BytesIO
         from PIL import Image as PILImage
