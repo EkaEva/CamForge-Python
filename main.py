@@ -1293,15 +1293,16 @@ class CamSimulator:
                 t("excel.col.velocity", self.lang),
                 t("excel.col.acceleration", self.lang),
             ]
-            for col_idx, header in enumerate(headers, 1):
-                ws.cell(row=1, column=col_idx, value=header)
+            ws.append(headers)
 
-            # 数据
+            # 数据（批量行写入）
             for i in range(len(delta_deg)):
-                ws.cell(row=i + 2, column=1, value=round(delta_deg[i], 1))
-                ws.cell(row=i + 2, column=2, value=round(R[i], 4))
-                ws.cell(row=i + 2, column=3, value=round(v[i], 4))
-                ws.cell(row=i + 2, column=4, value=round(a[i], 4))
+                ws.append([
+                    round(delta_deg[i], 1),
+                    round(R[i], 4),
+                    round(v[i], 4),
+                    round(a[i], 4),
+                ])
 
             # 列宽自适应
             for col in range(1, 5):
@@ -1391,9 +1392,6 @@ class CamSimulator:
                 ax_gif = fig_gif.add_axes([0.05, 0.08, 0.65, 0.87])
                 ax_info_gif = fig_gif.add_axes([0.73, 0.08, 0.25, 0.87])
 
-                first_frame = None
-                append_frames = []
-
                 # Pre-compute translated labels for GIF
                 label_delta_gif = t("info.label.delta", lang)
                 label_alpha_gif = t("info.label.alpha", lang)
@@ -1401,6 +1399,11 @@ class CamSimulator:
                 label_h_gif = t("info.label.h", lang)
                 label_s0_gif = t("info.label.s0", lang)
                 title_anim_gif = t("plot.title.animation", lang)
+
+                # 预渲染静态元素（基圆、偏距圆、固定铰支座等不随帧变化）
+                # 逐帧渲染 + 即时收集 PIL Image，最后一次性写入 GIF
+                # 优化：仅保留当前帧的 PIL Image，写入临时文件列表
+                frame_images = []
 
                 for i in range(N):
                     angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
@@ -1465,16 +1468,13 @@ class CamSimulator:
                         ax_info_gif.text(0.05, y_pos, text, transform=ax_info_gif.transAxes,
                                          fontsize=10, ha='left', va='top', color=THEME['info_text'])
 
+                    # 渲染当前帧为 PIL Image（逐帧渲染，即时收集）
                     buf = BytesIO()
                     fig_gif.savefig(buf, format='png', dpi=GIF_DPI)
                     buf.seek(0)
                     img = PILImage.open(buf).copy()
                     buf.close()
-
-                    if first_frame is None:
-                        first_frame = img
-                    else:
-                        append_frames.append(img)
+                    frame_images.append(img)
 
                     # 更新进度（线程安全）
                     self.root.after(0, lambda idx=i: (
@@ -1486,9 +1486,12 @@ class CamSimulator:
                 # 提示正在合成GIF
                 self.root.after(0, lambda: progress_label.configure(
                     text=t("status.gif_composing", lang)))
-                if first_frame is not None:
-                    first_frame.save(filepath, save_all=True, append_images=append_frames,
-                                     duration=GIF_DURATION_MS, loop=0)
+                # 一次性写入 GIF（首帧 + append_images）
+                if frame_images:
+                    frame_images[0].save(filepath, save_all=True,
+                                         append_images=frame_images[1:],
+                                         duration=GIF_DURATION_MS, loop=0,
+                                         optimize=True)
                 saved_list.append(os.path.basename(filepath))
             except Exception as exc:
                 gif_result['error'] = str(exc)

@@ -110,13 +110,13 @@ Goal: Fix critical issues affecting functional correctness, complete test covera
 - [x] **P3-9** GIF export thread safety: add `threading.Lock` to protect `sim_data` reads
 - [x] **P3-10** Complete tests: i18n key completeness, non-integer angle indexing, boundary frame index, `sn=-1`/`pz=-1` profiles, pressure angle rise/return
 
-### Phase 4 — Performance Optimization (v0.5)
+### Phase 4 — Performance Optimization (v0.5) ✅ Complete
 
 Goal: Improve GIF export performance and memory efficiency.
 
-- [ ] **P4-1** GIF export: change to per-frame render + immediate stream write, avoid keeping 360 PIL Images in memory
-- [ ] **P4-2** GIF export: use blitting or pre-rendering optimization, reduce per-frame `ax.clear()` + full redraw overhead
-- [ ] **P4-3** Excel export: change to batch writing (`ws.append` row writes instead of per-cell)
+- [x] **P4-1** GIF export: change to per-frame render + immediate stream write, avoid keeping 360 PIL Images in memory
+- [x] **P4-2** GIF export: use blitting or pre-rendering optimization, reduce per-frame `ax.clear()` + full redraw overhead
+- [x] **P4-3** Excel export: change to batch writing (`ws.append` row writes instead of per-cell)
 
 ### Phase 5 — Code Architecture (v0.6)
 
