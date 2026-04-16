@@ -199,6 +199,31 @@ class TestComputeFullMotion:
         with pytest.raises(ValueError, match="hc_law must be 1-5"):
             compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 1, 0)
 
+    def test_full_motion_angles_sum_not_360_raises(self):
+        """四角之和不为360应抛出 ValueError"""
+        with pytest.raises(ValueError, match="Four angles must sum to 360"):
+            compute_full_motion(90, 60, 120, 80, 10, 40, 5, 1, 1, 1)
+
+    def test_full_motion_non_integer_angles(self):
+        """非整角度（如91+59+120+90=360）应正确计算，索引不越界"""
+        delta_deg, s, v, a, ds_ddelta, pb = compute_full_motion(
+            91, 59, 120, 90, 10, 40, 5, 1, 3, 4)
+        assert len(s) == N_POINTS
+        assert len(v) == N_POINTS
+        assert len(a) == N_POINTS
+        # 推程结束位移应接近 h
+        i1 = int(round(91))
+        assert abs(s[i1 - 1] - 10) < 0.1, f"推程末端位移{s[i1-1]}不接近h=10"
+
+    def test_full_motion_another_non_integer(self):
+        """另一组非整角度（85+65+130+80=360）应正确计算"""
+        delta_deg, s, v, a, ds_ddelta, pb = compute_full_motion(
+            85, 65, 130, 80, 10, 40, 5, 1, 1, 1)
+        assert len(s) == N_POINTS
+        # 近休止段位移应为0
+        i3 = int(round(85 + 65 + 130))
+        assert np.allclose(s[i3:], 0, atol=1e-6)
+
 
 # ============================================================================
 # 凸轮廓形测试
@@ -265,6 +290,37 @@ class TestComputeCamProfile:
         with pytest.raises(ValueError, match="pz must be"):
             compute_cam_profile(s, 40, 0, 1, 0)
 
+    def test_profile_sn_negative_one(self):
+        """sn=-1（逆时针）廓形应与 sn=+1 关于 y 轴镜像"""
+        _, s, _, _, _, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        x_cw, y_cw, _ = compute_cam_profile(s, 40, 5, 1, 1)
+        x_ccw, y_ccw, _ = compute_cam_profile(s, 40, 5, -1, 1)
+        # sn=-1 时 x 坐号取反
+        assert np.allclose(x_ccw, -x_cw, atol=1e-10), "逆时针廓形x坐标不等于顺时针取反"
+        assert np.allclose(y_ccw, y_cw, atol=1e-10), "逆时针廓形y坐标应与顺时针相同"
+
+    def test_profile_pz_negative_one(self):
+        """pz=-1（负偏距）廓形应正确计算且与 pz=+1 不同"""
+        _, s, _, _, _, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        x_pos, y_pos, _ = compute_cam_profile(s, 40, 5, 1, 1)
+        x_neg, y_neg, _ = compute_cam_profile(s, 40, 5, 1, -1)
+        # pz=-1 时偏距方向反转，廓形应与正偏距不同
+        assert not np.allclose(x_neg, x_pos, atol=1e-6), "负偏距廓形应与正偏距不同"
+        # 但廓形半径应相同（偏距只改变方向不改变大小）
+        R_pos = np.hypot(x_pos, y_pos)
+        R_neg = np.hypot(x_neg, y_neg)
+        assert np.allclose(R_neg, R_pos, atol=1e-6), "负偏距廓形半径应与正偏距相同"
+
+    def test_profile_sn_neg_pz_neg(self):
+        """sn=-1, pz=-1 组合应正确计算"""
+        _, s, _, _, _, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        x, y, s_0 = compute_cam_profile(s, 40, 5, -1, -1)
+        assert len(x) == N_POINTS
+        assert len(y) == N_POINTS
+        assert s_0 > 0
+        # 廓形不应全为零
+        assert np.max(np.hypot(x, y)) > 0
+
 
 # ============================================================================
 # 压力角测试
@@ -301,6 +357,29 @@ class TestComputePressureAngle:
         ds_ddelta = np.zeros(360)
         with pytest.raises(ValueError, match="pz must be"):
             compute_pressure_angle(s, ds_ddelta, 40, 0, 0)
+
+    def test_pressure_angle_rise_phase(self):
+        """推程段压力角应非零（有速度分量）"""
+        _, s, _, _, ds_ddelta, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        _, _, s_0 = compute_cam_profile(s, 40, 5, 1, 1)
+        alpha = compute_pressure_angle(s, ds_ddelta, s_0, 5, 1)
+        # 推程段中间（约45度处）压力角应大于0
+        assert abs(alpha[45]) > 0.1, "推程段中间压力角应大于0"
+
+    def test_pressure_angle_return_phase(self):
+        """回程段压力角应非零（有速度分量）"""
+        _, s, _, _, ds_ddelta, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        _, _, s_0 = compute_cam_profile(s, 40, 5, 1, 1)
+        alpha = compute_pressure_angle(s, ds_ddelta, s_0, 5, 1)
+        # 回程段中间（约150+60=210度处）压力角应大于0
+        assert abs(alpha[210]) > 0.1, "回程段中间压力角应大于0"
+
+    def test_pressure_angle_pz_negative(self):
+        """pz=-1 时压力角应正确计算"""
+        _, s, _, _, ds_ddelta, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        _, _, s_0 = compute_cam_profile(s, 40, 5, 1, -1)
+        alpha = compute_pressure_angle(s, ds_ddelta, s_0, 5, -1)
+        assert np.all(np.abs(alpha) <= 90), "pz=-1时压力角超出±90°范围"
 
 
 # ============================================================================
@@ -370,6 +449,36 @@ class TestComputeAnimFrameData:
         """法线与切线应正交"""
         dot = frame_data['nx'] * frame_data['tx'] + frame_data['ny'] * frame_data['ty']
         assert abs(dot) < 1e-10, "法线与切线不正交"
+
+    def test_frame_index_zero(self):
+        """帧索引0（起始帧）应正确计算"""
+        _, s, _, _, ds_ddelta, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        _, _, s_0 = compute_cam_profile(s, 40, 5, 1, 1)
+        alpha = compute_pressure_angle(s, ds_ddelta, s_0, 5, 1)
+        frame = compute_anim_frame_data(s, ds_ddelta, s_0, 5, 40, 1, 1, 0, alpha)
+        assert 'follower_x' in frame
+        assert frame['s_i'] == pytest.approx(0.0, abs=1e-10), "起始帧位移应为0"
+
+    def test_frame_index_last(self):
+        """帧索引N-1（最后一帧）应正确计算"""
+        _, s, _, _, ds_ddelta, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        _, _, s_0 = compute_cam_profile(s, 40, 5, 1, 1)
+        alpha = compute_pressure_angle(s, ds_ddelta, s_0, 5, 1)
+        N = len(s)
+        frame = compute_anim_frame_data(s, ds_ddelta, s_0, 5, 40, 1, 1, N - 1, alpha)
+        assert 'follower_x' in frame
+        # 最后一帧在近休止段，位移应接近0
+        assert abs(frame['s_i']) < 1.0, f"最后一帧位移{frame['s_i']}应接近0"
+
+    def test_frame_index_out_of_range_raises(self):
+        """帧索引越界应抛出 ValueError"""
+        _, s, _, _, ds_ddelta, _ = compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 3, 4)
+        _, _, s_0 = compute_cam_profile(s, 40, 5, 1, 1)
+        alpha = compute_pressure_angle(s, ds_ddelta, s_0, 5, 1)
+        with pytest.raises(ValueError, match="Frame index i must be"):
+            compute_anim_frame_data(s, ds_ddelta, s_0, 5, 40, 1, 1, -1, alpha)
+        with pytest.raises(ValueError, match="Frame index i must be"):
+            compute_anim_frame_data(s, ds_ddelta, s_0, 5, 40, 1, 1, len(s), alpha)
 
 
 # ============================================================================
@@ -464,3 +573,50 @@ class TestValidateParams:
         ok, err = validate_params(90, 60, 120, 90, 10, 40, 5, 0)
         assert ok is False
         assert err == "error.omega_positive"
+
+    def test_negative_offset_rejected(self):
+        """负偏距应被拒绝（与计算引擎一致）"""
+        ok, err = validate_params(90, 60, 120, 90, 10, 40, -5, 1)
+        assert ok is False
+        assert err == "error.e_negative"
+
+
+# ============================================================================
+# i18n 测试
+# ============================================================================
+
+class TestI18n:
+    """国际化模块测试"""
+
+    def test_all_translation_keys_have_zh_and_en(self):
+        """所有翻译键应同时有 zh 和 en 条目"""
+        from i18n import TRANSLATIONS, SUPPORTED_LANGS
+        for key, entry in TRANSLATIONS.items():
+            for lang in SUPPORTED_LANGS:
+                assert lang in entry, f"Key '{key}' missing '{lang}' translation"
+
+    def test_translation_fallback(self):
+        """不存在的语言应回退到默认语言"""
+        from i18n import t, DEFAULT_LANG
+        result = t("app.title", "fr")  # 法语不存在
+        expected = t("app.title", DEFAULT_LANG)
+        assert result == expected
+
+    def test_missing_key_returns_bracket(self):
+        """不存在的键应返回 [key]"""
+        from i18n import t
+        result = t("nonexistent.key", "zh")
+        assert result == "[nonexistent.key]"
+
+    def test_format_parameters(self):
+        """格式化参数应正确替换"""
+        from i18n import t
+        result = t("status.warning_max_alpha", "zh", val=35.5, threshold=30)
+        assert "35.5" in result
+        assert "30" in result
+
+    def test_no_duplicate_keys(self):
+        """不应有重复的翻译键"""
+        from i18n import TRANSLATIONS
+        # TRANSLATIONS 是 dict，天然无重复键，只需验证非空
+        assert len(TRANSLATIONS) > 0

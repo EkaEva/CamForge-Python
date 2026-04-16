@@ -95,20 +95,20 @@
 - [x] **P2-9** Move stdlib imports from method bodies to module top level
 - [x] **P2-10** Eliminate static plot code duplication between `_plot_static` and `_on_download`
 
-### Phase 3 — Correctness Fixes (v0.4)
+### Phase 3 — Correctness Fixes (v0.4) ✅ Complete
 
 Goal: Fix critical issues affecting functional correctness, complete test coverage.
 
-- [ ] **P3-1** Fix `compute_full_motion` index rounding issue: add `i1/i2/i3` boundary checks, ensure `i3 <= N_POINTS`
-- [ ] **P3-2** Add four-angle sum validation to `compute_full_motion` (consistent with `validate_params`)
-- [ ] **P3-3** Add frame index range check to `compute_anim_frame_data`
-- [ ] **P3-4** Add try/except wrapping computation calls in `_on_start`; show friendly error instead of crash
-- [ ] **P3-5** Fix validation inconsistency between `validate_params` and computation engine: `e` must not be negative
-- [ ] **P3-6** Fix `error.unknown_law` format: use i18n key format instead of pipe format in `cam_mechanics.py`
-- [ ] **P3-7** Add user notification when `_read_params` truncates floating-point angles (e.g., "Angle 90.9 rounded to 90")
-- [ ] **P3-8** Add try/except error handling to `_export_excel` and `_on_download`
-- [ ] **P3-9** GIF export thread safety: add `threading.Lock` to protect `sim_data` reads
-- [ ] **P3-10** Complete tests: i18n key completeness, non-integer angle indexing, boundary frame index, `sn=-1`/`pz=-1` profiles, pressure angle rise/return
+- [x] **P3-1** Fix `compute_full_motion` index rounding issue: add `i1/i2/i3` boundary checks, ensure `i3 <= N_POINTS`
+- [x] **P3-2** Add four-angle sum validation to `compute_full_motion` (consistent with `validate_params`)
+- [x] **P3-3** Add frame index range check to `compute_anim_frame_data`
+- [x] **P3-4** Add try/except wrapping computation calls in `_on_start`; show friendly error instead of crash
+- [x] **P3-5** Fix validation inconsistency between `validate_params` and computation engine: `e` must not be negative
+- [x] **P3-6** Fix `error.unknown_law` format: use i18n key format instead of pipe format in `cam_mechanics.py`
+- [x] **P3-7** Add user notification when `_read_params` truncates floating-point angles (e.g., "Angle 90.9 rounded to 90")
+- [x] **P3-8** Add try/except error handling to `_export_excel` and `_on_download`
+- [x] **P3-9** GIF export thread safety: add `threading.Lock` to protect `sim_data` reads
+- [x] **P3-10** Complete tests: i18n key completeness, non-integer angle indexing, boundary frame index, `sn=-1`/`pz=-1` profiles, pressure angle rise/return
 
 ### Phase 4 — Performance Optimization (v0.5)
 

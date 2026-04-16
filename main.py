@@ -177,6 +177,7 @@ class CamSimulator:
 
         # 预计算缓存
         self.sim_data = None
+        self._sim_data_lock = threading.Lock()  # 保护 sim_data 的线程安全锁
         self._anim_artists = None
 
         # 窗口关闭处理
@@ -627,11 +628,17 @@ class CamSimulator:
     def _read_params(self):
         """读取并校验参数，返回 dict 或 None"""
         try:
+            raw_angles = {
+                'delta_0': float(self.entry_delta_0.get()),
+                'delta_01': float(self.entry_delta_01.get()),
+                'delta_ret': float(self.entry_delta_ret.get()),
+                'delta_02': float(self.entry_delta_02.get()),
+            }
             vals = {
-                'delta_0': int(float(self.entry_delta_0.get())),
-                'delta_01': int(float(self.entry_delta_01.get())),
-                'delta_ret': int(float(self.entry_delta_ret.get())),
-                'delta_02': int(float(self.entry_delta_02.get())),
+                'delta_0': int(raw_angles['delta_0']),
+                'delta_01': int(raw_angles['delta_01']),
+                'delta_ret': int(raw_angles['delta_ret']),
+                'delta_02': int(raw_angles['delta_02']),
                 'h': float(self.entry_h.get()),
                 'r_0': float(self.entry_r0.get()),
                 'e': float(self.entry_e.get()),
@@ -640,6 +647,21 @@ class CamSimulator:
         except ValueError:
             self.status_var.set(t("status.incomplete_params", self.lang))
             return None
+
+        # 检查角度浮点截断，提示用户
+        truncation_warnings = []
+        angle_names = {
+            'delta_0': t("sidebar.label.delta_0", self.lang),
+            'delta_01': t("sidebar.label.delta_01", self.lang),
+            'delta_ret': t("sidebar.label.delta_ret", self.lang),
+            'delta_02': t("sidebar.label.delta_02", self.lang),
+        }
+        for key, raw_val in raw_angles.items():
+            int_val = int(raw_val)
+            if abs(raw_val - int_val) > 1e-9:
+                truncation_warnings.append(
+                    t("status.angle_truncated", self.lang, name=angle_names[key], raw=raw_val, rounded=int_val)
+                )
 
         ok, err = validate_params(
             vals['delta_0'], vals['delta_01'], vals['delta_ret'], vals['delta_02'],
@@ -661,7 +683,11 @@ class CamSimulator:
         vals['pz'] = 1 if self.popup_pz.current() == 0 else -1
         vals['e'] = abs(vals['e'])  # 偏距取正值，方向由 pz 控制
 
-        self.status_var.set("")
+        # 显示截断提示（如有）
+        if truncation_warnings:
+            self.status_var.set(" | ".join(truncation_warnings))
+        else:
+            self.status_var.set("")
         self.alpha_var.set("")
         return vals
 
@@ -678,17 +704,21 @@ class CamSimulator:
             return
 
         # 计算运动
-        delta_deg, s, v, a, ds_ddelta, phase_bounds = compute_full_motion(
-            params['delta_0'], params['delta_01'],
-            params['delta_ret'], params['delta_02'],
-            params['h'], params['r_0'], params['e'],
-            params['omega'], params['tc_law'], params['hc_law']
-        )
+        try:
+            delta_deg, s, v, a, ds_ddelta, phase_bounds = compute_full_motion(
+                params['delta_0'], params['delta_01'],
+                params['delta_ret'], params['delta_02'],
+                params['h'], params['r_0'], params['e'],
+                params['omega'], params['tc_law'], params['hc_law']
+            )
 
-        # 计算凸轮廓形
-        x, y, s_0 = compute_cam_profile(
-            s, params['r_0'], params['e'], params['sn'], params['pz']
-        )
+            # 计算凸轮廓形
+            x, y, s_0 = compute_cam_profile(
+                s, params['r_0'], params['e'], params['sn'], params['pz']
+            )
+        except ValueError as exc:
+            self.status_var.set(str(exc))
+            return
 
         # 预计算基圆/偏距圆坐标
         delta_full = np.linspace(0, 2 * np.pi, 360, endpoint=False)
@@ -714,19 +744,20 @@ class CamSimulator:
         if warnings:
             self.status_var.set(" | ".join(warnings))
 
-        # 保存计算结果
-        self.sim_data = {
-            'delta_deg': delta_deg, 's': s, 'v': v, 'a': a,
-            'ds_ddelta': ds_ddelta, 'phase_bounds': phase_bounds,
-            'x': x, 'y': y, 's_0': s_0,
-            'r_0': params['r_0'], 'e': params['e'], 'h': params['h'],
-            'omega': params['omega'], 'sn': params['sn'], 'pz': params['pz'],
-            'tc_law': params['tc_law'], 'hc_law': params['hc_law'],
-            'x_base': x_base, 'y_base': y_base,
-            'x_offset': x_offset, 'y_offset': y_offset,
-            'Rmax': Rmax, 'max_alpha': max_alpha,
-            'alpha_all': alpha_all,
-        }
+        # 保存计算结果（加锁保护，防止 GIF 导出线程并发读取不一致）
+        with self._sim_data_lock:
+            self.sim_data = {
+                'delta_deg': delta_deg, 's': s, 'v': v, 'a': a,
+                'ds_ddelta': ds_ddelta, 'phase_bounds': phase_bounds,
+                'x': x, 'y': y, 's_0': s_0,
+                'r_0': params['r_0'], 'e': params['e'], 'h': params['h'],
+                'omega': params['omega'], 'sn': params['sn'], 'pz': params['pz'],
+                'tc_law': params['tc_law'], 'hc_law': params['hc_law'],
+                'x_base': x_base, 'y_base': y_base,
+                'x_offset': x_offset, 'y_offset': y_offset,
+                'Rmax': Rmax, 'max_alpha': max_alpha,
+                'alpha_all': alpha_all,
+            }
 
         # 绘制静态图
         self._plot_static()
@@ -1165,46 +1196,59 @@ class CamSimulator:
         dpi = STATIC_DPI
         saved = []
         data = self.sim_data
+        errors = []
 
         # ---- 位移曲线 ----
         if self.dl_s.get():
-            fig_s = Figure(figsize=(6, 4), dpi=dpi)
-            ax_s = fig_s.add_subplot(111)
-            self._draw_displacement_curve(ax_s, data)
-            filename_s = t("export.filename.displacement", self.lang) + ".tiff"
-            fig_s.savefig(os.path.join(folder, filename_s), dpi=dpi, bbox_inches='tight', format='tiff')
-            plt.close(fig_s)
-            saved.append(filename_s)
+            try:
+                fig_s = Figure(figsize=(6, 4), dpi=dpi)
+                ax_s = fig_s.add_subplot(111)
+                self._draw_displacement_curve(ax_s, data)
+                filename_s = t("export.filename.displacement", self.lang) + ".tiff"
+                fig_s.savefig(os.path.join(folder, filename_s), dpi=dpi, bbox_inches='tight', format='tiff')
+                plt.close(fig_s)
+                saved.append(filename_s)
+            except Exception as exc:
+                errors.append(f"displacement: {exc}")
 
         # ---- 速度曲线 ----
         if self.dl_v.get():
-            fig_v = Figure(figsize=(6, 4), dpi=dpi)
-            ax_v = fig_v.add_subplot(111)
-            self._draw_velocity_curve(ax_v, data)
-            filename_v = t("export.filename.velocity", self.lang) + ".tiff"
-            fig_v.savefig(os.path.join(folder, filename_v), dpi=dpi, bbox_inches='tight', format='tiff')
-            plt.close(fig_v)
-            saved.append(filename_v)
+            try:
+                fig_v = Figure(figsize=(6, 4), dpi=dpi)
+                ax_v = fig_v.add_subplot(111)
+                self._draw_velocity_curve(ax_v, data)
+                filename_v = t("export.filename.velocity", self.lang) + ".tiff"
+                fig_v.savefig(os.path.join(folder, filename_v), dpi=dpi, bbox_inches='tight', format='tiff')
+                plt.close(fig_v)
+                saved.append(filename_v)
+            except Exception as exc:
+                errors.append(f"velocity: {exc}")
 
         # ---- 加速度曲线 ----
         if self.dl_a.get():
-            fig_a = Figure(figsize=(6, 4), dpi=dpi)
-            ax_a = fig_a.add_subplot(111)
-            self._draw_acceleration_curve(ax_a, data)
-            filename_a = t("export.filename.acceleration", self.lang) + ".tiff"
-            fig_a.savefig(os.path.join(folder, filename_a), dpi=dpi, bbox_inches='tight', format='tiff')
-            plt.close(fig_a)
-            saved.append(filename_a)
+            try:
+                fig_a = Figure(figsize=(6, 4), dpi=dpi)
+                ax_a = fig_a.add_subplot(111)
+                self._draw_acceleration_curve(ax_a, data)
+                filename_a = t("export.filename.acceleration", self.lang) + ".tiff"
+                fig_a.savefig(os.path.join(folder, filename_a), dpi=dpi, bbox_inches='tight', format='tiff')
+                plt.close(fig_a)
+                saved.append(filename_a)
+            except Exception as exc:
+                errors.append(f"acceleration: {exc}")
 
         # ---- 凸轮廓形 ----
         if self.dl_profile.get():
-            fig_p = Figure(figsize=(6, 6), dpi=dpi)
-            ax_p = fig_p.add_subplot(111)
-            self._draw_profile_plot(ax_p, data)
-            filename_p = t("export.filename.profile", self.lang) + ".tiff"
-            fig_p.savefig(os.path.join(folder, filename_p), dpi=dpi, bbox_inches='tight', format='tiff')
-            plt.close(fig_p)
-            saved.append(filename_p)
+            try:
+                fig_p = Figure(figsize=(6, 6), dpi=dpi)
+                ax_p = fig_p.add_subplot(111)
+                self._draw_profile_plot(ax_p, data)
+                filename_p = t("export.filename.profile", self.lang) + ".tiff"
+                fig_p.savefig(os.path.join(folder, filename_p), dpi=dpi, bbox_inches='tight', format='tiff')
+                plt.close(fig_p)
+                saved.append(filename_p)
+            except Exception as exc:
+                errors.append(f"profile: {exc}")
 
         # ---- Excel 数据表 ----
         if self.dl_excel.get():
@@ -1220,6 +1264,8 @@ class CamSimulator:
             self.status_var.set(t("status.saved", self.lang, files=', '.join(saved), folder=folder))
         elif self.dl_anim.get():
             self.status_var.set(t("status.gif_exporting", self.lang))
+        if errors:
+            self.status_var.set(t("status.export_failed", self.lang, error='; '.join(errors)))
 
     def _export_excel(self, folder, saved_list):
         """导出凸轮数据为 Excel 表格"""
@@ -1227,48 +1273,51 @@ class CamSimulator:
             self.status_var.set(t("error.openpyxl_missing", self.lang))
             return
 
-        data = self.sim_data
-        delta_deg = data['delta_deg']
-        v = data['v']
-        a = data['a']
-        x = data['x']
-        y = data['y']
-        R = np.hypot(x, y)
+        try:
+            data = self.sim_data
+            delta_deg = data['delta_deg']
+            v = data['v']
+            a = data['a']
+            x = data['x']
+            y = data['y']
+            R = np.hypot(x, y)
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = t("excel.sheet_name", self.lang)
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = t("excel.sheet_name", self.lang)
 
-        # 表头
-        headers = [
-            t("excel.col.delta", self.lang),
-            t("excel.col.radius", self.lang),
-            t("excel.col.velocity", self.lang),
-            t("excel.col.acceleration", self.lang),
-        ]
-        for col_idx, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col_idx, value=header)
+            # 表头
+            headers = [
+                t("excel.col.delta", self.lang),
+                t("excel.col.radius", self.lang),
+                t("excel.col.velocity", self.lang),
+                t("excel.col.acceleration", self.lang),
+            ]
+            for col_idx, header in enumerate(headers, 1):
+                ws.cell(row=1, column=col_idx, value=header)
 
-        # 数据
-        for i in range(len(delta_deg)):
-            ws.cell(row=i + 2, column=1, value=round(delta_deg[i], 1))
-            ws.cell(row=i + 2, column=2, value=round(R[i], 4))
-            ws.cell(row=i + 2, column=3, value=round(v[i], 4))
-            ws.cell(row=i + 2, column=4, value=round(a[i], 4))
+            # 数据
+            for i in range(len(delta_deg)):
+                ws.cell(row=i + 2, column=1, value=round(delta_deg[i], 1))
+                ws.cell(row=i + 2, column=2, value=round(R[i], 4))
+                ws.cell(row=i + 2, column=3, value=round(v[i], 4))
+                ws.cell(row=i + 2, column=4, value=round(a[i], 4))
 
-        # 列宽自适应
-        for col in range(1, 5):
-            max_len = len(str(ws.cell(row=1, column=col).value))
-            for row in range(2, min(10, len(delta_deg) + 2)):
-                cell_len = len(str(ws.cell(row=row, column=col).value))
-                if cell_len > max_len:
-                    max_len = cell_len
-            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = max_len + 4
+            # 列宽自适应
+            for col in range(1, 5):
+                max_len = len(str(ws.cell(row=1, column=col).value))
+                for row in range(2, min(10, len(delta_deg) + 2)):
+                    cell_len = len(str(ws.cell(row=row, column=col).value))
+                    if cell_len > max_len:
+                        max_len = cell_len
+                ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = max_len + 4
 
-        filename = t("export.filename.excel", self.lang) + ".xlsx"
-        filepath = os.path.join(folder, filename)
-        wb.save(filepath)
-        saved_list.append(filename)
+            filename = t("export.filename.excel", self.lang) + ".xlsx"
+            filepath = os.path.join(folder, filename)
+            wb.save(filepath)
+            saved_list.append(filename)
+        except Exception as exc:
+            self.status_var.set(t("status.export_failed", self.lang, error=str(exc)))
 
     def _export_gif(self, filepath, folder, saved_list):
         """在后台线程中导出GIF动画（300 DPI），显示进度对话框"""
@@ -1286,17 +1335,35 @@ class CamSimulator:
         show_arc_gif = self.show_arc.get()
         show_boundaries_gif = self.show_boundaries.get()
 
-        data = self.sim_data
-        s = data['s']
-        ds_ddelta = data['ds_ddelta']
-        s_0 = data['s_0']
-        e = data['e']
-        r_0 = data['r_0']
-        h = data['h']
-        sn = data['sn']
-        pz = data['pz']
-        alpha_all = data['alpha_all']
-        pb = data['phase_bounds']
+        # 线程安全：加锁快照 sim_data，防止主线程并发修改
+        with self._sim_data_lock:
+            data = self.sim_data
+            if data is None:
+                return
+            # 深拷贝 numpy 数组，确保线程独立
+            s = data['s'].copy()
+            ds_ddelta = data['ds_ddelta'].copy()
+            alpha_all = data['alpha_all'].copy()
+            x_cam = data['x'].copy()
+            y_cam = data['y'].copy()
+            x_base = data['x_base'].copy()
+            y_base = data['y_base'].copy()
+            x_offset = data['x_offset'].copy()
+            y_offset = data['y_offset'].copy()
+            s_0 = data['s_0']
+            e = data['e']
+            r_0 = data['r_0']
+            h = data['h']
+            sn = data['sn']
+            pz = data['pz']
+            pb = list(data['phase_bounds'])
+            Rmax = data['Rmax']
+            max_alpha = data['max_alpha']
+            delta_deg = data['delta_deg'].copy()
+            v_arr = data['v'].copy()
+            a_arr = data['a'].copy()
+            tc_law = data['tc_law']
+            hc_law = data['hc_law']
         N = len(s)
         xlim = self.ax_anim.get_xlim()
         ylim = self.ax_anim.get_ylim()
@@ -1337,14 +1404,14 @@ class CamSimulator:
 
                 for i in range(N):
                     angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
-                    x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
+                    x_rot, y_rot = compute_rotated_cam(x_cam, y_cam, angle_rad)
 
                     ax_gif.clear()
                     ax_gif.plot(x_rot, y_rot, 'r-', linewidth=2)
                     if show_base:
-                        ax_gif.plot(data['x_base'], data['y_base'], 'm-', linewidth=1)
+                        ax_gif.plot(x_base, y_base, 'm-', linewidth=1)
                     if show_offset:
-                        ax_gif.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1)
+                        ax_gif.plot(x_offset, y_offset, 'c-', linewidth=1)
 
                     frame_data = compute_anim_frame_data(
                         s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all)

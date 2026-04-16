@@ -80,7 +80,7 @@ def compute_rise(delta_arr, delta_0, h, omega, law):
         v = h * omega / delta_0 * (30 * t ** 2 - 60 * t ** 3 + 30 * t ** 4)
         a = h * omega ** 2 / delta_0 ** 2 * (60 * t - 180 * t ** 2 + 120 * t ** 3)
     else:
-        raise ValueError(f"error.unknown_law|{law}")
+        raise ValueError(f"law must be 1-5, got {law}")
 
     return s, v, a
 
@@ -156,7 +156,7 @@ def compute_return(delta_arr, delta_ret, h, omega, law):
         v = -h * omega / delta_ret * (30 * t ** 2 - 60 * t ** 3 + 30 * t ** 4)
         a = -h * omega ** 2 / delta_ret ** 2 * (60 * t - 180 * t ** 2 + 120 * t ** 3)
     else:
-        raise ValueError(f"error.unknown_law|{law}")
+        raise ValueError(f"law must be 1-5, got {law}")
 
     return s, v, a
 
@@ -194,6 +194,9 @@ def compute_full_motion(delta_0_deg, delta_01_deg, delta_ret_deg, delta_02_deg,
         raise ValueError(f"All motion angles must be positive (dwell angles >= 0): "
                          f"delta_0={delta_0_deg}, delta_01={delta_01_deg}, "
                          f"delta_ret={delta_ret_deg}, delta_02={delta_02_deg}")
+    if abs(delta_0_deg + delta_01_deg + delta_ret_deg + delta_02_deg - 360) > 0.01:
+        raise ValueError(f"Four angles must sum to 360°, "
+                         f"got {delta_0_deg + delta_01_deg + delta_ret_deg + delta_02_deg}")
     if h <= 0:
         raise ValueError(f"h must be > 0, got {h}")
     if r_0 <= 0:
@@ -222,10 +225,14 @@ def compute_full_motion(delta_0_deg, delta_01_deg, delta_ret_deg, delta_02_deg,
     delta_ret = np.radians(delta_ret_deg)
     delta_02 = np.radians(delta_02_deg)
 
-    # 阶段分界索引
+    # 阶段分界索引（带边界保护）
     i1 = int(round(delta_0_deg))            # 推程结束
     i2 = i1 + int(round(delta_01_deg))      # 远休止结束
     i3 = i2 + int(round(delta_ret_deg))     # 回程结束
+    # 确保索引不越界：i1 >= 1, i2 > i1, i3 <= N_POINTS
+    i1 = max(1, min(i1, n_total - 2))
+    i2 = max(i1 + 1, min(i2, n_total - 1))
+    i3 = max(i2 + 1, min(i3, n_total))
 
     # 推程：独立 linspace，endpoint=True 确保末端角度精确到达 delta_0
     delta_rise = np.linspace(0, delta_0, i1, endpoint=True)
@@ -389,6 +396,8 @@ def compute_anim_frame_data(s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all):
     -------
     dict : 包含 follower_x, contact_y, nx, ny, tx, ty, alpha_i, s_i
     """
+    if i < 0 or i >= len(s):
+        raise ValueError(f"Frame index i must be in [0, {len(s)-1}], got {i}")
     # 推杆固定在 x = -sn*pz*e（反转法中推杆的固定x坐标）
     follower_x = -sn * pz * e
     # 接触点 y = s_0 + s[i]（解析值，精确无跳动）
@@ -538,7 +547,9 @@ def validate_params(delta_0, delta_01, delta_ret, delta_02, h, r_0, e, omega):
         return False, "error.r0_positive"
     if omega <= 0:
         return False, "error.omega_positive"
-    if abs(e) >= r_0:
+    if e < 0:
+        return False, "error.e_negative"
+    if e >= r_0:
         return False, "error.e_lt_r0"
 
     return True, None

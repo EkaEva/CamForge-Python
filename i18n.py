@@ -238,6 +238,9 @@ TRANSLATIONS = {
     "status.gif_failed": {
         "zh": "GIF导出失败: {error}", "en": "GIF export failed: {error}",
     },
+    "status.export_failed": {
+        "zh": "导出失败: {error}", "en": "Export failed: {error}",
+    },
     "status.warning_max_alpha": {
         "zh": "警告：最大压力角 {val:.1f}° 超过推荐值 {threshold:.0f}°",
         "en": "Warning: Max pressure angle {val:.1f}° exceeds {threshold:.0f}°",
@@ -249,6 +252,10 @@ TRANSLATIONS = {
     "status.max_alpha": {
         "zh": "最大压力角={val:.2f}°",
         "en": "Max pressure angle={val:.2f}°",
+    },
+    "status.angle_truncated": {
+        "zh": "{name}：{raw} 已取整为 {rounded}",
+        "en": "{name}: {raw} rounded to {rounded}",
     },
 
     # ---- Error Keys (returned by cam_mechanics.validate_params) ----
@@ -269,6 +276,9 @@ TRANSLATIONS = {
     },
     "error.omega_positive": {
         "zh": "凸轮角速度必须大于0", "en": "Angular velocity must be > 0",
+    },
+    "error.e_negative": {
+        "zh": "偏距不能为负值", "en": "Offset must not be negative",
     },
     "error.e_lt_r0": {
         "zh": "偏距必须小于基圆半径", "en": "Offset must be less than base radius",

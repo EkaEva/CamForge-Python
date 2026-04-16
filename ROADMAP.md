@@ -95,20 +95,20 @@
 - [x] **P2-9** 将方法内标准库 `import` 移至模块顶层
 - [x] **P2-10** 消除 `_plot_static` 与 `_on_download` 间的静态绘图代码重复
 
-### Phase 3 — 正确性修复（v0.4）
+### Phase 3 — 正确性修复（v0.4）✅ 已完成
 
 目标：修复影响功能正确性的关键问题，补全测试覆盖。
 
-- [ ] **P3-1** 修复 `compute_full_motion` 索引舍入问题：添加 `i1/i2/i3` 边界检查，确保 `i3 <= N_POINTS`
-- [ ] **P3-2** `compute_full_motion` 添加四角之和验证（与 `validate_params` 一致）
-- [ ] **P3-3** `compute_anim_frame_data` 添加帧索引范围检查
-- [ ] **P3-4** `_on_start` 添加 try/except 包裹计算调用，异常时显示友好错误而非崩溃
-- [ ] **P3-5** 修复 `validate_params` 与计算引擎的验证不一致：`e` 不允许为负值
-- [ ] **P3-6** 修复 `error.unknown_law` 格式：`cam_mechanics.py` 中使用 i18n 键格式而非管道格式
-- [ ] **P3-7** `_read_params` 浮点截断时添加用户提示（如 "角度 90.9 已取整为 90"）
-- [ ] **P3-8** `_export_excel` 和 `_on_download` 添加 try/except 错误处理
-- [ ] **P3-9** GIF 导出线程安全：添加 `threading.Lock` 保护 `sim_data` 读取
-- [ ] **P3-10** 补全测试：i18n 键完整性、非整角度索引、边界帧索引、`sn=-1`/`pz=-1` 廓形、压力角推程/回程
+- [x] **P3-1** 修复 `compute_full_motion` 索引舍入问题：添加 `i1/i2/i3` 边界检查，确保 `i3 <= N_POINTS`
+- [x] **P3-2** `compute_full_motion` 添加四角之和验证（与 `validate_params` 一致）
+- [x] **P3-3** `compute_anim_frame_data` 添加帧索引范围检查
+- [x] **P3-4** `_on_start` 添加 try/except 包裹计算调用，异常时显示友好错误而非崩溃
+- [x] **P3-5** 修复 `validate_params` 与计算引擎的验证不一致：`e` 不允许为负值
+- [x] **P3-6** 修复 `error.unknown_law` 格式：`cam_mechanics.py` 中使用 i18n 键格式而非管道格式
+- [x] **P3-7** `_read_params` 浮点截断时添加用户提示（如 "角度 90.9 已取整为 90"）
+- [x] **P3-8** `_export_excel` 和 `_on_download` 添加 try/except 错误处理
+- [x] **P3-9** GIF 导出线程安全：添加 `threading.Lock` 保护 `sim_data` 读取
+- [x] **P3-10** 补全测试：i18n 键完整性、非整角度索引、边界帧索引、`sn=-1`/`pz=-1` 廓形、压力角推程/回程
 
 ### Phase 4 — 性能优化（v0.5）
 
