@@ -43,7 +43,7 @@ ANIM_FRAME_SKIP = 2          # 动画每N帧刷新一次画布
 ANIM_MIN_DELAY_MS = 20       # 动画最小帧间隔（毫秒）
 ANIM_BASE_DELAY_MS = 200     # 动画基准帧间隔（毫秒，速度=1时）
 GIF_DURATION_MS = 30         # GIF 每帧时长（毫秒）
-GIF_DPI = 300                # GIF 导出 DPI
+GIF_DPI = 150                # GIF 导出 DPI
 STATIC_DPI = 600             # 静态图导出 DPI
 
 
