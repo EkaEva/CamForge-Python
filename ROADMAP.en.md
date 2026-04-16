@@ -98,9 +98,9 @@ Goal: Improve code structure, enhance animation performance and export experienc
 - [x] **P2-5** Change static image export to direct recomputation and plotting, eliminating the `BlendedGenericTransform` hack
 - [x] **P2-6** Support "Replay" button after animation finishes, without recomputation
 - [x] **P2-7** Download filenames generated via i18n keys, switching with language
-- [ ] **P2-8** Extract color constants into a theme dictionary, preparing for dark mode
-- [ ] **P2-9** Move stdlib imports from method bodies to module top level
-- [ ] **P2-10** Eliminate static plot code duplication between `_plot_static` and `_on_download`
+- [x] **P2-8** Extract color constants into a theme dictionary, preparing for dark mode
+- [x] **P2-9** Move stdlib imports from method bodies to module top level
+- [x] **P2-10** Eliminate static plot code duplication between `_plot_static` and `_on_download`
 
 ### Phase 3 — Feature Enhancement (v0.4)
 
@@ -115,7 +115,7 @@ Goal: Expand simulation capabilities, improve engineering practicality.
 - [x] **P3-7** Keyboard shortcuts: Enter to start, Space to pause/resume/replay, R for random
 - [x] **P3-8** Display current motion law name in static curve chart titles
 - [ ] **P3-9** Configurable pressure angle threshold (sidebar input field or dropdown)
-- [ ] **P3-10** Defensive programming in computation engine: add parameter validity assertions inside `compute_*` functions
+- [x] **P3-10** Defensive programming in computation engine: add parameter validity assertions inside `compute_*` functions
 - [ ] **P3-11** Make `N_POINTS` configurable, supporting higher or lower discrete resolution
 
 ### Phase 4 — Experience Upgrade (v0.5)
@@ -130,10 +130,10 @@ Goal: Polish interaction details, improve visual and operational experience.
 - [x] **P4-6** Multi-language support (i18n): Chinese/English/Japanese runtime switching
 - [ ] **P4-7** Extended export formats: support SVG vector graphics, CSV data table export
 - [ ] **P4-8** Cam 3D visualization preview (optional, based on matplotlib 3D or PyOpenGL)
-- [ ] **P4-9** Keyboard shortcut focus awareness: suppress single-key shortcuts when Entry has focus
-- [ ] **P4-10** Accumulate multiple status bar warnings instead of overwriting
-- [ ] **P4-11** "Clear Params" should restore defaults instead of leaving blanks
-- [ ] **P4-12** Fix i18n details: Chinese→English parentheses, Excel sheet name/error message i18n
+- [x] **P4-9** Keyboard shortcut focus awareness: suppress single-key shortcuts when Entry has focus
+- [x] **P4-10** Accumulate multiple status bar warnings instead of overwriting
+- [x] **P4-11** "Clear Params" should restore defaults instead of leaving blanks
+- [x] **P4-12** Fix i18n details: Chinese→English parentheses, Excel sheet name/error message i18n
 
 ### Phase 5 — Engineering and Release (v1.0)
 

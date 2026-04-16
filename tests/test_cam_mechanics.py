@@ -60,8 +60,20 @@ class TestComputeRise:
     def test_rise_unknown_law_raises(self, common_params):
         """未知运动规律应抛出异常"""
         delta_arr, delta_0, h, omega = common_params
-        with pytest.raises(ValueError, match="error.unknown_law"):
+        with pytest.raises(ValueError, match="law must be 1-5"):
             compute_rise(delta_arr, delta_0, h, omega, 6)
+
+    def test_rise_zero_delta_raises(self):
+        """delta_0=0 应抛出 ValueError"""
+        delta_arr = np.linspace(0, 1, 10)
+        with pytest.raises(ValueError, match="delta_0 must be > 0"):
+            compute_rise(delta_arr, 0, 10, 1, 1)
+
+    def test_rise_negative_omega_raises(self):
+        """omega<=0 应抛出 ValueError"""
+        delta_arr = np.linspace(0, 1, 10)
+        with pytest.raises(ValueError, match="omega must be > 0"):
+            compute_rise(delta_arr, 1, 10, 0, 1)
 
 
 class TestComputeReturn:
@@ -93,8 +105,14 @@ class TestComputeReturn:
     def test_return_unknown_law_raises(self, common_params):
         """未知运动规律应抛出异常"""
         delta_arr, delta_ret, h, omega = common_params
-        with pytest.raises(ValueError, match="error.unknown_law"):
+        with pytest.raises(ValueError, match="law must be 1-5"):
             compute_return(delta_arr, delta_ret, h, omega, 0)
+
+    def test_return_zero_delta_raises(self):
+        """delta_ret=0 应抛出 ValueError"""
+        delta_arr = np.linspace(0, 1, 10)
+        with pytest.raises(ValueError, match="delta_ret must be > 0"):
+            compute_return(delta_arr, 0, 10, 1, 1)
 
 
 # ============================================================================
@@ -154,6 +172,33 @@ class TestComputeFullMotion:
         omega = 1.0
         assert np.allclose(ds_ddelta, v / omega, atol=1e-10)
 
+    def test_full_motion_invalid_h_raises(self):
+        """h<=0 应抛出 ValueError"""
+        with pytest.raises(ValueError, match="h must be > 0"):
+            compute_full_motion(90, 60, 120, 90, 0, 40, 5, 1, 1, 1)
+
+    def test_full_motion_invalid_r0_raises(self):
+        """r_0<=0 应抛出 ValueError"""
+        with pytest.raises(ValueError, match="r_0 must be > 0"):
+            compute_full_motion(90, 60, 120, 90, 10, 0, 5, 1, 1, 1)
+
+    def test_full_motion_e_ge_r0_raises(self):
+        """e>=r_0 应抛出 ValueError"""
+        with pytest.raises(ValueError, match="e must be < r_0"):
+            compute_full_motion(90, 60, 120, 90, 10, 40, 40, 1, 1, 1)
+
+    def test_full_motion_invalid_omega_raises(self):
+        """omega<=0 应抛出 ValueError"""
+        with pytest.raises(ValueError, match="omega must be > 0"):
+            compute_full_motion(90, 60, 120, 90, 10, 40, 5, 0, 1, 1)
+
+    def test_full_motion_invalid_law_raises(self):
+        """非法运动规律编号应抛出 ValueError"""
+        with pytest.raises(ValueError, match="tc_law must be 1-5"):
+            compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 6, 1)
+        with pytest.raises(ValueError, match="hc_law must be 1-5"):
+            compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 1, 0)
+
 
 # ============================================================================
 # 凸轮廓形测试
@@ -196,6 +241,30 @@ class TestComputeCamProfile:
         R_near = np.hypot(x[270:], y[270:])
         assert np.allclose(R_near, 40, atol=1e-6), "近休止段廓形不在基圆上"
 
+    def test_profile_invalid_r0_raises(self):
+        """r_0<=0 应抛出 ValueError"""
+        s = np.zeros(360)
+        with pytest.raises(ValueError, match="r_0 must be > 0"):
+            compute_cam_profile(s, 0, 0, 1, 1)
+
+    def test_profile_e_ge_r0_raises(self):
+        """e>=r_0 应抛出 ValueError"""
+        s = np.zeros(360)
+        with pytest.raises(ValueError, match="e must be < r_0"):
+            compute_cam_profile(s, 40, 40, 1, 1)
+
+    def test_profile_invalid_sn_raises(self):
+        """sn 不为 ±1 应抛出 ValueError"""
+        s = np.zeros(360)
+        with pytest.raises(ValueError, match="sn must be"):
+            compute_cam_profile(s, 40, 0, 0, 1)
+
+    def test_profile_invalid_pz_raises(self):
+        """pz 不为 ±1 应抛出 ValueError"""
+        s = np.zeros(360)
+        with pytest.raises(ValueError, match="pz must be"):
+            compute_cam_profile(s, 40, 0, 1, 0)
+
 
 # ============================================================================
 # 压力角测试
@@ -218,6 +287,20 @@ class TestComputePressureAngle:
         alpha = compute_pressure_angle(s, ds_ddelta, s_0, 0, 1)
         # 近休止段压力角应接近0
         assert np.allclose(alpha[270:], 0, atol=1e-6), "近休止段压力角不为0"
+
+    def test_pressure_angle_invalid_s0_raises(self):
+        """s_0<=0 应抛出 ValueError"""
+        s = np.zeros(360)
+        ds_ddelta = np.zeros(360)
+        with pytest.raises(ValueError, match="s_0 must be > 0"):
+            compute_pressure_angle(s, ds_ddelta, 0, 0, 1)
+
+    def test_pressure_angle_invalid_pz_raises(self):
+        """pz 不为 ±1 应抛出 ValueError"""
+        s = np.zeros(360)
+        ds_ddelta = np.zeros(360)
+        with pytest.raises(ValueError, match="pz must be"):
+            compute_pressure_angle(s, ds_ddelta, 40, 0, 0)
 
 
 # ============================================================================
@@ -316,6 +399,11 @@ class TestComputePressureAngleArc:
         if len(x) > 0:
             dist = np.hypot(x - cx, y - cy)
             assert np.allclose(dist, arc_r, atol=1e-6), "弧线点不在指定圆上"
+
+    def test_arc_invalid_radius_raises(self):
+        """arc_r<=0 应抛出 ValueError"""
+        with pytest.raises(ValueError, match="arc_r must be > 0"):
+            compute_pressure_angle_arc(0, 5, 0, 1, 15.0, 0)
 
 
 # ============================================================================

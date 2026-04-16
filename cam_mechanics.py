@@ -29,6 +29,14 @@ def compute_rise(delta_arr, delta_0, h, omega, law):
     -------
     s, v, a : ndarray
     """
+    if delta_0 <= 0:
+        raise ValueError(f"delta_0 must be > 0, got {delta_0}")
+    if h < 0:
+        raise ValueError(f"h must be >= 0, got {h}")
+    if omega <= 0:
+        raise ValueError(f"omega must be > 0, got {omega}")
+    if law not in (1, 2, 3, 4, 5):
+        raise ValueError(f"law must be 1-5, got {law}")
     if law == 1:  # 等速运动
         s = h * delta_arr / delta_0
         v = h * omega / delta_0 * np.ones_like(delta_arr)
@@ -97,6 +105,14 @@ def compute_return(delta_arr, delta_ret, h, omega, law):
     -------
     s, v, a : ndarray
     """
+    if delta_ret <= 0:
+        raise ValueError(f"delta_ret must be > 0, got {delta_ret}")
+    if h < 0:
+        raise ValueError(f"h must be >= 0, got {h}")
+    if omega <= 0:
+        raise ValueError(f"omega must be > 0, got {omega}")
+    if law not in (1, 2, 3, 4, 5):
+        raise ValueError(f"law must be 1-5, got {law}")
     if law == 1:  # 等速运动
         s = h * (1 - delta_arr / delta_ret)
         v = -h * omega / delta_ret * np.ones_like(delta_arr)
@@ -174,6 +190,24 @@ def compute_full_motion(delta_0_deg, delta_01_deg, delta_ret_deg, delta_02_deg,
     ds_ddelta : ndarray - 位移对转角的解析导数 ds/dδ = v/ω
     phase_boundaries : list - 各阶段分界点 (度数)
     """
+    if delta_0_deg <= 0 or delta_01_deg < 0 or delta_ret_deg <= 0 or delta_02_deg < 0:
+        raise ValueError(f"All motion angles must be positive (dwell angles >= 0): "
+                         f"delta_0={delta_0_deg}, delta_01={delta_01_deg}, "
+                         f"delta_ret={delta_ret_deg}, delta_02={delta_02_deg}")
+    if h <= 0:
+        raise ValueError(f"h must be > 0, got {h}")
+    if r_0 <= 0:
+        raise ValueError(f"r_0 must be > 0, got {r_0}")
+    if e < 0:
+        raise ValueError(f"e must be >= 0, got {e}")
+    if e >= r_0:
+        raise ValueError(f"e must be < r_0, got e={e}, r_0={r_0}")
+    if omega <= 0:
+        raise ValueError(f"omega must be > 0, got {omega}")
+    if tc_law not in (1, 2, 3, 4, 5):
+        raise ValueError(f"tc_law must be 1-5, got {tc_law}")
+    if hc_law not in (1, 2, 3, 4, 5):
+        raise ValueError(f"hc_law must be 1-5, got {hc_law}")
     n_total = N_POINTS
     delta = np.linspace(0, 2 * np.pi, n_total, endpoint=False)
     delta_deg_arr = np.degrees(delta)
@@ -249,6 +283,16 @@ def compute_cam_profile(s, r_0, e, sn, pz):
     x, y : ndarray - 凸轮廓形坐标
     s_0 : float - 初始位移 sqrt(r_0^2 - e^2)
     """
+    if r_0 <= 0:
+        raise ValueError(f"r_0 must be > 0, got {r_0}")
+    if e < 0:
+        raise ValueError(f"e must be >= 0, got {e}")
+    if e >= r_0:
+        raise ValueError(f"e must be < r_0, got e={e}, r_0={r_0}")
+    if sn not in (1, -1):
+        raise ValueError(f"sn must be +1 or -1, got {sn}")
+    if pz not in (1, -1):
+        raise ValueError(f"pz must be +1 or -1, got {pz}")
     s_0 = np.sqrt(r_0 ** 2 - e ** 2)
     n = len(s)
     delta = np.linspace(0, 2 * np.pi, n, endpoint=False)
@@ -282,6 +326,12 @@ def compute_pressure_angle(s, ds_ddelta, s_0, e, pz):
     -------
     alpha : ndarray - 压力角 (度)
     """
+    if s_0 <= 0:
+        raise ValueError(f"s_0 must be > 0, got {s_0}")
+    if e < 0:
+        raise ValueError(f"e must be >= 0, got {e}")
+    if pz not in (1, -1):
+        raise ValueError(f"pz must be +1 or -1, got {pz}")
     numerator = ds_ddelta - pz * e
     denominator = s_0 + s
     alpha = np.degrees(np.arctan2(numerator, denominator))
@@ -422,6 +472,8 @@ def compute_pressure_angle_arc(cx, cy, nx, ny, alpha_i, arc_r):
     -------
     x_arc, y_arc : ndarray - 弧线坐标（角度太小则返回空数组）
     """
+    if arc_r <= 0:
+        raise ValueError(f"arc_r must be > 0, got {arc_r}")
     if alpha_i < 0.5:
         return np.array([]), np.array([])
 

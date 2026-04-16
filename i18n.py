@@ -3,6 +3,8 @@ CamForge 国际化模块
 支持中文(zh)、英文(en)、日文(ja)三语切换
 """
 
+import platform
+
 SUPPORTED_LANGS = ["zh", "en", "ja"]
 DEFAULT_LANG = "zh"
 
@@ -283,6 +285,23 @@ TRANSLATIONS = {
     "error.unknown_law": {
         "zh": "未知的运动规律编号: {law}", "en": "Unknown motion law ID: {law}", "ja": "未知の運動法則番号: {law}",
     },
+    "error.openpyxl_missing": {
+        "zh": "Excel导出需要openpyxl：pip install openpyxl",
+        "en": "Excel export requires openpyxl: pip install openpyxl",
+        "ja": "Excelエクスポートにはopenpyxlが必要です：pip install openpyxl",
+    },
+
+    # ---- Plot Title Law Format ----
+    "plot.title.law_format": {
+        "zh": "（{rise}:{tc} {ret}:{hc}）",
+        "en": "({rise}:{tc} {ret}:{hc})",
+        "ja": "({rise}:{tc} {ret}:{hc})",
+    },
+
+    # ---- Excel Sheet Name ----
+    "excel.sheet_name": {
+        "zh": "凸轮数据", "en": "CamForge", "ja": "カムデータ",
+    },
 
     # ---- Export Filenames (without extension) ----
     "export.filename.displacement": {
@@ -386,7 +405,6 @@ def get_lang_display_list() -> list:
 
 def detect_mpl_fonts(lang: str) -> list:
     """检测系统可用的 matplotlib 字体列表"""
-    import platform
     system = platform.system()
     base = list(FONT_MAP[lang]["mpl"])
     # 平台回退
