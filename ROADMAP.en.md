@@ -1,4 +1,4 @@
-[中文](ROADMAP.md) | English | [日本語](ROADMAP.ja.md)
+[中文](ROADMAP.md) | English
 
 # CamForge Roadmap
 
@@ -46,7 +46,7 @@
 
 | # | Issue | Location | Severity |
 |---|------|------|:--------:|
-| 20 | Static plot titles use Chinese parentheses `（）`; should use `()` in English/Japanese | `main.py:720` | Low |
+| 20 | Static plot titles use Chinese parentheses `（）`; should use `()` in English | `main.py:720` | Low |
 | 21 | Excel sheet name "CamForge" hardcoded, not i18n | `main.py:1250` | Low |
 | 22 | openpyxl missing error message hardcoded in English | `main.py:1237` | Low |
 | 23 | Motion law combobox Chinese "规律" suffix inconsistent (laws 1/2 omit, 3/4/5 include) | `i18n.py:law.combo.*` | Low |
@@ -127,7 +127,7 @@ Goal: Polish interaction details, improve visual and operational experience.
 - [ ] **P4-3** Animation frame progress bar: display current frame/total frames, support drag-to-jump
 - [ ] **P4-4** Window resize adaptation: listen to `Configure` events to dynamically adjust Figure size
 - [ ] **P4-5** Real-time parameter input validation: show range errors as you type, rather than only reporting errors after clicking "Start"
-- [x] **P4-6** Multi-language support (i18n): Chinese/English/Japanese runtime switching
+- [x] **P4-6** Multi-language support (i18n): Chinese/English runtime switching
 - [ ] **P4-7** Extended export formats: support SVG vector graphics, CSV data table export
 - [ ] **P4-8** Cam 3D visualization preview (optional, based on matplotlib 3D or PyOpenGL)
 - [x] **P4-9** Keyboard shortcut focus awareness: suppress single-key shortcuts when Entry has focus

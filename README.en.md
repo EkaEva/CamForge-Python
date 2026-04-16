@@ -1,4 +1,4 @@
-[中文](README.md) | English | [日本語](README.ja.md)
+[中文](README.md) | English
 
 <div align="center">
 
@@ -23,7 +23,7 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 - **Five Motion Laws** — Constant velocity, constant acceleration-deceleration, simple harmonic, cycloidal, and fifth-order polynomial; rise and return can be independently selected
 - **Analytical Computation** — Profile coordinates and pressure angle are both computed using analytical formulas (not numerical differentiation), ensuring high precision without jitter
 - **Real-time Animation** — 360-frame rotation animation with speed control, pause/resume/replay, synchronized pressure angle arcs and normal/tangent lines
-- **Multilingual UI** — Supports Chinese, English, and Japanese with runtime switching; export filenames adapt to the selected language
+- **Multilingual UI** — Supports Chinese and English with runtime switching; export filenames adapt to the selected language
 - **One-click Export** — Static charts exported as 600 DPI high-resolution TIFF, animation as 150 DPI looping GIF, data as Excel spreadsheet
 - **Random Parameters** — Generate valid random cam parameters with one click for quick exploration of different configurations
 - **Parameter Validation** — Automatic detection of constraints such as sum of four angles and offset range, with instant alerts for invalid parameters
@@ -119,7 +119,7 @@ python main.py
 
 ### 1. Language Switching
 
-Select a language (Chinese / English / 日本語) at the top of the sidebar. All labels, buttons, plot titles, status messages, and export filenames switch instantly.
+Select a language (Chinese / English) at the top of the sidebar. All labels, buttons, plot titles, status messages, and export filenames switch instantly.
 
 ### 2. Parameter Input
 
@@ -216,7 +216,7 @@ CamForge/
 │   ├── compute_pressure_angle_arc()# Pressure angle arc coordinates
 │   └── validate_params()       # Parameter validity check
 │
-├── i18n.py               # Internationalization module (zh/en/ja)
+├── i18n.py               # Internationalization module (zh/en)
 │   ├── TRANSLATIONS      # 86 translation entries
 │   ├── FONT_MAP          # Cross-platform font mapping
 │   └── t()               # Translation lookup function
