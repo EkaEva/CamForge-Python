@@ -359,6 +359,24 @@ class CamSimulator:
         cb_boundaries.pack(fill=tk.X, padx=16, pady=1)
         self._reg("sidebar.cb.boundaries", cb_boundaries, font_size=10)
 
+        self.show_base_circle = tk.BooleanVar(value=False)
+        cb_base_circle = tk.Checkbutton(sidebar, text=t("sidebar.cb.base_circle", self.lang), variable=self.show_base_circle,
+                       **cb_kw)
+        cb_base_circle.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.base_circle", cb_base_circle, font_size=10)
+
+        self.show_offset_circle = tk.BooleanVar(value=False)
+        cb_offset_circle = tk.Checkbutton(sidebar, text=t("sidebar.cb.offset_circle", self.lang), variable=self.show_offset_circle,
+                       **cb_kw)
+        cb_offset_circle.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.offset_circle", cb_offset_circle, font_size=10)
+
+        self.show_limits = tk.BooleanVar(value=False)
+        cb_limits = tk.Checkbutton(sidebar, text=t("sidebar.cb.limits", self.lang), variable=self.show_limits,
+                       **cb_kw)
+        cb_limits.pack(fill=tk.X, padx=16, pady=1)
+        self._reg("sidebar.cb.limits", cb_limits, font_size=10)
+
         self.show_grid = tk.BooleanVar(value=False)
         cb_grid = tk.Checkbutton(sidebar, text=t("sidebar.cb.grid", self.lang), variable=self.show_grid,
                        command=self._on_grid_toggle, **cb_kw)
@@ -779,10 +797,10 @@ class CamSimulator:
 
         # 凸轮廓形
         line_cam, = ax.plot([], [], 'r-', linewidth=2)
-        # 基圆
-        line_base, = ax.plot(data['x_base'], data['y_base'], 'm-', linewidth=1)
-        # 偏距圆
-        line_offset, = ax.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1)
+        # 基圆（默认隐藏）
+        line_base, = ax.plot([], [], 'm-', linewidth=1)
+        # 偏距圆（默认隐藏）
+        line_offset, = ax.plot([], [], 'c-', linewidth=1)
         # 切线
         line_tangent, = ax.plot([], [], 'm-', linewidth=1)
         # 法线
@@ -825,6 +843,8 @@ class CamSimulator:
 
         self._anim_artists = {
             'cam': line_cam,
+            'base': line_base,
+            'offset': line_offset,
             'tangent': line_tangent,
             'normal': line_normal,
             'rod': line_rod,
@@ -937,6 +957,18 @@ class CamSimulator:
         x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
         artists['cam'].set_data(x_rot, y_rot)
 
+        # ---- 基圆 ----
+        if self.show_base_circle.get():
+            artists['base'].set_data(data['x_base'], data['y_base'])
+        else:
+            artists['base'].set_data([], [])
+
+        # ---- 偏距圆 ----
+        if self.show_offset_circle.get():
+            artists['offset'].set_data(data['x_offset'], data['y_offset'])
+        else:
+            artists['offset'].set_data([], [])
+
         # ---- 解析计算帧数据 ----
         frame = compute_anim_frame_data(
             s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all)
@@ -978,8 +1010,12 @@ class CamSimulator:
             [cy + tip_h, cy, cy + tip_h, cy + tip_h])
 
         # ---- 推杆上下限水平线 ----
-        artists['lower'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0])
-        artists['upper'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h])
+        if self.show_limits.get():
+            artists['lower'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0])
+            artists['upper'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h])
+        else:
+            artists['lower'].set_data([], [])
+            artists['upper'].set_data([], [])
 
         # ---- 角度分界线 ----
         if self.show_boundaries.get():
@@ -1251,8 +1287,15 @@ class CamSimulator:
         from io import BytesIO
         from PIL import Image as PILImage
 
-        # Capture lang for thread safety
+        # Capture lang and display options for thread safety
         lang = self.lang
+        show_base = self.show_base_circle.get()
+        show_offset = self.show_offset_circle.get()
+        show_limits = self.show_limits.get()
+        show_tangent_gif = self.show_tangent.get()
+        show_normal_gif = self.show_normal.get()
+        show_arc_gif = self.show_arc.get()
+        show_boundaries_gif = self.show_boundaries.get()
 
         data = self.sim_data
         s = data['s']
@@ -1264,6 +1307,7 @@ class CamSimulator:
         sn = data['sn']
         pz = data['pz']
         alpha_all = data['alpha_all']
+        pb = data['phase_bounds']
         N = len(s)
         xlim = self.ax_anim.get_xlim()
         ylim = self.ax_anim.get_ylim()
@@ -1308,21 +1352,42 @@ class CamSimulator:
 
                     ax_gif.clear()
                     ax_gif.plot(x_rot, y_rot, 'r-', linewidth=2)
-                    ax_gif.plot(data['x_base'], data['y_base'], 'm-', linewidth=1)
-                    ax_gif.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1)
+                    if show_base:
+                        ax_gif.plot(data['x_base'], data['y_base'], 'm-', linewidth=1)
+                    if show_offset:
+                        ax_gif.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1)
 
                     frame_data = compute_anim_frame_data(
                         s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all)
                     fx = frame_data['follower_x']
                     cy = frame_data['contact_y']
                     alpha_i = frame_data['alpha_i']
+                    nx_i, ny_i = frame_data['nx'], frame_data['ny']
+                    tx_i, ty_i = frame_data['tx'], frame_data['ty']
                     tip_w = r_0 * TIP_WIDTH_RATIO
                     tip_h = r_0 * TIP_HEIGHT_RATIO
                     ax_gif.plot([fx, fx], [cy + tip_h, cy + r_0 * ROD_LENGTH_RATIO], 'k-', linewidth=3)
                     ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w],
                                 [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
-                    ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
-                    ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h], 'm--', linewidth=1)
+                    if show_limits:
+                        ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
+                        ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h], 'm--', linewidth=1)
+                    if show_tangent_gif:
+                        ax_gif.plot([fx - r_0 * tx_i, fx + r_0 * tx_i],
+                                    [cy - r_0 * ty_i, cy + r_0 * ty_i], 'm-', linewidth=1)
+                    if show_normal_gif:
+                        ax_gif.plot([fx + r_0 * nx_i, fx - r_0 * nx_i],
+                                    [cy + r_0 * ny_i, cy - r_0 * ny_i], 'm-', linewidth=1)
+                    if show_boundaries_gif:
+                        for j_b in range(len(pb) - 1):
+                            idx_b = int(pb[j_b + 1])
+                            if idx_b < N:
+                                ax_gif.plot([0, x_rot[idx_b]], [0, y_rot[idx_b]], 'k-', linewidth=0.8)
+                    if show_arc_gif:
+                        arc_r = r_0 * ARC_RADIUS_RATIO
+                        x_arc, y_arc = compute_pressure_angle_arc(fx, cy, nx_i, ny_i, alpha_i, arc_r)
+                        ax_gif.plot(x_arc, y_arc, 'k-', linewidth=1)
+                        ax_gif.plot([fx, fx], [cy - r_0 * 2, cy + r_0 * 5], 'k--', linewidth=0.8)
                     draw_fixed_support(ax_gif, r_0)
                     ax_gif.set_xlim(xlim)
                     ax_gif.set_ylim(ylim)

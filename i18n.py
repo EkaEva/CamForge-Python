@@ -103,6 +103,15 @@ TRANSLATIONS = {
     "sidebar.cb.boundaries": {
         "zh": "角度分界线", "en": "Phase Boundaries", "ja": "位相境界線",
     },
+    "sidebar.cb.base_circle": {
+        "zh": "基圆", "en": "Base Circle", "ja": "基礎円",
+    },
+    "sidebar.cb.offset_circle": {
+        "zh": "偏距圆", "en": "Offset Circle", "ja": "オフセット円",
+    },
+    "sidebar.cb.limits": {
+        "zh": "推杆上下限", "en": "Follower Limits", "ja": "フォロア上下限",
+    },
     "sidebar.cb.grid": {
         "zh": "网格线", "en": "Grid Lines", "ja": "グリッド線",
     },
