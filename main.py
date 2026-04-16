@@ -42,7 +42,8 @@ MAX_PRESSURE_ANGLE = 30.0    # 压力角推荐阈值（度）
 ANIM_FRAME_SKIP = 2          # 动画每N帧刷新一次画布
 ANIM_MIN_DELAY_MS = 20       # 动画最小帧间隔（毫秒）
 ANIM_BASE_DELAY_MS = 200     # 动画基准帧间隔（毫秒，速度=1时）
-ANIM_EXPORT_DPI = 300         # 动画帧导出 DPI
+GIF_DURATION_MS = 30         # GIF 每帧时长（毫秒）
+GIF_DPI = 300                # GIF 导出 DPI
 STATIC_DPI = 600             # 静态图导出 DPI
 
 
@@ -1182,12 +1183,14 @@ class CamSimulator:
 
         # 动态图：保存完整360帧为GIF（后台线程，避免UI冻结）
         if self.dl_anim.get():
-            self._export_anim_frames(folder, saved)
+            filename_anim = t("export.filename.animation", self.lang) + ".gif"
+            filepath = os.path.join(folder, filename_anim)
+            self._export_gif(filepath, folder, saved)
 
         if saved:
             self.status_var.set(t("status.saved", self.lang, files=', '.join(saved), folder=folder))
         elif self.dl_anim.get():
-            self.status_var.set(t("status.anim_exporting", self.lang))
+            self.status_var.set(t("status.gif_exporting", self.lang))
 
     def _export_excel(self, folder, saved_list):
         """导出凸轮数据为 Excel 表格"""
@@ -1241,10 +1244,12 @@ class CamSimulator:
         wb.save(filepath)
         saved_list.append(filename)
 
-    def _export_anim_frames(self, folder, saved_list):
-        """在后台线程中导出300DPI PNG帧序列，显示进度对话框"""
+    def _export_gif(self, filepath, folder, saved_list):
+        """在后台线程中导出GIF动画（300 DPI），显示进度对话框"""
         import os
         import threading
+        from io import BytesIO
+        from PIL import Image as PILImage
 
         # Capture lang for thread safety
         lang = self.lang
@@ -1263,10 +1268,6 @@ class CamSimulator:
         xlim = self.ax_anim.get_xlim()
         ylim = self.ax_anim.get_ylim()
 
-        # 帧序列子文件夹
-        seq_name = t("export.filename.animation", lang)
-        seq_dir = os.path.join(folder, seq_name)
-
         # 进度对话框
         progress_win = tk.Toplevel(self.root)
         progress_win.title(t("export.gif_dialog.title", lang))
@@ -1282,16 +1283,18 @@ class CamSimulator:
         progress_label.pack()
 
         # 线程间共享状态
-        export_result = {'error': None}
+        gif_result = {'error': None}
 
         def generate():
             try:
-                os.makedirs(seq_dir, exist_ok=True)
-                fig_frame = Figure(figsize=(8, 6), dpi=ANIM_EXPORT_DPI)
-                ax_frame = fig_frame.add_axes([0.05, 0.08, 0.65, 0.87])
-                ax_info_frame = fig_frame.add_axes([0.73, 0.08, 0.25, 0.87])
+                fig_gif = Figure(figsize=(8, 6), dpi=GIF_DPI)
+                ax_gif = fig_gif.add_axes([0.05, 0.08, 0.65, 0.87])
+                ax_info_gif = fig_gif.add_axes([0.73, 0.08, 0.25, 0.87])
 
-                # Pre-compute translated labels
+                first_frame = None
+                append_frames = []
+
+                # Pre-compute translated labels for GIF
                 label_delta_gif = t("info.label.delta", lang)
                 label_alpha_gif = t("info.label.alpha", lang)
                 label_s_gif = t("info.label.s", lang)
@@ -1303,10 +1306,10 @@ class CamSimulator:
                     angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
                     x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
 
-                    ax_frame.clear()
-                    ax_frame.plot(x_rot, y_rot, 'r-', linewidth=2)
-                    ax_frame.plot(data['x_base'], data['y_base'], 'm-', linewidth=1)
-                    ax_frame.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1)
+                    ax_gif.clear()
+                    ax_gif.plot(x_rot, y_rot, 'r-', linewidth=2)
+                    ax_gif.plot(data['x_base'], data['y_base'], 'm-', linewidth=1)
+                    ax_gif.plot(data['x_offset'], data['y_offset'], 'c-', linewidth=1)
 
                     frame_data = compute_anim_frame_data(
                         s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all)
@@ -1315,21 +1318,21 @@ class CamSimulator:
                     alpha_i = frame_data['alpha_i']
                     tip_w = r_0 * TIP_WIDTH_RATIO
                     tip_h = r_0 * TIP_HEIGHT_RATIO
-                    ax_frame.plot([fx, fx], [cy + tip_h, cy + r_0 * ROD_LENGTH_RATIO], 'k-', linewidth=3)
-                    ax_frame.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w],
+                    ax_gif.plot([fx, fx], [cy + tip_h, cy + r_0 * ROD_LENGTH_RATIO], 'k-', linewidth=3)
+                    ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w],
                                 [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
-                    ax_frame.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
-                    ax_frame.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h], 'm--', linewidth=1)
-                    draw_fixed_support(ax_frame, r_0)
-                    ax_frame.set_xlim(xlim)
-                    ax_frame.set_ylim(ylim)
-                    ax_frame.set_aspect('equal')
-                    ax_frame.set_title(f'{title_anim_gif}  {i:3d}°/360°', fontsize=11)
+                    ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
+                    ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h], 'm--', linewidth=1)
+                    draw_fixed_support(ax_gif, r_0)
+                    ax_gif.set_xlim(xlim)
+                    ax_gif.set_ylim(ylim)
+                    ax_gif.set_aspect('equal')
+                    ax_gif.set_title(f'{title_anim_gif}  {i:3d}°/360°', fontsize=11)
 
-                    ax_info_frame.clear()
-                    ax_info_frame.set_xticks([])
-                    ax_info_frame.set_yticks([])
-                    ax_info_frame.set_frame_on(False)
+                    ax_info_gif.clear()
+                    ax_info_gif.set_xticks([])
+                    ax_info_gif.set_yticks([])
+                    ax_info_gif.set_frame_on(False)
                     info_items = [
                         (0.95, rf'{label_delta_gif}: {i:3d}°/360°'),
                         (0.85, rf'{label_alpha_gif}: {alpha_i:.1f}°'),
@@ -1338,11 +1341,19 @@ class CamSimulator:
                         (0.55, rf'{label_s0_gif}: {s_0:.2f} mm'),
                     ]
                     for y_pos, text in info_items:
-                        ax_info_frame.text(0.05, y_pos, text, transform=ax_info_frame.transAxes,
+                        ax_info_gif.text(0.05, y_pos, text, transform=ax_info_gif.transAxes,
                                          fontsize=10, ha='left', va='top', color='#222')
 
-                    frame_path = os.path.join(seq_dir, f"{i:03d}.png")
-                    fig_frame.savefig(frame_path, dpi=ANIM_EXPORT_DPI, format='png')
+                    buf = BytesIO()
+                    fig_gif.savefig(buf, format='png', dpi=GIF_DPI)
+                    buf.seek(0)
+                    img = PILImage.open(buf).copy()
+                    buf.close()
+
+                    if first_frame is None:
+                        first_frame = img
+                    else:
+                        append_frames.append(img)
 
                     # 更新进度（线程安全）
                     self.root.after(0, lambda idx=i: (
@@ -1350,15 +1361,18 @@ class CamSimulator:
                         progress_label.configure(text=f"{idx + 1} / {N}")
                     ))
 
-                plt.close(fig_frame)
-                saved_list.append(seq_name + "/")
+                plt.close(fig_gif)
+                if first_frame is not None:
+                    first_frame.save(filepath, save_all=True, append_images=append_frames,
+                                     duration=GIF_DURATION_MS, loop=0)
+                saved_list.append(os.path.basename(filepath))
             except Exception as exc:
-                export_result['error'] = str(exc)
+                gif_result['error'] = str(exc)
             finally:
                 def _on_done():
                     progress_win.destroy()
-                    if export_result['error']:
-                        self.status_var.set(t("status.anim_failed", lang, error=export_result['error']))
+                    if gif_result['error']:
+                        self.status_var.set(t("status.gif_failed", lang, error=gif_result['error']))
                     else:
                         self.status_var.set(t("status.saved", lang, files=', '.join(saved_list), folder=folder))
                 self.root.after(0, _on_done)
