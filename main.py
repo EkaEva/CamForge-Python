@@ -37,6 +37,7 @@ TIP_HEIGHT_RATIO = 0.08      # 推杆尖顶高度与基圆半径之比
 ROD_LENGTH_RATIO = 4.0       # 推杆杆身长度与基圆半径之比
 LIMIT_LINE_RATIO = 3.0       # 推杆上下限线半宽与基圆半径之比
 ARC_RADIUS_RATIO = 0.3       # 压力角弧线半径与基圆半径之比
+SUPPORT_SIZE_RATIO = 0.12     # 固定铰支座尺寸与基圆半径之比
 MAX_PRESSURE_ANGLE = 30.0    # 压力角推荐阈值（度）
 ANIM_FRAME_SKIP = 2          # 动画每N帧刷新一次画布
 ANIM_MIN_DELAY_MS = 20       # 动画最小帧间隔（毫秒）
@@ -44,6 +45,27 @@ ANIM_BASE_DELAY_MS = 200     # 动画基准帧间隔（毫秒，速度=1时）
 GIF_DURATION_MS = 30         # GIF 每帧时长（毫秒）
 GIF_DPI = 80                 # GIF 导出 DPI
 STATIC_DPI = 600             # 静态图导出 DPI
+
+
+def draw_fixed_support(ax, r_0):
+    """在凸轮旋转中心 (0,0) 绘制固定铰支座符号（三角形 + 底座 + 斜线）"""
+    sz = r_0 * SUPPORT_SIZE_RATIO
+    # 三角形顶点：顶点在原点，底边在下方
+    tri_x = [0, -sz, sz, 0]
+    tri_y = [0, -sz * 1.2, -sz * 1.2, 0]
+    ax.fill(tri_x, tri_y, color='#555555', zorder=5)
+    ax.plot(tri_x, tri_y, 'k-', linewidth=1, zorder=5)
+    # 底座横线
+    base_y = -sz * 1.2
+    hw = sz * 1.3
+    ax.plot([-hw, hw], [base_y, base_y], 'k-', linewidth=1.5, zorder=5)
+    # 斜线阴影（5条）
+    n_hatch = 5
+    hatch_len = sz * 0.5
+    for j in range(n_hatch):
+        x0 = -hw + (2 * hw) * (j + 0.5) / n_hatch
+        ax.plot([x0, x0 - hatch_len * 0.6], [base_y, base_y - hatch_len],
+                'k-', linewidth=0.8, zorder=5)
 
 
 def generate_random_params():
@@ -725,6 +747,7 @@ class CamSimulator:
         self.ax_profile.set_xlabel(r'$x$ (mm)')
         self.ax_profile.set_ylabel(r'$y$ (mm)')
         self.ax_profile.grid(True)
+        draw_fixed_support(self.ax_profile, r_0)
         margin = r_0 / 2
         self.ax_profile.set_xlim(-Rmax - margin, Rmax + margin)
         self.ax_profile.set_ylim(-Rmax - r_0, Rmax + r_0)
@@ -782,6 +805,9 @@ class CamSimulator:
         ax.set_title(t("plot.title.animation", self.lang), fontsize=12)
         ax.set_xlabel(r'$x$ (mm)')
         ax.set_ylabel(r'$y$ (mm)')
+
+        # 固定铰支座
+        draw_fixed_support(ax, r_0)
 
         # 信息面板：紧贴动态图右侧，上下对齐
         anim_pos = ax.get_position()
@@ -1133,6 +1159,7 @@ class CamSimulator:
             ax_p.set_xlabel(r'$x$ (mm)')
             ax_p.set_ylabel(r'$y$ (mm)')
             ax_p.grid(True)
+            draw_fixed_support(ax_p, r_0)
             margin = r_0 / 2
             ax_p.set_xlim(-Rmax - margin, Rmax + margin)
             ax_p.set_ylim(-Rmax - r_0, Rmax + r_0)
@@ -1289,6 +1316,7 @@ class CamSimulator:
                                 [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
                     ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
                     ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h], 'm--', linewidth=1)
+                    draw_fixed_support(ax_gif, r_0)
                     ax_gif.set_xlim(xlim)
                     ax_gif.set_ylim(ylim)
                     ax_gif.set_aspect('equal')
