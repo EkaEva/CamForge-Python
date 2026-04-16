@@ -43,7 +43,7 @@ ANIM_MIN_DELAY_MS = 20       # 动画最小帧间隔（毫秒）
 ANIM_BASE_DELAY_MS = 200     # 动画基准帧间隔（毫秒，速度=1时）
 GIF_DURATION_MS = 30         # GIF 每帧时长（毫秒）
 GIF_DPI = 80                 # GIF 导出 DPI
-STATIC_DPI = 150             # 静态图导出 DPI
+STATIC_DPI = 600             # 静态图导出 DPI
 
 
 def generate_random_params():
@@ -1056,8 +1056,8 @@ class CamSimulator:
             ax_s.set_ylim(0, data['h'] * 1.15)
             ax_s.set_xticks(range(0, 361, 60))
             ax_s.grid(True)
-            filename_s = t("export.filename.displacement", self.lang) + ".png"
-            fig_s.savefig(os.path.join(folder, filename_s), dpi=dpi, bbox_inches='tight')
+            filename_s = t("export.filename.displacement", self.lang) + ".tiff"
+            fig_s.savefig(os.path.join(folder, filename_s), dpi=dpi, bbox_inches='tight', format='tiff')
             plt.close(fig_s)
             saved.append(filename_s)
 
@@ -1080,8 +1080,8 @@ class CamSimulator:
                 ax_v.set_ylim(-v_max, v_max)
             ax_v.set_xticks(range(0, 361, 60))
             ax_v.grid(True)
-            filename_v = t("export.filename.velocity", self.lang) + ".png"
-            fig_v.savefig(os.path.join(folder, filename_v), dpi=dpi, bbox_inches='tight')
+            filename_v = t("export.filename.velocity", self.lang) + ".tiff"
+            fig_v.savefig(os.path.join(folder, filename_v), dpi=dpi, bbox_inches='tight', format='tiff')
             plt.close(fig_v)
             saved.append(filename_v)
 
@@ -1104,8 +1104,8 @@ class CamSimulator:
                 ax_a.set_ylim(-a_max, a_max)
             ax_a.set_xticks(range(0, 361, 60))
             ax_a.grid(True)
-            filename_a = t("export.filename.acceleration", self.lang) + ".png"
-            fig_a.savefig(os.path.join(folder, filename_a), dpi=dpi, bbox_inches='tight')
+            filename_a = t("export.filename.acceleration", self.lang) + ".tiff"
+            fig_a.savefig(os.path.join(folder, filename_a), dpi=dpi, bbox_inches='tight', format='tiff')
             plt.close(fig_a)
             saved.append(filename_a)
 
@@ -1134,8 +1134,8 @@ class CamSimulator:
             ax_p.set_ylim(-Rmax - r_0, Rmax + r_0)
             ax_p.set_aspect('equal')
             ax_p.legend(fontsize=8, loc='upper right')
-            filename_p = t("export.filename.profile", self.lang) + ".png"
-            fig_p.savefig(os.path.join(folder, filename_p), dpi=dpi, bbox_inches='tight')
+            filename_p = t("export.filename.profile", self.lang) + ".tiff"
+            fig_p.savefig(os.path.join(folder, filename_p), dpi=dpi, bbox_inches='tight', format='tiff')
             plt.close(fig_p)
             saved.append(filename_p)
 
