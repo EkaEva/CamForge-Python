@@ -130,7 +130,7 @@ TRANSLATIONS = {
         "zh": "随机凸轮", "en": "Random Cam", "ja": "ランダムカム",
     },
     "toolbar.btn.download": {
-        "zh": "下载图片", "en": "Download", "ja": "ダウンロード",
+        "zh": "下载", "en": "Download", "ja": "ダウンロード",
     },
     "toolbar.label.speed": {
         "zh": "仿真速度:", "en": "Sim Speed:", "ja": "シミュ速度:",
@@ -151,6 +151,9 @@ TRANSLATIONS = {
     },
     "toolbar.cb.dl_anim": {
         "zh": "动态图", "en": "Anim.", "ja": "アニメ",
+    },
+    "toolbar.cb.dl_excel": {
+        "zh": "Excel", "en": "Excel", "ja": "Excel",
     },
 
     # ---- Plot Titles ----
@@ -284,6 +287,23 @@ TRANSLATIONS = {
     },
     "export.filename.animation": {
         "zh": "凸轮动画", "en": "cam_animation", "ja": "カムアニメーション",
+    },
+    "export.filename.excel": {
+        "zh": "凸轮数据", "en": "cam_data", "ja": "カムデータ",
+    },
+
+    # ---- Excel Column Headers ----
+    "excel.col.delta": {
+        "zh": r"转角 $\delta$ (°)", "en": r"Angle $\delta$ (°)", "ja": r"回転角 $\delta$ (°)",
+    },
+    "excel.col.radius": {
+        "zh": r"向径 $R$ (mm)", "en": r"Radius $R$ (mm)", "ja": r"動径 $R$ (mm)",
+    },
+    "excel.col.velocity": {
+        "zh": r"推杆速度 $v$ (mm/s)", "en": r"Follower Velocity $v$ (mm/s)", "ja": r"フォロア速度 $v$ (mm/s)",
+    },
+    "excel.col.acceleration": {
+        "zh": r"推杆加速度 $a$ (mm/s²)", "en": r"Follower Acceleration $a$ (mm/s²)", "ja": r"フォロア加速度 $a$ (mm/s²)",
     },
 
     # ---- GIF Export Dialog ----

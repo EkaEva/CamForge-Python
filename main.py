@@ -418,6 +418,10 @@ class CamSimulator:
         cb_dl_anim = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_anim", self.lang), variable=self.dl_anim, **dl_cb_kw)
         cb_dl_anim.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_anim", cb_dl_anim, font_size=9)
+        self.dl_excel = tk.BooleanVar(value=True)
+        cb_dl_excel = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_excel", self.lang), variable=self.dl_excel, **dl_cb_kw)
+        cb_dl_excel.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_excel", cb_dl_excel, font_size=9)
 
         # 速度滑块（靠右，标签在左滑块在右）
         speed_frame = tk.Frame(toolbar, bg='#ffffff')
@@ -1023,7 +1027,7 @@ class CamSimulator:
 
         # 检查是否有勾选
         if not any([self.dl_s.get(), self.dl_v.get(), self.dl_a.get(),
-                     self.dl_profile.get(), self.dl_anim.get()]):
+                     self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get()]):
             self.status_var.set(t("status.no_download_selection", self.lang))
             return
 
@@ -1139,6 +1143,10 @@ class CamSimulator:
             plt.close(fig_p)
             saved.append(filename_p)
 
+        # ---- Excel 数据表 ----
+        if self.dl_excel.get():
+            self._export_excel(folder, saved)
+
         # 动态图：保存完整360帧为GIF（后台线程，避免UI冻结）
         if self.dl_anim.get():
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
@@ -1149,6 +1157,58 @@ class CamSimulator:
             self.status_var.set(t("status.saved", self.lang, files=', '.join(saved), folder=folder))
         elif self.dl_anim.get():
             self.status_var.set(t("status.gif_exporting", self.lang))
+
+    def _export_excel(self, folder, saved_list):
+        """导出凸轮数据为 Excel 表格"""
+        import os
+        try:
+            import openpyxl
+        except ImportError:
+            self.status_var.set("Excel export requires openpyxl: pip install openpyxl")
+            return
+
+        data = self.sim_data
+        delta_deg = data['delta_deg']
+        v = data['v']
+        a = data['a']
+        x = data['x']
+        y = data['y']
+        R = np.hypot(x, y)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "CamForge"
+
+        # 表头
+        headers = [
+            t("excel.col.delta", self.lang),
+            t("excel.col.radius", self.lang),
+            t("excel.col.velocity", self.lang),
+            t("excel.col.acceleration", self.lang),
+        ]
+        for col_idx, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col_idx, value=header)
+
+        # 数据
+        for i in range(len(delta_deg)):
+            ws.cell(row=i + 2, column=1, value=round(delta_deg[i], 1))
+            ws.cell(row=i + 2, column=2, value=round(R[i], 4))
+            ws.cell(row=i + 2, column=3, value=round(v[i], 4))
+            ws.cell(row=i + 2, column=4, value=round(a[i], 4))
+
+        # 列宽自适应
+        for col in range(1, 5):
+            max_len = len(str(ws.cell(row=1, column=col).value))
+            for row in range(2, min(10, len(delta_deg) + 2)):
+                cell_len = len(str(ws.cell(row=row, column=col).value))
+                if cell_len > max_len:
+                    max_len = cell_len
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = max_len + 4
+
+        filename = t("export.filename.excel", self.lang) + ".xlsx"
+        filepath = os.path.join(folder, filename)
+        wb.save(filepath)
+        saved_list.append(filename)
 
     def _export_gif(self, filepath, folder, saved_list):
         """在后台线程中导出GIF动画，显示进度对话框"""
