@@ -150,7 +150,7 @@ TRANSLATIONS = {
         "zh": "廓形", "en": "Profile", "ja": "輪郭",
     },
     "toolbar.cb.dl_anim": {
-        "zh": "动态图", "en": "Anim.", "ja": "アニメ",
+        "zh": "帧序列", "en": "Frames", "ja": "フレーム",
     },
     "toolbar.cb.dl_excel": {
         "zh": "Excel", "en": "Excel", "ja": "Excel",
@@ -224,11 +224,11 @@ TRANSLATIONS = {
         "en": "Saved: {files} → {folder}",
         "ja": "保存完了: {files} → {folder}",
     },
-    "status.gif_exporting": {
-        "zh": "GIF 正在导出中...", "en": "GIF exporting...", "ja": "GIFエクスポート中...",
+    "status.anim_exporting": {
+        "zh": "动画帧正在导出中...", "en": "Animation frames exporting...", "ja": "アニメーションフレームエクスポート中...",
     },
-    "status.gif_failed": {
-        "zh": "GIF导出失败: {error}", "en": "GIF export failed: {error}", "ja": "GIFエクスポート失敗: {error}",
+    "status.anim_failed": {
+        "zh": "动画帧导出失败: {error}", "en": "Animation frame export failed: {error}", "ja": "アニメーションフレームエクスポート失敗: {error}",
     },
     "status.warning_max_alpha": {
         "zh": "警告：最大压力角 {val:.1f}° 超过推荐值 {threshold:.0f}°",
@@ -286,7 +286,7 @@ TRANSLATIONS = {
         "zh": "凸轮廓形", "en": "cam_profile", "ja": "カム輪郭",
     },
     "export.filename.animation": {
-        "zh": "凸轮动画", "en": "cam_animation", "ja": "カムアニメーション",
+        "zh": "凸轮动画帧", "en": "cam_frames", "ja": "カムフレーム",
     },
     "export.filename.excel": {
         "zh": "凸轮数据", "en": "cam_data", "ja": "カムデータ",
@@ -306,12 +306,12 @@ TRANSLATIONS = {
         "zh": "推杆加速度 a (mm/s²)", "en": "Follower Acceleration a (mm/s²)", "ja": "フォロア加速度 a (mm/s²)",
     },
 
-    # ---- GIF Export Dialog ----
+    # ---- Animation Export Dialog ----
     "export.gif_dialog.title": {
-        "zh": "导出GIF", "en": "Export GIF", "ja": "GIFエクスポート",
+        "zh": "导出动画帧", "en": "Export Animation Frames", "ja": "アニメーションフレームエクスポート",
     },
     "export.gif_dialog.message": {
-        "zh": "正在生成动态图GIF，请稍候...", "en": "Generating animation GIF...", "ja": "アニメーションGIF生成中...",
+        "zh": "正在生成300DPI PNG帧序列，请稍候...", "en": "Generating 300 DPI PNG frames...", "ja": "300DPI PNGフレーム生成中...",
     },
     "export.folder_dialog.title": {
         "zh": "选择保存文件夹", "en": "Select Save Folder", "ja": "保存フォルダを選択",
