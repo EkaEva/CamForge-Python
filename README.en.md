@@ -22,10 +22,12 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 
 - **Five Motion Laws** — Constant velocity, constant acceleration-deceleration, simple harmonic, cycloidal, and fifth-order polynomial; rise and return can be independently selected
 - **Analytical Computation** — Profile coordinates and pressure angle are both computed using analytical formulas (not numerical differentiation), ensuring high precision without jitter
-- **Real-time Animation** — 360-frame rotation animation with speed control, pause/resume, synchronized pressure angle arcs and normal/tangent lines
-- **One-click Export** — Static charts exported as high-resolution PNG, animation exported as looping GIF
+- **Real-time Animation** — 360-frame rotation animation with speed control, pause/resume/replay, synchronized pressure angle arcs and normal/tangent lines
+- **Multilingual UI** — Supports Chinese, English, and Japanese with runtime switching; export filenames adapt to the selected language
+- **One-click Export** — Static charts exported as 600 DPI high-resolution TIFF, animation as 150 DPI looping GIF, data as Excel spreadsheet
 - **Random Parameters** — Generate valid random cam parameters with one click for quick exploration of different configurations
 - **Parameter Validation** — Automatic detection of constraints such as sum of four angles and offset range, with instant alerts for invalid parameters
+- **Keyboard Shortcuts** — Enter to start, Space to pause/resume/replay, R for random cam
 
 ---
 
@@ -38,24 +40,34 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 │  CamForge - Cam Simulation                                   │
 ├────────────┬─────────────────────────────────────────────────┤
 │            │  ┌─────────────┐  ┌─────────────┐              │
-│  Parameter │  │ Displacement│  │  Velocity   │              │
-│   Panel    │  │   curve s   │  │  curve v    │              │
-│  ────────  │  └─────────────┘  └─────────────┘              │
-│  Rise angle│  ┌─────────────┐  ┌─────────────┐              │
-│  Far dwell │  │ Acceleration│  │ Cam profile │              │
-│  Return ang│  │  curve a    │  │             │              │
-│  Near dwell│  └─────────────┘  └─────────────┘              │
-│  Stroke/   │  ┌───────────────────────────────┐              │
-│  Base circ │  │                               │              │
-│  Offset/ω  │  │  Cam rotation animation +     │              │
-│  Motion law│  │       Info panel              │              │
-│  Rotation  │  │                               │              │
-│  Offset dir│  └───────────────────────────────┘              │
-│            │                                                 │
+│  Language  │  │ Displacement│  │  Velocity   │              │
+│  ────────  │  │   curve s   │  │  curve v    │              │
+│  Motion    │  └─────────────┘  └─────────────┘              │
+│  Params    │  ┌─────────────┐  ┌─────────────┐              │
+│  Rise angle│  │ Acceleration│  │ Cam profile │              │
+│  Far dwell │  │  curve a    │  │             │              │
+│  Return ang│  └─────────────┘  └─────────────┘              │
+│  Near dwell│  ┌───────────────────────────────┐              │
+│  Stroke/   │  │                               │              │
+│  Base circ │  │  Cam rotation animation +     │              │
+│  Offset/ω  │  │       Info panel              │              │
+│  Motion law│  │                               │              │
+│  Rotation  │  └───────────────────────────────┘              │
+│  Offset dir│                                                 │
+│  ────────  │                                                 │
+│  Display   │                                                 │
+│  ☐Tangent  │                                                 │
+│  ☐Normal   │                                                 │
+│  ☐Press.arc│                                                 │
+│  ☐Boundaries│                                                │
+│  ☐Base circ│                                                 │
+│  ☐Offset ○ │                                                 │
+│  ☐Limits   │                                                 │
+│  ☐Grid     │                                                 │
 ├────────────┴─────────────────────────────────────────────────┤
 │  [▶ Start]  [⏸ Pause]  [Clear Params]  [Clear Charts]       │
 │  [Random Cam]  [Download]  Speed: ━━━━━●━━━━━               │
-│  ☑Displacement ☑Velocity ☑Acceleration ☑Animation            │
+│  ☑Displ. ☑Vel. ☑Accel. ☑Profile ☑Anim. ☑Excel              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -72,10 +84,12 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 ### Animation Features
 
 - **Inversion Method**: Cam rotates while follower remains fixed, intuitively demonstrating actual motion
+- **Fixed Support**: Standard pinned support symbol (pin circle + triangle + hatched base) drawn at the rotation center
 - **Pressure Angle Arc**: Real-time drawing of pressure angle arc and annotation at the contact point
 - **Normal/Tangent Lines**: Analytically computed profile derivative directions for precise normal and tangent line drawing at the contact point
 - **Phase Boundary Lines**: Radial markings for the four phases — rise, far dwell, return, near dwell
 - **Info Panel**: Real-time display of current rotation angle, pressure angle, displacement, stroke, and initial displacement
+- **Configurable Display**: 8 display options (tangent, normal, pressure angle arc, phase boundaries, base circle, offset circle, follower limits, grid); exported GIF matches the on-screen display exactly
 
 ---
 
@@ -89,10 +103,8 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 ### Install Dependencies
 
 ```bash
-pip install numpy>=1.20 matplotlib>=3.5 Pillow
+pip install -r requirements.txt
 ```
-
-> **Note**: `Pillow` is used for GIF animation export and is not included in `requirements.txt`; it must be installed manually.
 
 ### Launch Application
 
@@ -105,7 +117,11 @@ python main.py
 
 ## User Guide
 
-### 1. Parameter Input
+### 1. Language Switching
+
+Select a language (Chinese / English / 日本語) at the top of the sidebar. All labels, buttons, plot titles, status messages, and export filenames switch instantly.
+
+### 2. Parameter Input
 
 Enter cam design parameters in the left panel:
 
@@ -122,29 +138,54 @@ Enter cam design parameters in the left panel:
 
 > The sum of the four angles must equal exactly **360°**.
 
-### 2. Select Motion Law
+### 3. Select Motion Law
 
 - **Rise law**: Dropdown to select motion law 1-5
 - **Return law**: Dropdown to select motion law 1-5
 - **Rotation direction**: Clockwise / Counterclockwise
 - **Offset direction**: Positive offset / Negative offset
 
-### 3. Run Simulation
+### 4. Run Simulation
 
-1. Click the **"Start"** button to compute and plot static curves and cam profile
+1. Click the **"Start"** button (or press Enter) to compute and plot static curves and cam profile
 2. Animation starts automatically, showing the cam rotation process
-3. Use the **"Pause"** button to pause/resume the animation
-4. Drag the **speed slider** to adjust animation frame rate (1 = slowest, 10 = fastest)
+3. Use the **"Pause"** button to pause/resume the animation (or press Space)
+4. After animation ends, press Space or click **"Replay"** to restart
+5. Drag the **speed slider** to adjust animation frame rate (1 = slowest, 10 = fastest)
 
-### 4. Export Results
+### 5. Display Options
 
-- Check the chart types to export (displacement / velocity / acceleration / animation)
-- Click the **"Download"** button
-- Static charts are saved as **PNG** (150 DPI), animation is saved as **GIF** (looping)
+The "Display Options" section in the sidebar provides 8 checkboxes controlling auxiliary elements in the animation view:
 
-### 5. Random Exploration
+| Option | Description | Default |
+|--------|-------------|:-------:|
+| Tangent | Tangent line at contact point | Off |
+| Normal | Normal line at contact point | Off |
+| Pressure Angle Arc | Pressure angle arc and reference line | Off |
+| Phase Boundaries | Radial phase boundary lines | Off |
+| Base Circle | Base circle outline | Off |
+| Offset Circle | Offset circle outline | Off |
+| Follower Limits | Upper/lower limit horizontal lines | Off |
+| Grid | Coordinate grid | Off |
 
-Click the **"Random Cam"** button to automatically generate a set of valid random parameters for quick exploration of different cam configurations.
+> When exporting GIF, display options match the on-screen view — only checked elements appear in the export.
+
+### 6. Export Results
+
+Check the items to export, then click the **"Download"** button:
+
+| Type | Format | Description |
+|------|--------|-------------|
+| Displacement | TIFF (600 DPI) | Follower displacement vs. angle |
+| Velocity | TIFF (600 DPI) | Follower velocity vs. angle |
+| Acceleration | TIFF (600 DPI) | Follower acceleration vs. angle |
+| Cam Profile | TIFF (600 DPI) | Cam profile + base circle + offset circle + fixed support |
+| Animation | GIF (150 DPI) | 360-frame looping animation with progress indicator |
+| Excel | XLSX | Angle δ, Radius R, Velocity v, Acceleration a |
+
+### 7. Random Exploration
+
+Click the **"Random Cam"** button (or press R) to automatically generate a set of valid random parameters for quick exploration of different cam configurations.
 
 ---
 
@@ -156,9 +197,12 @@ CamForge/
 │   ├── CamSimulator     # Main window class
 │   │   ├── _build_gui()       # Build interface layout
 │   │   ├── _on_start()        # Start simulation computation
-│   │   ├── _animate()         # Animation loop
-│   │   ├── _on_download()     # Export images/GIF
-│   │   └── ...                # Event handling and drawing
+│   │   ├── _animate_frame()   # Animation frame rendering
+│   │   ├── _on_download()     # Export images/GIF/Excel
+│   │   ├── _export_gif()      # GIF background thread export
+│   │   ├── _export_excel()    # Excel data export
+│   │   └── ...                # Event handling, i18n, drawing
+│   ├── draw_fixed_support()   # Fixed support symbol drawing
 │   └── generate_random_params()  # Random parameter generator
 │
 ├── cam_mechanics.py     # Kinematic computation engine (pure math, no GUI dependency)
@@ -172,7 +216,17 @@ CamForge/
 │   ├── compute_pressure_angle_arc()# Pressure angle arc coordinates
 │   └── validate_params()       # Parameter validity check
 │
-└── requirements.txt     # Python dependency declaration
+├── i18n.py               # Internationalization module (zh/en/ja)
+│   ├── TRANSLATIONS      # 86 translation entries
+│   ├── FONT_MAP          # Cross-platform font mapping
+│   └── t()               # Translation lookup function
+│
+├── tests/                # Unit tests (pytest, 59 items all passing)
+│   └── test_cam_mechanics.py
+│
+├── requirements.txt      # Python dependency declaration
+├── LICENSE               # MIT license
+└── .gitignore            # Git ignore rules
 ```
 
 ### Design Principles
@@ -180,6 +234,7 @@ CamForge/
 - **Separation of Computation and Presentation**: `cam_mechanics.py` is a pure math library with no GUI framework dependencies; it can be used independently for batch computation or integration into other projects
 - **Analytical First**: All derivatives and pressure angles use analytical formulas (`ds/dδ = v/ω`), avoiding precision loss from numerical differentiation
 - **1° Step Discretization**: 360 discrete points across the full stroke, with one computation point per integer degree, balancing precision and performance
+- **Internationalization Design**: All UI strings are resolved via i18n key lookup; language switches at runtime without restart
 
 ---
 
@@ -215,7 +270,8 @@ When the maximum pressure angle exceeds **30°**, a red warning will be displaye
 |-----|---------|------|
 | [numpy](https://numpy.org/) | >= 1.20 | Numerical computation (array operations, trigonometric functions) |
 | [matplotlib](https://matplotlib.org/) | >= 3.5 | Chart plotting and tkinter embedding |
-| [Pillow](https://python-pillow.org/) | Any | GIF animation export |
+| [Pillow](https://python-pillow.org/) | >= 9.0 | GIF animation export |
+| [openpyxl](https://openpyxl.readthedocs.io/) | >= 3.0 | Excel data export |
 | tkinter | Standard library | GUI framework (bundled with Python) |
 
 ---
@@ -225,9 +281,9 @@ When the maximum pressure angle exceeds **30°**, a red warning will be displaye
 <details>
 <summary><b>Chinese characters display as squares after launch</b></summary>
 
-This application uses SimHei / Microsoft YaHei fonts to render Chinese text. If your system lacks these fonts:
+This application automatically detects available system fonts and falls back as needed. If issues persist:
 - **Windows**: Generally bundled with the OS, no action needed
-- **macOS**: Install the SimHei font or modify `plt.rcParams['font.sans-serif']` in `main.py` to a Chinese font available on your system
+- **macOS**: The app auto-detects Yu Gothic / Hiragino Sans etc.
 - **Linux**: Run `sudo apt install fonts-wqy-microhei` and update the font configuration
 
 </details>
@@ -242,9 +298,9 @@ This application uses SimHei / Microsoft YaHei fonts to render Chinese text. If 
 </details>
 
 <details>
-<summary><b>GIF export fails</b></summary>
+<summary><b>GIF export takes a long time</b></summary>
 
-Make sure Pillow is installed: `pip install Pillow`. GIF export requires rendering 360 frames sequentially, which takes a long time — please wait patiently for the progress indicator.
+GIF export renders 360 frames sequentially using a background thread with a progress bar to avoid UI freezing. After frame rendering, GIF composition is performed — the progress label will show "Composing GIF...". Please wait patiently.
 
 </details>
 
