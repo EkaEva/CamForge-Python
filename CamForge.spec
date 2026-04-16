@@ -43,13 +43,10 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # 排除不需要的大型标准库模块，减小体积
+        # 排除不需要的标准库模块（注意：html/email/http 被 pyparsing/openpyxl 依赖，不能排除）
         'tkinter.test',
         'test',
         'unittest',
-        'email',
-        'html',
-        'http',
         'xmlrpc',
         'pydoc',
         'distutils',
@@ -57,8 +54,6 @@ a = Analysis(
         'pip',
         'wheel',
         'lib2to3',
-        'multiprocessing',
-        'concurrent',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

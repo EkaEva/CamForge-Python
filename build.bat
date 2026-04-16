@@ -22,10 +22,15 @@ python -c "import PyInstaller" 2>nul || (
     pip install pyinstaller
 )
 
-:: 检查并安装 Nuitka
+:: 检查并安装 Nuitka（含 onefile 压缩支持）
 python -c "import nuitka" 2>nul || (
-    echo [INSTALL] Installing Nuitka...
-    pip install nuitka
+    echo [INSTALL] Installing Nuitka with onefile support...
+    pip install "nuitka[onefile]"
+)
+:: 确保 zstandard 已安装（Nuitka onefile 压缩需要）
+python -c "import zstandard" 2>nul || (
+    echo [INSTALL] Installing zstandard for Nuitka onefile compression...
+    pip install zstandard
 )
 
 :: 验证项目依赖
@@ -105,13 +110,11 @@ if "%HAS_ICON%"=="1" (
 python -m nuitka ^
     --standalone ^
     --onefile ^
-    --windows-disable-console ^
+    --windows-console-mode=disable ^
     %NUITKA_ICON% ^
     --output-filename=CamForge.exe ^
     --output-dir=dist_nuitka ^
     --enable-plugin=tk-inter ^
-    --enable-plugin=numpy ^
-    --enable-plugin=matplotlib ^
     --include-module=PIL ^
     --include-module=PIL.Image ^
     --include-module=openpyxl ^
@@ -122,9 +125,6 @@ python -m nuitka ^
     --nofollow-import-to=tkinter.test ^
     --nofollow-import-to=test ^
     --nofollow-import-to=unittest ^
-    --nofollow-import-to=email ^
-    --nofollow-import-to=html ^
-    --nofollow-import-to=http ^
     --company-name=EkaEva ^
     --product-name=CamForge ^
     --file-version=1.0.0.0 ^
