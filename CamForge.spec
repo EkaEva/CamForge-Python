@@ -43,17 +43,12 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # 排除不需要的标准库模块（注意：html/email/http 被 pyparsing/openpyxl 依赖，不能排除）
+        # 仅排除确定不需要的模块（pyparsing 需要 unittest/html，openpyxl 需要 email/http）
         'tkinter.test',
-        'test',
-        'unittest',
         'xmlrpc',
         'pydoc',
-        'distutils',
-        'setuptools',
         'pip',
         'wheel',
-        'lib2to3',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

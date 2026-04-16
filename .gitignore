@@ -33,7 +33,5 @@ htmlcov/
 # Distribution / Packaging
 dist/
 build/
-dist_nuitka/
-*.build/
 *.egg-info/
 *.egg
