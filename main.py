@@ -1466,7 +1466,12 @@ class CamSimulator:
     def _on_random(self):
         """随机凸轮参数"""
         params = generate_random_params()
-        self._on_clear_params()
+        # 清空输入框再填入随机值（不调用 _on_clear_params 避免恢复默认值后叠加）
+        for entry in [self.entry_delta_0, self.entry_delta_01,
+                      self.entry_delta_ret, self.entry_delta_02,
+                      self.entry_h, self.entry_r0, self.entry_e,
+                      self.entry_omega]:
+            entry.delete(0, tk.END)
 
         self.entry_delta_0.insert(0, str(params['delta_0']))
         self.entry_delta_01.insert(0, str(params['delta_01']))
