@@ -191,7 +191,7 @@ TRANSLATIONS = {
 
     # ---- Info Panel Labels ----
     "info.label.delta": {
-        "zh": r"转角 $\theta$", "en": r"Angle $\theta$", "ja": r"回転角 $\theta$",
+        "zh": r"转角 $\delta$", "en": r"Angle $\delta$", "ja": r"回転角 $\delta$",
     },
     "info.label.alpha": {
         "zh": r"压力角 $\alpha$", "en": r"Pressure Angle $\alpha$", "ja": r"圧力角 $\alpha$",

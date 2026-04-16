@@ -668,7 +668,7 @@ class CamSimulator:
         self.ax_s.set_title(
             rf'{t("plot.title.displacement", self.lang)}（{t("plot.subtitle.rise", self.lang)}:{tc_name} {t("plot.subtitle.return", self.lang)}:{hc_name}）',
             fontsize=10)
-        self.ax_s.set_xlabel(r'$\theta$ (°)')
+        self.ax_s.set_xlabel(r'$\delta$ (°)')
         self.ax_s.set_ylabel(r'$s$ (mm)')
         self.ax_s.set_xlim(0, 360)
         self.ax_s.set_ylim(0, h * 1.15)
@@ -680,7 +680,7 @@ class CamSimulator:
         for b in pb[1:-1]:
             self.ax_v.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
         self.ax_v.set_title(t("plot.title.velocity", self.lang), fontsize=11)
-        self.ax_v.set_xlabel(r'$\theta$ (°)')
+        self.ax_v.set_xlabel(r'$\delta$ (°)')
         self.ax_v.set_ylabel(r'$v$ (mm/s)')
         self.ax_v.set_xlim(0, 360)
         v_max = np.max(np.abs(v)) * 1.15
@@ -694,7 +694,7 @@ class CamSimulator:
         for b in pb[1:-1]:
             self.ax_a.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
         self.ax_a.set_title(t("plot.title.acceleration", self.lang), fontsize=11)
-        self.ax_a.set_xlabel(r'$\theta$ (°)')
+        self.ax_a.set_xlabel(r'$\delta$ (°)')
         self.ax_a.set_ylabel(r'$a$ (mm/s$^2$)')
         self.ax_a.set_xlim(0, 360)
         a_max = np.max(np.abs(a)) * 1.15
@@ -1050,7 +1050,7 @@ class CamSimulator:
             for b in pb[1:-1]:
                 ax_s.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
             ax_s.set_title(t("plot.title.displacement", self.lang), fontsize=11)
-            ax_s.set_xlabel(r'$\theta$ (°)')
+            ax_s.set_xlabel(r'$\delta$ (°)')
             ax_s.set_ylabel(r'$s$ (mm)')
             ax_s.set_xlim(0, 360)
             ax_s.set_ylim(0, data['h'] * 1.15)
@@ -1072,7 +1072,7 @@ class CamSimulator:
             for b in pb[1:-1]:
                 ax_v.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
             ax_v.set_title(t("plot.title.velocity", self.lang), fontsize=11)
-            ax_v.set_xlabel(r'$\theta$ (°)')
+            ax_v.set_xlabel(r'$\delta$ (°)')
             ax_v.set_ylabel(r'$v$ (mm/s)')
             ax_v.set_xlim(0, 360)
             v_max = np.max(np.abs(v)) * 1.15
@@ -1096,7 +1096,7 @@ class CamSimulator:
             for b in pb[1:-1]:
                 ax_a.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
             ax_a.set_title(t("plot.title.acceleration", self.lang), fontsize=11)
-            ax_a.set_xlabel(r'$\theta$ (°)')
+            ax_a.set_xlabel(r'$\delta$ (°)')
             ax_a.set_ylabel(r'$a$ (mm/s$^2$)')
             ax_a.set_xlim(0, 360)
             a_max = np.max(np.abs(a)) * 1.15
