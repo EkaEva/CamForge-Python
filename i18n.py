@@ -292,18 +292,18 @@ TRANSLATIONS = {
         "zh": "凸轮数据", "en": "cam_data", "ja": "カムデータ",
     },
 
-    # ---- Excel Column Headers ----
+    # ---- Excel Column Headers (plain text, no LaTeX) ----
     "excel.col.delta": {
-        "zh": r"转角 $\delta$ (°)", "en": r"Angle $\delta$ (°)", "ja": r"回転角 $\delta$ (°)",
+        "zh": "转角 δ (°)", "en": "Angle δ (°)", "ja": "回転角 δ (°)",
     },
     "excel.col.radius": {
-        "zh": r"向径 $R$ (mm)", "en": r"Radius $R$ (mm)", "ja": r"動径 $R$ (mm)",
+        "zh": "向径 R (mm)", "en": "Radius R (mm)", "ja": "動径 R (mm)",
     },
     "excel.col.velocity": {
-        "zh": r"推杆速度 $v$ (mm/s)", "en": r"Follower Velocity $v$ (mm/s)", "ja": r"フォロア速度 $v$ (mm/s)",
+        "zh": "推杆速度 v (mm/s)", "en": "Follower Velocity v (mm/s)", "ja": "フォロア速度 v (mm/s)",
     },
     "excel.col.acceleration": {
-        "zh": r"推杆加速度 $a$ (mm/s²)", "en": r"Follower Acceleration $a$ (mm/s²)", "ja": r"フォロア加速度 $a$ (mm/s²)",
+        "zh": "推杆加速度 a (mm/s²)", "en": "Follower Acceleration a (mm/s²)", "ja": "フォロア加速度 a (mm/s²)",
     },
 
     # ---- GIF Export Dialog ----
