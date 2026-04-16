@@ -30,5 +30,10 @@ desktop.ini
 .coverage
 htmlcov/
 
-# Distribution
-*.spec
+# Distribution / Packaging
+dist/
+build/
+dist_nuitka/
+*.build/
+*.egg-info/
+*.egg
