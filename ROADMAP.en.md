@@ -8,71 +8,66 @@
 
 ## I. Existing Issues
 
-### 1.1 Dependency Management
+### 1.1 Code Architecture
 
 | # | Issue | Location | Severity |
 |---|------|------|:--------:|
-| 1 | `Pillow` is imported in `main.py:884` for GIF export but not listed in `requirements.txt` | `requirements.txt` / `main.py:884` | High |
-| 2 | No version lock file (`Pipfile` / `poetry.lock`); different environments may produce compatibility differences | Project root | Medium |
-| 3 | No `setup.py` / `pyproject.toml`; project cannot be installed as a package | Project root | Low |
+| 1 | `CamSimulator` class exceeds **1390 lines**; GUI construction, computation, animation, export, and i18n logic are all coupled | `main.py` | High |
+| 2 | `_build_gui` method is ~**300 lines**; sidebar/toolbar/chart layout all inline | `main.py:218-522` | High |
+| 3 | Static plot code is duplicated between `_plot_static` and `_on_download` | `main.py:698-782` vs `1116-1214` | Medium |
+| 4 | Follower drawing logic is still duplicated between `_animate_frame` and GIF export | `main.py:1000-1010` vs `1368-1371` | Medium |
+| 5 | Color values scattered as string literals (`'#f8fafc'`, `'#2563eb'`, etc.), not extracted as theme constants | `main.py` multiple | Medium |
+| 6 | Stdlib modules imported inside methods (`os`, `threading`, `BytesIO`, `filedialog`) | `main.py:1093-1095` etc. | Low |
 
-### 1.2 Code Quality
-
-| # | Issue | Location | Severity |
-|---|------|------|:--------:|
-| 4 | `CamSimulator` class exceeds **1000 lines**; GUI construction, computation, animation, and export logic are all coupled in one class | `main.py:56-1027` | High |
-| 5 | `_on_download` method is approximately **160 lines**; static image export and GIF generation logic are mixed, and imports (`PIL`, `os`, `BytesIO`) are done inside the method | `main.py:816-976` | High |
-| 6 | The `save_static` closure for static image export copies graphics by iterating `ax.get_lines()`, with special `BlendedGenericTransform` handling for `axvline` — fragile and unmaintainable | `main.py:840-870` | Medium |
-| 7 | Magic numbers scattered throughout: `r_0 * 0.04` (tip half-width), `r_0 * 0.08` (tip height), `r_0 * 4` (rod length), `r_0 * 3` (upper/lower limit line width), `r_0 * 0.3` (arc radius), `30` (pressure angle threshold), etc. | `main.py:735-768` | Medium |
-| 8 | `generate_random_params` uses a `while True` loop to generate random parameters; in extreme cases it may loop for a long time | `main.py:30-36` | Low |
-| 9 | Animation frame data is computed once in `_animate_frame` and once in GIF export; follower drawing logic is completely duplicated | `main.py:734-744` vs `main.py:929-934` | Medium |
-
-### 1.3 Functional Defects
+### 1.2 Robustness
 
 | # | Issue | Location | Severity |
 |---|------|------|:--------:|
-| 10 | Animation cannot be replayed after finishing; must click "Start Simulation" to recompute | `main.py:690-699` | Medium |
-| 11 | UI completely freezes during GIF export (synchronous sequential rendering of 360 frames) with no progress feedback | `main.py:915-973` | High |
-| 12 | Download filenames are hardcoded in Chinese (`位移曲线.png`, `凸轮廓形.png`), which may cause garbled text on non-Chinese systems | `main.py:874-880` | Medium |
-| 13 | Static curves (displacement/velocity/acceleration) do not display the currently selected motion law name | `main.py:480-518` | Low |
-| 14 | Pressure angle threshold of 30° is hardcoded; different applications (e.g., high-speed cams) may require different thresholds | `main.py:436` | Low |
-| 15 | `validate_params` requires four angles to be integers, but `_read_params` first converts to `float` then validates integrality; floating-point precision may cause false negatives | `main.py:361-393` / `cam_mechanics.py:469` | Medium |
+| 7 | GIF export thread reads `sim_data` without locking; mid-export re-simulation may cause data inconsistency | `main.py:1332` | Medium |
+| 8 | `_export_excel` `wb.save()` has no try/except; crashes on disk full or invalid path | `main.py:1280` | Medium |
+| 9 | `fig.savefig()` calls in `_on_download` have no error handling | `main.py:1116-1214` | Medium |
+| 10 | Keyboard shortcut `R` is globally bound; cannot type 'r' in Entry fields | `main.py:145` | Medium |
+| 11 | Status bar warning overwrite: pressure angle and stroke warnings both trigger but only the latter is visible | `main.py:666-672` | Medium |
+| 12 | `_on_close` does not wait for GIF export thread; may interrupt export | `main.py:1488-1491` | Low |
+| 13 | `generate_random_params` has no iteration safety limit | `main.py:80-86` | Low |
 
-### 1.4 User Experience
-
-| # | Issue | Location | Severity |
-|---|------|------|:--------:|
-| 16 | Parameter inputs have no default values; all input fields are empty on first launch | `main.py:129-161` | Medium |
-| 17 | No parameter preset/template feature; common cam configurations cannot be saved and reused | — | Medium |
-| 18 | Sidebar scrolling only supports Windows `MouseWheel` events; macOS/Linux trackpads and scroll wheels are unresponsive | `main.py:109-110` | Medium |
-| 19 | Chart layout does not adapt on window resize (`Figure` size is fixed) | `main.py:306` | Low |
-| 20 | Error/warning messages are only displayed as red text in the status bar; no popup or more prominent notification | `main.py:296-298` | Low |
-| 21 | No keyboard shortcuts (e.g., Enter to start simulation, Space to pause/resume) | — | Low |
-
-### 1.5 Cross-platform Compatibility
+### 1.3 Computation Engine
 
 | # | Issue | Location | Severity |
 |---|------|------|:--------:|
-| 22 | Fonts hardcoded to `SimHei` / `Microsoft YaHei` (Windows Chinese fonts); macOS/Linux do not have these by default | `main.py:24` | High |
-| 23 | `root.state('zoomed')` maximization only works reliably on Windows; macOS requires `attributes('-fullscreen', True)` | `main.py:63` | Medium |
-| 24 | Mouse scroll wheel event `event.delta / 120` follows Windows conventions; Linux/macOS values differ | `main.py:335` | Medium |
+| 14 | `compute_rise`/`compute_return` divide by zero when `delta_0=0` or `omega=0`; no internal guards | `cam_mechanics.py` | Medium |
+| 15 | `compute_cam_profile` produces NaN from `sqrt` when `e > r_0`; no protective check | `cam_mechanics.py:252` | Medium |
+| 16 | `compute_pressure_angle` divides by zero when `s_0 + s = 0` (floating-point `e ≈ r_0`) | `cam_mechanics.py:286` | Medium |
+| 17 | Constant accel/decel law (law 2) midpoint misaligns with discrete grid when `delta_0` is odd | `cam_mechanics.py:37-55` | Low |
+| 18 | `N_POINTS = 360` hardcoded; resolution not adjustable | `cam_mechanics.py:8` | Low |
+| 19 | Pressure angle arc drawing threshold `0.5°` hardcoded | `cam_mechanics.py:425` | Low |
 
-### 1.6 Testing and Engineering
+### 1.4 Internationalization
 
 | # | Issue | Location | Severity |
 |---|------|------|:--------:|
-| 25 | No test cases at all; the pure function logic in `cam_mechanics.py` is fully testable but not covered | — | High |
-| 26 | No CI/CD configuration | — | Medium |
-| 27 | No `LICENSE` file (README states MIT but the actual file is missing) | — | Medium |
-| 28 | No IDE configuration exclusions in `.gitignore` (`.vscode/`, `.idea/`, etc.) | `.gitignore` | Low |
+| 20 | Static plot titles use Chinese parentheses `（）`; should use `()` in English/Japanese | `main.py:720` | Low |
+| 21 | Excel sheet name "CamForge" hardcoded, not i18n | `main.py:1250` | Low |
+| 22 | openpyxl missing error message hardcoded in English | `main.py:1237` | Low |
+| 23 | Motion law combobox Chinese "规律" suffix inconsistent (laws 1/2 omit, 3/4/5 include) | `i18n.py:law.combo.*` | Low |
+
+### 1.5 Testing and Engineering
+
+| # | Issue | Location | Severity |
+|---|------|------|:--------:|
+| 24 | No i18n tests (key completeness, fallback behavior) | `tests/` | Medium |
+| 25 | No pressure angle rise/return phase tests | `tests/` | Medium |
+| 26 | No cam profile tests with `sn=-1`/`pz=-1` (rotation/offset direction) | `tests/` | Medium |
+| 27 | No GUI integration tests | `tests/` | Low |
+| 28 | No `pyproject.toml`, no `conftest.py`, no `pytest-cov` | Project root | Medium |
+| 29 | `requirements.txt` has no upper bounds; numpy 2.x may break compatibility | `requirements.txt` | Medium |
+| 30 | No type annotations; static checking not possible | All files | Low |
 
 ---
 
 ## II. Optimization Directions
 
-### Phase 1 — Fixes and Hardening (v0.2)
-
-Goal: Resolve critical issues affecting functional correctness and cross-platform usability.
+### Phase 1 — Fixes and Hardening (v0.2) ✅ Complete
 
 - [x] **P1-1** Complete `requirements.txt`, add `Pillow` dependency
 - [x] **P1-2** Fix cross-platform fonts: detect available Chinese fonts at runtime, auto-fallback
@@ -81,11 +76,7 @@ Goal: Resolve critical issues affecting functional correctness and cross-platfor
 - [x] **P1-5** Fix floating-point validation issue: convert angles to `int` in `_read_params` before passing to `validate_params`
 - [x] **P1-6** Add `LICENSE` file (MIT)
 - [x] **P1-7** Improve `.gitignore` (IDE directories, virtual environments, build artifacts, etc.)
-- [x] **P1-8** Add unit tests for `cam_mechanics.py` (pytest, 59 tests all passing):
-  - Boundary values and continuity for five motion laws
-  - Cam profile closure (first and last coordinates match)
-  - Pressure angle computation correctness
-  - Parameter validation covering all branches
+- [x] **P1-8** Add unit tests for `cam_mechanics.py` (pytest, 59 tests all passing)
 
 ### Phase 2 — Refactoring and Performance (v0.3)
 
@@ -98,22 +89,18 @@ Goal: Improve code structure, enhance animation performance and export experienc
   ├── toolbar.py      # Toolbar buttons and controls
   ├── plots.py        # Static chart plotting
   ├── animation.py    # Animation control and frame rendering
-  ├── export.py       # Image/GIF export
+  ├── export.py       # Image/GIF/Excel export
   └── app.py          # Main window assembly and launch
   ```
-- [x] **P2-2** Extract magic numbers into named constants or configuration items:
-  ```python
-  TIP_WIDTH_RATIO = 0.04
-  TIP_HEIGHT_RATIO = 0.08
-  ROD_LENGTH_RATIO = 4.0
-  ARC_RADIUS_RATIO = 0.3
-  MAX_PRESSURE_ANGLE = 30.0
-  ```
+- [x] **P2-2** Extract magic numbers into named constants or configuration items
 - [x] **P2-3** Move GIF export to background thread + progress bar to avoid UI freezing
 - [x] **P2-4** Eliminate duplicated follower drawing code between animation and GIF export; extract into shared function
-- [x] **P2-5** Change static image export to direct recomputation and plotting (instead of copying `ax.get_lines()`), eliminating the `BlendedGenericTransform` hack
+- [x] **P2-5** Change static image export to direct recomputation and plotting, eliminating the `BlendedGenericTransform` hack
 - [x] **P2-6** Support "Replay" button after animation finishes, without recomputation
-- [x] **P2-7** Use English filenames for downloads (displacement.png / velocity.png / cam_profile.png / cam_animation.gif)
+- [x] **P2-7** Download filenames generated via i18n keys, switching with language
+- [ ] **P2-8** Extract color constants into a theme dictionary, preparing for dark mode
+- [ ] **P2-9** Move stdlib imports from method bodies to module top level
+- [ ] **P2-10** Eliminate static plot code duplication between `_plot_static` and `_on_download`
 
 ### Phase 3 — Feature Enhancement (v0.4)
 
@@ -128,6 +115,8 @@ Goal: Expand simulation capabilities, improve engineering practicality.
 - [x] **P3-7** Keyboard shortcuts: Enter to start, Space to pause/resume/replay, R for random
 - [x] **P3-8** Display current motion law name in static curve chart titles
 - [ ] **P3-9** Configurable pressure angle threshold (sidebar input field or dropdown)
+- [ ] **P3-10** Defensive programming in computation engine: add parameter validity assertions inside `compute_*` functions
+- [ ] **P3-11** Make `N_POINTS` configurable, supporting higher or lower discrete resolution
 
 ### Phase 4 — Experience Upgrade (v0.5)
 
@@ -138,9 +127,13 @@ Goal: Polish interaction details, improve visual and operational experience.
 - [ ] **P4-3** Animation frame progress bar: display current frame/total frames, support drag-to-jump
 - [ ] **P4-4** Window resize adaptation: listen to `Configure` events to dynamically adjust Figure size
 - [ ] **P4-5** Real-time parameter input validation: show range errors as you type, rather than only reporting errors after clicking "Start"
-- [ ] **P4-6** Multi-language support (i18n): Chinese/English interface switching
+- [x] **P4-6** Multi-language support (i18n): Chinese/English/Japanese runtime switching
 - [ ] **P4-7** Extended export formats: support SVG vector graphics, CSV data table export
 - [ ] **P4-8** Cam 3D visualization preview (optional, based on matplotlib 3D or PyOpenGL)
+- [ ] **P4-9** Keyboard shortcut focus awareness: suppress single-key shortcuts when Entry has focus
+- [ ] **P4-10** Accumulate multiple status bar warnings instead of overwriting
+- [ ] **P4-11** "Clear Params" should restore defaults instead of leaving blanks
+- [ ] **P4-12** Fix i18n details: Chinese→English parentheses, Excel sheet name/error message i18n
 
 ### Phase 5 — Engineering and Release (v1.0)
 
@@ -153,6 +146,9 @@ Goal: Reach releasable quality, support convenient installation and distribution
 - [ ] **P5-5** Online documentation (GitHub Pages): user guide, algorithm principles, API documentation
 - [ ] **P5-6** Maintain changelog (CHANGELOG.md)
 - [ ] **P5-7** Code coverage targets: `cam_mechanics.py` >= 90%, overall >= 70%
+- [ ] **P5-8** Add type annotations, configure mypy/pyright static checking
+- [ ] **P5-9** Add upper bounds to `requirements.txt` to prevent breaking upgrades (e.g., numpy 2.x)
+- [ ] **P5-10** Expand tests: i18n key completeness, pressure angle rise/return, rotation/offset direction profiles
 
 ---
 
@@ -160,17 +156,17 @@ Goal: Reach releasable quality, support convenient installation and distribution
 
 ```
 Severity distribution:
-  High  ████████░░  6 items  (Missing dependency, oversized class, UI freeze, no tests, cross-platform fonts, export coupling)
-  Medium  ██████████████░░  11 items  (Magic numbers, duplicated logic, filename garbling, floating-point validation, etc.)
-  Low  ████████░░  7 items  (Hardcoded threshold, no shortcuts, no defaults, etc.)
+  High  ████░░░░░░  2 items  (monolithic class, long method)
+  Medium  ████████████████░░  16 items  (code duplication, thread safety, error handling, test gaps, etc.)
+  Low  ██████████░░░░░░  10 items  (i18n details, hardcoded thresholds, type annotations, etc.)
 ```
 
 ---
 
 ## IV. Priority Principles
 
-1. **Correctness First** — Issues affecting functional results (missing dependencies, floating-point validation) take priority over experience issues
-2. **Cross-platform First** — Font and event compatibility directly determines whether macOS/Linux users can use the application normally
-3. **Testability First** — Adding tests for pure computation modules is the safety net for all subsequent refactoring
-4. **Incremental Refactoring** — When splitting large classes, preserve functionality; each step should be independently verifiable
-5. **User Perception First** — Issues that directly impact user experience (UI freezing, no progress feedback) should be resolved as early as possible
+1. **Correctness First** — Issues affecting functional results (division by zero, thread safety, error handling) take priority over experience issues
+2. **Testability First** — Adding tests for pure computation modules is the safety net for all subsequent refactoring
+3. **Incremental Refactoring** — When splitting large classes, preserve functionality; each step should be independently verifiable
+4. **User Perception First** — Issues that directly impact user experience (shortcut conflicts, warning overwrites) should be resolved as early as possible
+5. **i18n Consistency** — All user-visible strings must go through i18n, including error messages and formatting details
