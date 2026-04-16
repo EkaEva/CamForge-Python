@@ -227,6 +227,9 @@ TRANSLATIONS = {
     "status.gif_exporting": {
         "zh": "GIF 正在导出中...", "en": "GIF exporting...", "ja": "GIFエクスポート中...",
     },
+    "status.gif_composing": {
+        "zh": "正在合成GIF...", "en": "Composing GIF...", "ja": "GIF合成中...",
+    },
     "status.gif_failed": {
         "zh": "GIF导出失败: {error}", "en": "GIF export failed: {error}", "ja": "GIFエクスポート失敗: {error}",
     },

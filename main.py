@@ -1362,6 +1362,9 @@ class CamSimulator:
                     ))
 
                 plt.close(fig_gif)
+                # 提示正在合成GIF
+                self.root.after(0, lambda: progress_label.configure(
+                    text=t("status.gif_composing", lang)))
                 if first_frame is not None:
                     first_frame.save(filepath, save_all=True, append_images=append_frames,
                                      duration=GIF_DURATION_MS, loop=0)
