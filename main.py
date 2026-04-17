@@ -35,6 +35,7 @@ from cam_mechanics import (
     compute_roller_profile, compute_curvature_radius,
     DEG2RAD, __version__,
 )
+import cam_mechanics
 
 from i18n import t, SUPPORTED_LANGS, DEFAULT_LANG, FONT_MAP, LANG_DISPLAY_NAMES, get_motion_law_list, get_rotation_list, get_offset_dir_list, get_lang_display_list, detect_mpl_fonts
 
@@ -176,7 +177,7 @@ class CamSimulator:
         """Apply current theme to all widgets"""
         theme = THEME_DARK if self._dark_mode else THEME
 
-        # Update sidebar background
+        # Update sidebar & toolbar frame backgrounds
         self._sb_canvas.config(bg=theme['sidebar_bg'])
         # Recursively update all widget colors
         self._update_widget_colors(self.root, theme)
@@ -209,12 +210,26 @@ class CamSimulator:
                 'legend.edgecolor': '#d0d0d0',
             })
 
+        # Apply matplotlib style to figure and all axes
+        self.fig.set_facecolor(plt.rcParams['figure.facecolor'])
+        for ax in [self.ax_s, self.ax_v, self.ax_a,
+                   self.ax_alpha, self.ax_profile, self.ax_rho,
+                   self.ax_anim, self.ax_info]:
+            ax.set_facecolor(plt.rcParams['axes.facecolor'])
+            ax.tick_params(colors=plt.rcParams['xtick.color'])
+            for spine in ax.spines.values():
+                spine.set_edgecolor(plt.rcParams['axes.edgecolor'])
+            ax.xaxis.label.set_color(plt.rcParams['axes.labelcolor'])
+            ax.yaxis.label.set_color(plt.rcParams['axes.labelcolor'])
+            ax.title.set_color(plt.rcParams['text.color'])
+
         # Redraw if simulation data exists
         if self.sim_data is not None:
             self._plot_static()
             if self._anim_artists is not None:
-                self.ax_anim.set_facecolor(plt.rcParams['axes.facecolor'])
                 self.canvas.draw_idle()
+        else:
+            self.canvas.draw_idle()
 
     def _update_widget_colors(self, widget, theme):
         """Recursively update widget background/foreground colors"""
@@ -222,15 +237,20 @@ class CamSimulator:
             wclass = widget.winfo_class()
             if wclass in ('Frame', 'Labelframe'):
                 bg = widget.cget('bg')
-                if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg'],
-                          THEME['toolbar_bg'], THEME_DARK['toolbar_bg']):
-                    new_bg = theme['sidebar_bg'] if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']) else theme['toolbar_bg']
-                    widget.config(bg=new_bg)
+                # Map known background colors to their theme equivalents
+                light_bgs = {THEME['sidebar_bg'], THEME['toolbar_bg'], THEME['status_bg']}
+                dark_bgs = {THEME_DARK['sidebar_bg'], THEME_DARK['toolbar_bg'], THEME_DARK['status_bg']}
+                if bg in light_bgs or bg in dark_bgs:
+                    if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']):
+                        widget.config(bg=theme['sidebar_bg'])
+                    else:
+                        widget.config(bg=theme['toolbar_bg'])
             elif wclass == 'Label':
                 bg = widget.cget('bg')
                 if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']):
                     widget.config(bg=theme['sidebar_bg'])
-                elif bg in (THEME['toolbar_bg'], THEME_DARK['toolbar_bg']):
+                elif bg in (THEME['toolbar_bg'], THEME_DARK['toolbar_bg'],
+                            THEME['status_bg'], THEME_DARK['status_bg']):
                     widget.config(bg=theme['toolbar_bg'])
                 fg = widget.cget('fg')
                 if fg in (THEME['group_fg'], THEME_DARK['group_fg']):
@@ -247,6 +267,27 @@ class CamSimulator:
                     widget.config(bg=theme['sidebar_bg'])
                 elif bg in (THEME['toolbar_bg'], THEME_DARK['toolbar_bg']):
                     widget.config(bg=theme['toolbar_bg'])
+                fg = widget.cget('fg')
+                if self._dark_mode:
+                    widget.config(fg='#e2e8f0', selectcolor='#334155',
+                                  activebackground=theme['toolbar_bg'], activeforeground='#e2e8f0')
+                else:
+                    widget.config(fg='black', selectcolor='white',
+                                  activebackground=theme['toolbar_bg'], activeforeground='black')
+            elif wclass == 'Entry':
+                if self._dark_mode:
+                    widget.config(bg='#1e293b', fg='#e2e8f0', insertbackground='#e2e8f0',
+                                  selectbackground='#334155')
+                else:
+                    widget.config(bg='white', fg='black', insertbackground='black',
+                                  selectbackground='#b4d5fe')
+            elif wclass == 'Scale':
+                if self._dark_mode:
+                    widget.config(bg=theme['toolbar_bg'], fg='#e2e8f0',
+                                  troughcolor='#334155', highlightbackground=theme['toolbar_bg'])
+                else:
+                    widget.config(bg=theme['toolbar_bg'], fg='black',
+                                  troughcolor='#d0d0d0', highlightbackground=theme['toolbar_bg'])
             elif wclass == 'Button':
                 # Re-apply button colors from theme
                 pass  # Buttons keep their styled colors
@@ -415,57 +456,62 @@ class CamSimulator:
         self.popup_pz.current(0)
         self.popup_pz.pack(fill=tk.X, padx=16, pady=(0, 8))
 
-        # ---- 动态显示组 ----
+        # ---- 动态显示组（两列布局） ----
         self._sidebar_group(sidebar, t("sidebar.group.display", self.lang), i18n_key="sidebar.group.display")
 
         cb_kw = {'font': (self._tk_font_family, 10), 'anchor': 'w', 'bg': THEME['sidebar_bg']}
 
+        display_grid = tk.Frame(sidebar, bg=THEME['sidebar_bg'])
+        display_grid.pack(fill=tk.X, padx=16, pady=2)
+        display_grid.columnconfigure(0, weight=1)
+        display_grid.columnconfigure(1, weight=1)
+
         self.show_tangent = tk.BooleanVar(value=False)
-        cb_tangent = tk.Checkbutton(sidebar, text=t("sidebar.cb.tangent", self.lang), variable=self.show_tangent,
+        cb_tangent = tk.Checkbutton(display_grid, text=t("sidebar.cb.tangent", self.lang), variable=self.show_tangent,
                        **cb_kw)
-        cb_tangent.pack(fill=tk.X, padx=16, pady=1)
+        cb_tangent.grid(row=0, column=0, sticky='w', pady=1)
         self._reg("sidebar.cb.tangent", cb_tangent, font_size=10)
 
         self.show_normal = tk.BooleanVar(value=False)
-        cb_normal = tk.Checkbutton(sidebar, text=t("sidebar.cb.normal", self.lang), variable=self.show_normal,
+        cb_normal = tk.Checkbutton(display_grid, text=t("sidebar.cb.normal", self.lang), variable=self.show_normal,
                        **cb_kw)
-        cb_normal.pack(fill=tk.X, padx=16, pady=1)
+        cb_normal.grid(row=0, column=1, sticky='w', pady=1)
         self._reg("sidebar.cb.normal", cb_normal, font_size=10)
 
         self.show_arc = tk.BooleanVar(value=False)
-        cb_arc = tk.Checkbutton(sidebar, text=t("sidebar.cb.arc", self.lang), variable=self.show_arc,
+        cb_arc = tk.Checkbutton(display_grid, text=t("sidebar.cb.arc", self.lang), variable=self.show_arc,
                        command=self._on_arc_toggle, **cb_kw)
-        cb_arc.pack(fill=tk.X, padx=16, pady=1)
+        cb_arc.grid(row=1, column=0, sticky='w', pady=1)
         self._reg("sidebar.cb.arc", cb_arc, font_size=10)
 
         self.show_boundaries = tk.BooleanVar(value=False)
-        cb_boundaries = tk.Checkbutton(sidebar, text=t("sidebar.cb.boundaries", self.lang), variable=self.show_boundaries,
+        cb_boundaries = tk.Checkbutton(display_grid, text=t("sidebar.cb.boundaries", self.lang), variable=self.show_boundaries,
                        **cb_kw)
-        cb_boundaries.pack(fill=tk.X, padx=16, pady=1)
+        cb_boundaries.grid(row=1, column=1, sticky='w', pady=1)
         self._reg("sidebar.cb.boundaries", cb_boundaries, font_size=10)
 
         self.show_base_circle = tk.BooleanVar(value=False)
-        cb_base_circle = tk.Checkbutton(sidebar, text=t("sidebar.cb.base_circle", self.lang), variable=self.show_base_circle,
+        cb_base_circle = tk.Checkbutton(display_grid, text=t("sidebar.cb.base_circle", self.lang), variable=self.show_base_circle,
                        **cb_kw)
-        cb_base_circle.pack(fill=tk.X, padx=16, pady=1)
+        cb_base_circle.grid(row=2, column=0, sticky='w', pady=1)
         self._reg("sidebar.cb.base_circle", cb_base_circle, font_size=10)
 
         self.show_offset_circle = tk.BooleanVar(value=False)
-        cb_offset_circle = tk.Checkbutton(sidebar, text=t("sidebar.cb.offset_circle", self.lang), variable=self.show_offset_circle,
+        cb_offset_circle = tk.Checkbutton(display_grid, text=t("sidebar.cb.offset_circle", self.lang), variable=self.show_offset_circle,
                        **cb_kw)
-        cb_offset_circle.pack(fill=tk.X, padx=16, pady=1)
+        cb_offset_circle.grid(row=2, column=1, sticky='w', pady=1)
         self._reg("sidebar.cb.offset_circle", cb_offset_circle, font_size=10)
 
         self.show_limits = tk.BooleanVar(value=False)
-        cb_limits = tk.Checkbutton(sidebar, text=t("sidebar.cb.limits", self.lang), variable=self.show_limits,
+        cb_limits = tk.Checkbutton(display_grid, text=t("sidebar.cb.limits", self.lang), variable=self.show_limits,
                        **cb_kw)
-        cb_limits.pack(fill=tk.X, padx=16, pady=1)
+        cb_limits.grid(row=3, column=0, sticky='w', pady=1)
         self._reg("sidebar.cb.limits", cb_limits, font_size=10)
 
         self.show_grid = tk.BooleanVar(value=False)
-        cb_grid = tk.Checkbutton(sidebar, text=t("sidebar.cb.grid", self.lang), variable=self.show_grid,
+        cb_grid = tk.Checkbutton(display_grid, text=t("sidebar.cb.grid", self.lang), variable=self.show_grid,
                        command=self._on_grid_toggle, **cb_kw)
-        cb_grid.pack(fill=tk.X, padx=16, pady=1)
+        cb_grid.grid(row=3, column=1, sticky='w', pady=1)
         self._reg("sidebar.cb.grid", cb_grid, font_size=10)
 
     def _build_toolbar(self, main_area):
@@ -548,46 +594,52 @@ class CamSimulator:
         self.btn_load_preset.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.load_preset", self.btn_load_preset, font_size=10)
 
-        # 下载勾选项
+        # 下载勾选项 — 分两行排列避免溢出
         dl_cb_kw = {'font': (self._tk_font_family, 9), 'bg': THEME['toolbar_bg'], 'anchor': 'w'}
+        dl_row1 = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
+        dl_row1.pack(side=tk.LEFT, fill=tk.Y)
+        dl_row2 = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
+        dl_row2.pack(side=tk.LEFT, fill=tk.Y)
+
         self.dl_s = tk.BooleanVar(value=True)
-        cb_dl_s = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_s", self.lang), variable=self.dl_s, **dl_cb_kw)
+        cb_dl_s = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_s", self.lang), variable=self.dl_s, **dl_cb_kw)
         cb_dl_s.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_s", cb_dl_s, font_size=9)
         self.dl_v = tk.BooleanVar(value=True)
-        cb_dl_v = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_v", self.lang), variable=self.dl_v, **dl_cb_kw)
+        cb_dl_v = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_v", self.lang), variable=self.dl_v, **dl_cb_kw)
         cb_dl_v.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_v", cb_dl_v, font_size=9)
         self.dl_a = tk.BooleanVar(value=True)
-        cb_dl_a = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_a", self.lang), variable=self.dl_a, **dl_cb_kw)
+        cb_dl_a = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_a", self.lang), variable=self.dl_a, **dl_cb_kw)
         cb_dl_a.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_a", cb_dl_a, font_size=9)
         self.dl_profile = tk.BooleanVar(value=True)
-        cb_dl_profile = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_profile", self.lang), variable=self.dl_profile, **dl_cb_kw)
+        cb_dl_profile = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_profile", self.lang), variable=self.dl_profile, **dl_cb_kw)
         cb_dl_profile.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_profile", cb_dl_profile, font_size=9)
         self.dl_anim = tk.BooleanVar(value=True)
-        cb_dl_anim = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_anim", self.lang), variable=self.dl_anim, **dl_cb_kw)
+        cb_dl_anim = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_anim", self.lang), variable=self.dl_anim, **dl_cb_kw)
         cb_dl_anim.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_anim", cb_dl_anim, font_size=9)
+
         self.dl_excel = tk.BooleanVar(value=True)
-        cb_dl_excel = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_excel", self.lang), variable=self.dl_excel, **dl_cb_kw)
+        cb_dl_excel = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_excel", self.lang), variable=self.dl_excel, **dl_cb_kw)
         cb_dl_excel.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_excel", cb_dl_excel, font_size=9)
         self.dl_alpha = tk.BooleanVar(value=True)
-        cb_dl_alpha = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_alpha", self.lang), variable=self.dl_alpha, **dl_cb_kw)
+        cb_dl_alpha = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_alpha", self.lang), variable=self.dl_alpha, **dl_cb_kw)
         cb_dl_alpha.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_alpha", cb_dl_alpha, font_size=9)
         self.dl_curvature = tk.BooleanVar(value=False)
-        cb_dl_curvature = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_curvature", self.lang), variable=self.dl_curvature, **dl_cb_kw)
+        cb_dl_curvature = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_curvature", self.lang), variable=self.dl_curvature, **dl_cb_kw)
         cb_dl_curvature.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_curvature", cb_dl_curvature, font_size=9)
         self.dl_svg = tk.BooleanVar(value=False)
-        cb_dl_svg = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_svg", self.lang), variable=self.dl_svg, **dl_cb_kw)
+        cb_dl_svg = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_svg", self.lang), variable=self.dl_svg, **dl_cb_kw)
         cb_dl_svg.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_svg", cb_dl_svg, font_size=9)
         self.dl_csv = tk.BooleanVar(value=False)
-        cb_dl_csv = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_csv", self.lang), variable=self.dl_csv, **dl_cb_kw)
+        cb_dl_csv = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_csv", self.lang), variable=self.dl_csv, **dl_cb_kw)
         cb_dl_csv.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_csv", cb_dl_csv, font_size=9)
 
