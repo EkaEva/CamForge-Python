@@ -6,7 +6,6 @@ CamForge - 尖顶凸轮仿真
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
-import random as _random
 import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -15,6 +14,7 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import os
 import threading
+import json
 from io import BytesIO
 from tkinter import filedialog
 
@@ -32,7 +32,8 @@ from cam_mechanics import (
     compute_full_motion, compute_cam_profile, compute_pressure_angle,
     compute_rotated_cam, compute_anim_frame_data,
     compute_pressure_angle_arc, validate_params,
-    DEG2RAD,
+    compute_roller_profile, compute_curvature_radius,
+    DEG2RAD, __version__,
 )
 
 from i18n import t, SUPPORTED_LANGS, DEFAULT_LANG, FONT_MAP, LANG_DISPLAY_NAMES, get_motion_law_list, get_rotation_list, get_offset_dir_list, get_lang_display_list, detect_mpl_fonts
@@ -43,107 +44,14 @@ import platform
 plt.rcParams['font.sans-serif'] = detect_mpl_fonts(DEFAULT_LANG)
 plt.rcParams['axes.unicode_minus'] = False
 
-# ---------------------------------------------------------------------------
-# 渲染常量
-# ---------------------------------------------------------------------------
-TIP_WIDTH_RATIO = 0.04       # 推杆尖顶半宽与基圆半径之比
-TIP_HEIGHT_RATIO = 0.08      # 推杆尖顶高度与基圆半径之比
-ROD_LENGTH_RATIO = 4.0       # 推杆杆身长度与基圆半径之比
-LIMIT_LINE_RATIO = 3.0       # 推杆上下限线半宽与基圆半径之比
-ARC_RADIUS_RATIO = 0.3       # 压力角弧线半径与基圆半径之比
-SUPPORT_SIZE_RATIO = 0.12     # 固定铰支座尺寸与基圆半径之比
-MAX_PRESSURE_ANGLE = 30.0    # 压力角推荐阈值（度）
-ANIM_FRAME_SKIP = 2          # 动画每N帧刷新一次画布
-ANIM_MIN_DELAY_MS = 20       # 动画最小帧间隔（毫秒）
-ANIM_BASE_DELAY_MS = 200     # 动画基准帧间隔（毫秒，速度=1时）
-GIF_DURATION_MS = 30         # GIF 每帧时长（毫秒）
-GIF_DPI = 150                # GIF 导出 DPI
-STATIC_DPI = 600             # 静态图导出 DPI
-
-# ---------------------------------------------------------------------------
-# 主题颜色
-# ---------------------------------------------------------------------------
-THEME = {
-    'sidebar_bg':       '#f8fafc',
-    'sidebar_border':   '#e2e8f0',
-    'toolbar_bg':       '#ffffff',
-    'status_bg':        '#ffffff',
-    'status_fg':        '#ef4444',
-    'info_text':        '#222',
-    'support_fill':     '#555555',
-    'group_fg':         '#64748b',
-    'separator':        '#e2e8f0',
-    'btn_start':        '#10b981',
-    'btn_start_active': '#059669',
-    'btn_pause':        '#f59e0b',
-    'btn_pause_active': '#d97706',
-    'btn_clear':        '#64748b',
-    'btn_clear_active': '#475569',
-    'btn_clear2':       '#94a3b8',
-    'btn_clear2_active':'#64748b',
-    'btn_random':       '#8b5cf6',
-    'btn_random_active':'#7c3aed',
-    'btn_download':     '#2563eb',
-    'btn_download_active':'#1d4ed8',
-    'btn_fg':           'white',
-    'logo_fg':          '#2563eb',
-}
-
-
-def draw_fixed_support(ax, r_0):
-    """在凸轮旋转中心 (0,0) 绘制固定铰支座符号（小圆圈 + 三角形 + 底座 + 斜线）"""
-    sz = r_0 * SUPPORT_SIZE_RATIO
-    # 三角形顶点：顶点在原点下方，底边在更下方
-    tri_top_y = -sz * 0.15
-    tri_bot_y = -sz * 1.35
-    tri_x = [0, -sz, sz, 0]
-    tri_y = [tri_top_y, tri_bot_y, tri_bot_y, tri_top_y]
-    ax.fill(tri_x, tri_y, color=THEME['support_fill'], zorder=5)
-    ax.plot(tri_x, tri_y, 'k-', linewidth=1, zorder=5)
-    # 铰链小圆圈
-    circle_r = sz * 0.2
-    circle = plt.Circle((0, 0), circle_r, fill=False, edgecolor='k',
-                         linewidth=1, zorder=6)
-    ax.add_patch(circle)
-    # 底座横线
-    base_y = tri_bot_y
-    hw = sz * 1.3
-    ax.plot([-hw, hw], [base_y, base_y], 'k-', linewidth=1.5, zorder=5)
-    # 斜线阴影（5条）
-    n_hatch = 5
-    hatch_len = sz * 0.5
-    for j in range(n_hatch):
-        x0 = -hw + (2 * hw) * (j + 0.5) / n_hatch
-        ax.plot([x0, x0 - hatch_len * 0.6], [base_y, base_y - hatch_len],
-                'k-', linewidth=0.8, zorder=5)
-
-
-def generate_random_params():
-    """生成随机凸轮参数（返回实际符号值 sn=±1, pz=±1）"""
-    while True:
-        af = _random.randint(1, 33) * 10
-        bf = _random.randint(1, 34 - af // 10) * 10
-        cf = _random.randint(1, 35 - af // 10 - bf // 10) * 10
-        df = 360 - af - bf - cf
-        if af >= 40 and bf >= 40 and cf >= 40 and df >= 40:
-            break
-
-    ff = _random.randint(10, 100)   # 基圆半径（最小10，避免极端值）
-    gf = _random.randint(0, ff - 1)  # 偏距（允许0=对心）
-    ef = _random.randint(1, ff)   # 推杆最大位移
-    hf = _random.randint(1, 100)   # 角速度
-    tc_law = _random.randint(1, 5)
-    hc_law = _random.randint(1, 5)
-    sn = 1 if _random.randint(1, 2) == 1 else -1
-    pz = 1 if _random.randint(1, 2) == 1 else -1
-
-    return {
-        'delta_0': af, 'delta_01': bf,
-        'delta_ret': cf, 'delta_02': df,
-        'h': ef, 'r_0': ff, 'e': gf, 'omega': hf,
-        'tc_law': tc_law, 'hc_law': hc_law,
-        'sn': sn, 'pz': pz,
-    }
+# 从 ui 包导入常量、绘图函数和参数模型
+from ui.constants import *
+from ui.drawing import draw_fixed_support
+from ui.params import ParameterModel, generate_random_params
+from ui.plots import (draw_displacement_curve, draw_velocity_curve,
+                      draw_acceleration_curve, draw_profile_plot,
+                      draw_pressure_angle_curve, draw_curvature_radius_curve)
+from ui.constants import THEME_DARK
 
 
 class CamSimulator:
@@ -151,12 +59,13 @@ class CamSimulator:
 
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(t("app.title", DEFAULT_LANG))
+        self.root.title(f"{t('app.title', DEFAULT_LANG)} v{__version__}")
 
         self.lang = DEFAULT_LANG
         self._tk_font_family = FONT_MAP[DEFAULT_LANG]["tk"]
         self._translatable = {}  # key -> (widget, font_size)
         self._pause_state = "paused"
+        self._dark_mode = False
 
         # 跨平台窗口最大化
         if platform.system() == 'Windows':
@@ -177,7 +86,7 @@ class CamSimulator:
 
         # 预计算缓存
         self.sim_data = None
-        self._sim_data_lock = threading.Lock()  # 保护 sim_data 的线程安全锁
+        self._sim_data_lock = threading.Lock()
         self._anim_artists = None
 
         # 窗口关闭处理
@@ -248,18 +157,110 @@ class CamSimulator:
         self.popup_hc.current(hc_idx)
         self.popup_sn.current(sn_idx)
         self.popup_pz.current(pz_idx)
-        self.root.title(t("app.title", self.lang))
+        self.root.title(f"{t('app.title', self.lang)} v{__version__}")
 
     def _update_mpl_fonts(self, lang):
         """Update matplotlib font config"""
         plt.rcParams['font.sans-serif'] = detect_mpl_fonts(lang)
         plt.rcParams['axes.unicode_minus'] = False
 
+    def _on_theme_change(self, event=None):
+        """Handle theme switch (light/dark)"""
+        is_dark = self.popup_theme.current() == 1
+        if is_dark == self._dark_mode:
+            return
+        self._dark_mode = is_dark
+        self._apply_theme()
+
+    def _apply_theme(self):
+        """Apply current theme to all widgets"""
+        theme = THEME_DARK if self._dark_mode else THEME
+
+        # Update sidebar background
+        self._sb_canvas.config(bg=theme['sidebar_bg'])
+        # Recursively update all widget colors
+        self._update_widget_colors(self.root, theme)
+
+        # Update matplotlib style
+        if self._dark_mode:
+            plt.rcParams.update({
+                'figure.facecolor': '#0f172a',
+                'axes.facecolor': '#1e293b',
+                'axes.edgecolor': '#475569',
+                'axes.labelcolor': '#e2e8f0',
+                'xtick.color': '#94a3b8',
+                'ytick.color': '#94a3b8',
+                'text.color': '#e2e8f0',
+                'grid.color': '#334155',
+                'legend.facecolor': '#1e293b',
+                'legend.edgecolor': '#334155',
+            })
+        else:
+            plt.rcParams.update({
+                'figure.facecolor': 'white',
+                'axes.facecolor': 'white',
+                'axes.edgecolor': 'black',
+                'axes.labelcolor': 'black',
+                'xtick.color': 'black',
+                'ytick.color': 'black',
+                'text.color': 'black',
+                'grid.color': '#d0d0d0',
+                'legend.facecolor': 'white',
+                'legend.edgecolor': '#d0d0d0',
+            })
+
+        # Redraw if simulation data exists
+        if self.sim_data is not None:
+            self._plot_static()
+            if self._anim_artists is not None:
+                self.ax_anim.set_facecolor(plt.rcParams['axes.facecolor'])
+                self.canvas.draw_idle()
+
+    def _update_widget_colors(self, widget, theme):
+        """Recursively update widget background/foreground colors"""
+        try:
+            wclass = widget.winfo_class()
+            if wclass in ('Frame', 'Labelframe'):
+                bg = widget.cget('bg')
+                if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg'],
+                          THEME['toolbar_bg'], THEME_DARK['toolbar_bg']):
+                    new_bg = theme['sidebar_bg'] if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']) else theme['toolbar_bg']
+                    widget.config(bg=new_bg)
+            elif wclass == 'Label':
+                bg = widget.cget('bg')
+                if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']):
+                    widget.config(bg=theme['sidebar_bg'])
+                elif bg in (THEME['toolbar_bg'], THEME_DARK['toolbar_bg']):
+                    widget.config(bg=theme['toolbar_bg'])
+                fg = widget.cget('fg')
+                if fg in (THEME['group_fg'], THEME_DARK['group_fg']):
+                    widget.config(fg=theme['group_fg'])
+                elif fg in (THEME['logo_fg'], THEME_DARK['logo_fg']):
+                    widget.config(fg=theme['logo_fg'])
+                elif fg in (THEME['status_fg'], THEME_DARK['status_fg']):
+                    widget.config(fg=theme['status_fg'])
+                elif fg in (THEME['info_text'], THEME_DARK['info_text']):
+                    widget.config(fg=theme['info_text'])
+            elif wclass == 'Checkbutton':
+                bg = widget.cget('bg')
+                if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']):
+                    widget.config(bg=theme['sidebar_bg'])
+                elif bg in (THEME['toolbar_bg'], THEME_DARK['toolbar_bg']):
+                    widget.config(bg=theme['toolbar_bg'])
+            elif wclass == 'Button':
+                # Re-apply button colors from theme
+                pass  # Buttons keep their styled colors
+        except (tk.TclError, TypeError):
+            pass
+        for child in widget.winfo_children():
+            self._update_widget_colors(child, theme)
+
     # ===================================================================
-    # GUI 构建
+    # GUI 构建（拆分为子方法）
     # ===================================================================
 
     def _build_gui(self):
+        """构建整体界面布局"""
         # ---- 整体布局：左侧边栏（可滚动） + 右侧主区域 ----
         sidebar_outer = tk.Frame(self.root, width=280, bg=THEME['sidebar_bg'],
                                  highlightbackground=THEME['sidebar_border'], highlightthickness=1)
@@ -285,7 +286,13 @@ class CamSimulator:
         main_area = tk.Frame(self.root)
         main_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # ---- 侧边栏 ----
+        # 拆分为子方法构建
+        self._build_sidebar(sidebar)
+        toolbar, status_bar = self._build_toolbar(main_area)
+        self._build_figure(main_area)
+
+    def _build_sidebar(self, sidebar):
+        """构建侧边栏内容"""
         lbl_font = (self._tk_font_family, 10)
         ent_font = (self._tk_font_family, 10)
         lbl_kw = {'font': lbl_font, 'bg': THEME['sidebar_bg'], 'anchor': 'w'}
@@ -302,51 +309,85 @@ class CamSimulator:
         self.popup_lang.pack(fill=tk.X, padx=16, pady=(0, 8))
         self.popup_lang.bind('<<ComboboxSelected>>', self._on_language_change)
 
+        # ---- 主题选择组 ----
+        self._sidebar_group(sidebar, t("sidebar.group.theme", self.lang), i18n_key="sidebar.group.theme")
+        theme_values = [t("theme.light", self.lang), t("theme.dark", self.lang)]
+        self.popup_theme = ttk.Combobox(sidebar, values=theme_values, state='readonly', width=14)
+        self.popup_theme.current(0)
+        self.popup_theme.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.popup_theme.bind('<<ComboboxSelected>>', self._on_theme_change)
+
         # ---- 运动参数组 ----
         self._sidebar_group(sidebar, t("sidebar.group.motion", self.lang), i18n_key="sidebar.group.motion")
 
         self._sidebar_item(sidebar, t("sidebar.label.delta_0", self.lang), lbl_kw, i18n_key="sidebar.label.delta_0")
         self.entry_delta_0 = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_0.insert(0, "90")
+        self.entry_delta_0.insert(0, str(DEFAULT_PARAMS['delta_0']))
         self.entry_delta_0.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_delta_0.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_0, float))
 
         self._sidebar_item(sidebar, t("sidebar.label.delta_01", self.lang), lbl_kw, i18n_key="sidebar.label.delta_01")
         self.entry_delta_01 = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_01.insert(0, "60")
+        self.entry_delta_01.insert(0, str(DEFAULT_PARAMS['delta_01']))
         self.entry_delta_01.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_delta_01.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_01, float))
 
         self._sidebar_item(sidebar, t("sidebar.label.delta_ret", self.lang), lbl_kw, i18n_key="sidebar.label.delta_ret")
         self.entry_delta_ret = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_ret.insert(0, "120")
+        self.entry_delta_ret.insert(0, str(DEFAULT_PARAMS['delta_ret']))
         self.entry_delta_ret.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_delta_ret.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_ret, float))
 
         self._sidebar_item(sidebar, t("sidebar.label.delta_02", self.lang), lbl_kw, i18n_key="sidebar.label.delta_02")
         self.entry_delta_02 = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_02.insert(0, "90")
+        self.entry_delta_02.insert(0, str(DEFAULT_PARAMS['delta_02']))
         self.entry_delta_02.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_delta_02.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_02, float))
 
         self._sidebar_item(sidebar, t("sidebar.label.h", self.lang), lbl_kw, i18n_key="sidebar.label.h")
         self.entry_h = tk.Entry(sidebar, **ent_kw)
-        self.entry_h.insert(0, "10")
+        self.entry_h.insert(0, str(DEFAULT_PARAMS['h']))
         self.entry_h.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_h.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_h, float))
 
         self._sidebar_item(sidebar, t("sidebar.label.omega", self.lang), lbl_kw, i18n_key="sidebar.label.omega")
         self.entry_omega = tk.Entry(sidebar, **ent_kw)
-        self.entry_omega.insert(0, "1")
+        self.entry_omega.insert(0, str(DEFAULT_PARAMS['omega']))
         self.entry_omega.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_omega.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_omega, float))
 
         # ---- 几何参数组 ----
         self._sidebar_group(sidebar, t("sidebar.group.geometry", self.lang), i18n_key="sidebar.group.geometry")
 
         self._sidebar_item(sidebar, t("sidebar.label.r_0", self.lang), lbl_kw, i18n_key="sidebar.label.r_0")
         self.entry_r0 = tk.Entry(sidebar, **ent_kw)
-        self.entry_r0.insert(0, "40")
+        self.entry_r0.insert(0, str(DEFAULT_PARAMS['r_0']))
         self.entry_r0.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_r0.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_r0, float))
 
         self._sidebar_item(sidebar, t("sidebar.label.e", self.lang), lbl_kw, i18n_key="sidebar.label.e")
         self.entry_e = tk.Entry(sidebar, **ent_kw)
-        self.entry_e.insert(0, "5")
+        self.entry_e.insert(0, str(DEFAULT_PARAMS['e']))
         self.entry_e.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_e.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_e, float))
+
+        self._sidebar_item(sidebar, t("sidebar.label.r_r", self.lang), lbl_kw, i18n_key="sidebar.label.r_r")
+        self.entry_rr = tk.Entry(sidebar, **ent_kw)
+        self.entry_rr.insert(0, str(DEFAULT_PARAMS['r_r']))
+        self.entry_rr.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_rr.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_rr, float))
+
+        self._sidebar_item(sidebar, t("sidebar.label.alpha_threshold", self.lang), lbl_kw, i18n_key="sidebar.label.alpha_threshold")
+        self.entry_alpha_threshold = tk.Entry(sidebar, **ent_kw)
+        self.entry_alpha_threshold.insert(0, str(DEFAULT_PARAMS['alpha_threshold']))
+        self.entry_alpha_threshold.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_alpha_threshold.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_alpha_threshold, float))
+
+        self._sidebar_item(sidebar, t("sidebar.label.n_points", self.lang), lbl_kw, i18n_key="sidebar.label.n_points")
+        self.entry_n_points = tk.Entry(sidebar, **ent_kw)
+        self.entry_n_points.insert(0, str(DEFAULT_PARAMS['n_points']))
+        self.entry_n_points.pack(fill=tk.X, padx=16, pady=(0, 8))
+        self.entry_n_points.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_n_points, int))
 
         # ---- 运动规律组 ----
         self._sidebar_group(sidebar, t("sidebar.group.law", self.lang), i18n_key="sidebar.group.law")
@@ -427,8 +468,8 @@ class CamSimulator:
         cb_grid.pack(fill=tk.X, padx=16, pady=1)
         self._reg("sidebar.cb.grid", cb_grid, font_size=10)
 
-        # ---- 右侧主区域：按钮 + 图表 ----
-        # 按钮栏
+    def _build_toolbar(self, main_area):
+        """构建工具栏与状态栏"""
         toolbar = tk.Frame(main_area, bg=THEME['toolbar_bg'], pady=6)
         toolbar.pack(fill=tk.X, padx=12, pady=(8, 0))
 
@@ -487,6 +528,26 @@ class CamSimulator:
         self.btn_download.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.download", self.btn_download, font_size=10)
 
+        self.btn_save_preset = tk.Button(toolbar, text=t("toolbar.btn.save_preset", self.lang),
+                                         command=self._on_save_preset,
+                                         bg=THEME['btn_clear'], fg=THEME['btn_fg'],
+                                         activebackground=THEME['btn_clear_active'],
+                                         relief=tk.FLAT, bd=0,
+                                         font=(self._tk_font_family, 10), width=10, height=1,
+                                         cursor='hand2')
+        self.btn_save_preset.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.save_preset", self.btn_save_preset, font_size=10)
+
+        self.btn_load_preset = tk.Button(toolbar, text=t("toolbar.btn.load_preset", self.lang),
+                                         command=self._on_load_preset,
+                                         bg=THEME['btn_clear2'], fg=THEME['btn_fg'],
+                                         activebackground=THEME['btn_clear2_active'],
+                                         relief=tk.FLAT, bd=0,
+                                         font=(self._tk_font_family, 10), width=10, height=1,
+                                         cursor='hand2')
+        self.btn_load_preset.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.load_preset", self.btn_load_preset, font_size=10)
+
         # 下载勾选项
         dl_cb_kw = {'font': (self._tk_font_family, 9), 'bg': THEME['toolbar_bg'], 'anchor': 'w'}
         self.dl_s = tk.BooleanVar(value=True)
@@ -513,6 +574,22 @@ class CamSimulator:
         cb_dl_excel = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_excel", self.lang), variable=self.dl_excel, **dl_cb_kw)
         cb_dl_excel.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_excel", cb_dl_excel, font_size=9)
+        self.dl_alpha = tk.BooleanVar(value=True)
+        cb_dl_alpha = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_alpha", self.lang), variable=self.dl_alpha, **dl_cb_kw)
+        cb_dl_alpha.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_alpha", cb_dl_alpha, font_size=9)
+        self.dl_curvature = tk.BooleanVar(value=False)
+        cb_dl_curvature = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_curvature", self.lang), variable=self.dl_curvature, **dl_cb_kw)
+        cb_dl_curvature.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_curvature", cb_dl_curvature, font_size=9)
+        self.dl_svg = tk.BooleanVar(value=False)
+        cb_dl_svg = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_svg", self.lang), variable=self.dl_svg, **dl_cb_kw)
+        cb_dl_svg.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_svg", cb_dl_svg, font_size=9)
+        self.dl_csv = tk.BooleanVar(value=False)
+        cb_dl_csv = tk.Checkbutton(toolbar, text=t("toolbar.cb.dl_csv", self.lang), variable=self.dl_csv, **dl_cb_kw)
+        cb_dl_csv.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_csv", cb_dl_csv, font_size=9)
 
         # 速度滑块（靠右，标签在左滑块在右）
         speed_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
@@ -528,6 +605,20 @@ class CamSimulator:
                                     highlightthickness=0)
         self.speed_scale.pack(side=tk.LEFT)
 
+        # 帧进度条（P7-2）
+        frame_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
+        frame_frame.pack(side=tk.RIGHT, padx=(0, 8))
+        lbl_frame = tk.Label(frame_frame, text=t("toolbar.label.frame", self.lang),
+                              font=(self._tk_font_family, 10), bg=THEME['toolbar_bg'])
+        lbl_frame.pack(side=tk.LEFT, padx=(0, 4))
+        self._reg("toolbar.label.frame", lbl_frame, font_size=10)
+        self.frame_var = tk.IntVar(value=0)
+        self.frame_scale = tk.Scale(frame_frame, from_=0, to=359, orient=tk.HORIZONTAL,
+                                     variable=self.frame_var, length=120,
+                                     font=(self._tk_font_family, 9), bg=THEME['toolbar_bg'],
+                                     highlightthickness=0, command=self._on_frame_seek)
+        self.frame_scale.pack(side=tk.LEFT)
+
         # 状态/警告行
         status_bar = tk.Frame(main_area, bg=THEME['toolbar_bg'])
         status_bar.pack(fill=tk.X, padx=12, pady=(2, 0))
@@ -542,19 +633,24 @@ class CamSimulator:
                                     font=(self._tk_font_family, 11, 'bold'), anchor='w', bg=THEME['toolbar_bg'])
         self.alpha_label.pack(side=tk.LEFT, padx=16)
 
-        # ---- 图表区 ----
+        return toolbar, status_bar
+
+    def _build_figure(self, main_area):
+        """构建图表区域"""
         self.fig = Figure(figsize=(14, 7), dpi=100)
 
-        gs = GridSpec(2, 3, figure=self.fig,
-                      left=0.05, right=0.82, top=0.95, bottom=0.08,
+        gs = GridSpec(2, 4, figure=self.fig,
+                      left=0.04, right=0.80, top=0.95, bottom=0.08,
                       wspace=0.30, hspace=0.35,
-                      width_ratios=[1, 1, 1.6])
+                      width_ratios=[1, 1, 1, 1.6])
 
         self.ax_s = self.fig.add_subplot(gs[0, 0])
         self.ax_v = self.fig.add_subplot(gs[0, 1])
+        self.ax_alpha = self.fig.add_subplot(gs[0, 2])
         self.ax_a = self.fig.add_subplot(gs[1, 0])
         self.ax_profile = self.fig.add_subplot(gs[1, 1])
-        self.ax_anim = self.fig.add_subplot(gs[:, 2])
+        self.ax_rho = self.fig.add_subplot(gs[1, 2])
+        self.ax_anim = self.fig.add_subplot(gs[:, 3])
 
         # 信息面板：紧贴动态图右侧，上下对齐
         self.ax_info = self.fig.add_axes([0.83, 0.08, 0.14, 0.87])
@@ -565,6 +661,14 @@ class CamSimulator:
         self.canvas = FigureCanvasTkAgg(self.fig, master=main_area)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
+        # 窗口缩放自适应（P7-3）
+        self.canvas.get_tk_widget().bind('<Configure>', self._on_canvas_resize)
+        self._resize_after_id = None
+
+    # ===================================================================
+    # 侧边栏辅助
+    # ===================================================================
+
     def _on_sidebar_configure(self, event):
         """侧边栏内容变化时更新滚动区域"""
         self._sb_canvas.configure(scrollregion=self._sb_canvas.bbox('all'))
@@ -573,19 +677,15 @@ class CamSimulator:
     def _on_mousewheel(self, event):
         """鼠标滚轮滚动侧边栏（跨平台）"""
         if platform.system() == 'Darwin':
-            # macOS: delta 直接为滚动量
             self._sb_canvas.yview_scroll(int(-1 * event.delta), 'units')
         elif platform.system() == 'Linux':
-            # Linux: Button-4/5 事件，delta 为 120/-120
             self._sb_canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
         else:
-            # Windows: delta 为 120 的倍数
             self._sb_canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
 
     def _bind_mousewheel(self, event):
         """绑定鼠标滚轮事件（跨平台）"""
         self._sb_canvas.bind_all('<MouseWheel>', self._on_mousewheel)
-        # Linux 使用 Button-4/5 事件
         if platform.system() == 'Linux':
             self._sb_canvas.bind_all('<Button-4>', lambda e: self._sb_canvas.yview_scroll(-1, 'units'))
             self._sb_canvas.bind_all('<Button-5>', lambda e: self._sb_canvas.yview_scroll(1, 'units'))
@@ -643,6 +743,9 @@ class CamSimulator:
                 'r_0': float(self.entry_r0.get()),
                 'e': float(self.entry_e.get()),
                 'omega': float(self.entry_omega.get()),
+                'r_r': float(self.entry_rr.get()),
+                'n_points': int(float(self.entry_n_points.get())),
+                'alpha_threshold': float(self.entry_alpha_threshold.get()),
             }
         except ValueError:
             self.status_var.set(t("status.incomplete_params", self.lang))
@@ -703,6 +806,24 @@ class CamSimulator:
         if params is None:
             return
 
+        # 设置离散点数（P6-6: N_POINTS 可配置）
+        n_points = params.get('n_points', 360)
+        if n_points < 36:
+            n_points = 36
+        elif n_points > 3600:
+            n_points = 3600
+        cam_mechanics.N_POINTS = n_points
+
+        # 压力角阈值（P6-5: 可配置）
+        alpha_threshold = params.get('alpha_threshold', MAX_PRESSURE_ANGLE)
+        if alpha_threshold <= 0:
+            alpha_threshold = MAX_PRESSURE_ANGLE
+
+        # 滚子半径
+        r_r = params.get('r_r', 0)
+        if r_r < 0:
+            r_r = 0
+
         # 计算运动
         try:
             delta_deg, s, v, a, ds_ddelta, phase_bounds = compute_full_motion(
@@ -716,6 +837,12 @@ class CamSimulator:
             x, y, s_0 = compute_cam_profile(
                 s, params['r_0'], params['e'], params['sn'], params['pz']
             )
+
+            # 计算滚子实际廓形
+            x_actual, y_actual = compute_roller_profile(x, y, r_r, params['sn'])
+
+            # 计算曲率半径
+            rho = compute_curvature_radius(x, y)
         except ValueError as exc:
             self.status_var.set(str(exc))
             return
@@ -737,10 +864,16 @@ class CamSimulator:
 
         # 警告累积显示
         warnings = []
-        if max_alpha > MAX_PRESSURE_ANGLE:
-            warnings.append(t("status.warning_max_alpha", self.lang, val=max_alpha, threshold=MAX_PRESSURE_ANGLE))
+        if max_alpha > alpha_threshold:
+            warnings.append(t("status.warning_max_alpha", self.lang, val=max_alpha, threshold=alpha_threshold))
         if params['h'] > params['r_0']:
             warnings.append(t("status.warning_h_gt_r0", self.lang, h=params['h'], r0=params['r_0']))
+        # 曲率半径干涉警告
+        rho_finite = rho[np.isfinite(rho)]
+        if len(rho_finite) > 0 and r_r > 0:
+            min_rho = np.min(rho_finite)
+            if min_rho < r_r:
+                warnings.append(t("status.warning_min_curvature", self.lang, val=min_rho, r_r=r_r))
         if warnings:
             self.status_var.set(" | ".join(warnings))
 
@@ -757,7 +890,16 @@ class CamSimulator:
                 'x_offset': x_offset, 'y_offset': y_offset,
                 'Rmax': Rmax, 'max_alpha': max_alpha,
                 'alpha_all': alpha_all,
+                'r_r': r_r, 'x_actual': x_actual, 'y_actual': y_actual,
+                'rho': rho, 'alpha_threshold': alpha_threshold,
+                'n_points': n_points,
             }
+            # 标记最小曲率半径位置
+            rho_finite = rho[np.isfinite(rho)]
+            if len(rho_finite) > 0:
+                self.sim_data['min_rho_idx'] = int(np.argmin(np.abs(rho_finite)))
+            else:
+                self.sim_data['min_rho_idx'] = 0
 
         # 绘制静态图
         self._plot_static()
@@ -766,107 +908,41 @@ class CamSimulator:
         self._start_animation()
 
     # ===================================================================
-    # 静态图表
+    # 静态图表（委托给 ui.plots 模块）
     # ===================================================================
 
-    # ---- 静态图表绘制辅助方法（_plot_static 与 _on_download 共用） ----
-
     def _draw_displacement_curve(self, ax, data, show_law_names=False):
-        """在给定 ax 上绘制位移曲线"""
-        delta_deg = data['delta_deg']
-        s = data['s']
-        pb = data['phase_bounds']
-        h = data['h']
-        ax.plot(delta_deg, s, 'r-', linewidth=1.5)
-        for b in pb[1:-1]:
-            ax.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-        if show_law_names:
-            tc_name = self._law_name(data.get('tc_law', 1))
-            hc_name = self._law_name(data.get('hc_law', 1))
-            title = rf'{t("plot.title.displacement", self.lang)} {t("plot.title.law_format", self.lang, rise=t("plot.subtitle.rise", self.lang), tc=tc_name, ret=t("plot.subtitle.return", self.lang), hc=hc_name)}'
-            ax.set_title(title, fontsize=10)
-        else:
-            ax.set_title(t("plot.title.displacement", self.lang), fontsize=11)
-        ax.set_xlabel(r'$\delta$ (°)')
-        ax.set_ylabel(r'$s$ (mm)')
-        ax.set_xlim(0, 360)
-        ax.set_ylim(0, h * 1.15)
-        ax.set_xticks(range(0, 361, 60))
-        ax.grid(True)
+        draw_displacement_curve(ax, data, self.lang, show_law_names)
 
     def _draw_velocity_curve(self, ax, data):
-        """在给定 ax 上绘制速度曲线"""
-        delta_deg = data['delta_deg']
-        v = data['v']
-        pb = data['phase_bounds']
-        ax.plot(delta_deg, v, 'r-', linewidth=1.5)
-        for b in pb[1:-1]:
-            ax.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-        ax.set_title(t("plot.title.velocity", self.lang), fontsize=11)
-        ax.set_xlabel(r'$\delta$ (°)')
-        ax.set_ylabel(r'$v$ (mm/s)')
-        ax.set_xlim(0, 360)
-        v_max = np.max(np.abs(v)) * 1.15
-        if v_max > 0:
-            ax.set_ylim(-v_max, v_max)
-        ax.set_xticks(range(0, 361, 60))
-        ax.grid(True)
+        draw_velocity_curve(ax, data, self.lang)
 
     def _draw_acceleration_curve(self, ax, data):
-        """在给定 ax 上绘制加速度曲线"""
-        delta_deg = data['delta_deg']
-        a = data['a']
-        pb = data['phase_bounds']
-        ax.plot(delta_deg, a, 'r-', linewidth=1.5)
-        for b in pb[1:-1]:
-            ax.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
-        ax.set_title(t("plot.title.acceleration", self.lang), fontsize=11)
-        ax.set_xlabel(r'$\delta$ (°)')
-        ax.set_ylabel(r'$a$ (mm/s$^2$)')
-        ax.set_xlim(0, 360)
-        a_max = np.max(np.abs(a)) * 1.15
-        if a_max > 0:
-            ax.set_ylim(-a_max, a_max)
-        ax.set_xticks(range(0, 361, 60))
-        ax.grid(True)
+        draw_acceleration_curve(ax, data, self.lang)
 
     def _draw_profile_plot(self, ax, data):
-        """在给定 ax 上绘制凸轮廓形图"""
-        x, y = data['x'], data['y']
-        r_0, Rmax = data['r_0'], data['Rmax']
-        pb = data['phase_bounds']
-        n = len(x)
-        ax.plot(x, y, 'r-', linewidth=2, label=t("plot.legend.profile", self.lang))
-        ax.plot(data['x_base'], data['y_base'],
-                'm-', linewidth=1, label=t("plot.legend.base_circle", self.lang))
-        ax.plot(data['x_offset'], data['y_offset'],
-                'c-', linewidth=1, label=t("plot.legend.offset_circle", self.lang))
-        for b_deg in pb[1:-1]:
-            idx = int(b_deg)
-            if idx < n:
-                ax.plot([0, x[idx]], [0, y[idx]], 'k-', linewidth=0.8)
-        ax.set_title(t("plot.title.profile", self.lang), fontsize=11)
-        ax.set_xlabel(r'$x$ (mm)')
-        ax.set_ylabel(r'$y$ (mm)')
-        ax.grid(True)
-        draw_fixed_support(ax, r_0)
-        margin = r_0 / 2
-        ax.set_xlim(-Rmax - margin, Rmax + margin)
-        ax.set_ylim(-Rmax - r_0, Rmax + r_0)
-        ax.set_aspect('equal')
-        ax.legend(fontsize=8, loc='upper right')
+        draw_profile_plot(ax, data, self.lang)
+
+    def _draw_pressure_angle_curve(self, ax, data):
+        draw_pressure_angle_curve(ax, data, self.lang)
+
+    def _draw_curvature_radius_curve(self, ax, data):
+        draw_curvature_radius_curve(ax, data, self.lang)
 
     def _plot_static(self):
         """绘制静态图表"""
         data = self.sim_data
 
-        for ax in [self.ax_s, self.ax_v, self.ax_a, self.ax_profile]:
+        for ax in [self.ax_s, self.ax_v, self.ax_a,
+                   self.ax_alpha, self.ax_profile, self.ax_rho]:
             ax.clear()
 
         self._draw_displacement_curve(self.ax_s, data, show_law_names=True)
         self._draw_velocity_curve(self.ax_v, data)
+        self._draw_pressure_angle_curve(self.ax_alpha, data)
         self._draw_acceleration_curve(self.ax_a, data)
         self._draw_profile_plot(self.ax_profile, data)
+        self._draw_curvature_radius_curve(self.ax_rho, data)
 
         self.canvas.draw()
 
@@ -884,32 +960,20 @@ class CamSimulator:
         h = data['h']
         Rmax = data['Rmax']
 
-        # 凸轮廓形
         line_cam, = ax.plot([], [], 'r-', linewidth=2)
-        # 基圆（默认隐藏）
         line_base, = ax.plot([], [], 'm-', linewidth=1)
-        # 偏距圆（默认隐藏）
         line_offset, = ax.plot([], [], 'c-', linewidth=1)
-        # 切线
         line_tangent, = ax.plot([], [], 'm-', linewidth=1)
-        # 法线
         line_normal, = ax.plot([], [], 'm-', linewidth=1)
-        # 推杆杆身
         line_rod, = ax.plot([], [], 'k-', linewidth=3, solid_capstyle='butt')
-        # 推杆尖顶（小三角）
         line_tip, = ax.plot([], [], 'k-', linewidth=2)
-        # 推杆中心虚线（压力角弧线参考线）
         line_center, = ax.plot([], [], 'k--', linewidth=0.8)
-        # 推杆下限
         line_lower, = ax.plot([], [], 'c-.', linewidth=1)
-        # 推杆上限
         line_upper, = ax.plot([], [], 'm--', linewidth=1)
-        # 角度分界线（最多4条）
         lines_boundary = []
         for _ in range(4):
             lb, = ax.plot([], [], 'k-', linewidth=0.8)
             lines_boundary.append(lb)
-        # 压力角弧线
         line_arc, = ax.plot([], [], 'k-', linewidth=1)
 
         ax.set_xlim(-Rmax - h, Rmax + h)
@@ -920,10 +984,8 @@ class CamSimulator:
         ax.set_xlabel(r'$x$ (mm)')
         ax.set_ylabel(r'$y$ (mm)')
 
-        # 固定铰支座
         draw_fixed_support(ax, r_0)
 
-        # 信息面板：紧贴动态图右侧，上下对齐
         anim_pos = ax.get_position()
         info_x0 = anim_pos.x1 + 0.01
         info_w = 0.14
@@ -931,22 +993,15 @@ class CamSimulator:
         self._init_info_panel()
 
         self._anim_artists = {
-            'cam': line_cam,
-            'base': line_base,
-            'offset': line_offset,
-            'tangent': line_tangent,
-            'normal': line_normal,
-            'rod': line_rod,
-            'tip': line_tip,
-            'center': line_center,
-            'lower': line_lower,
-            'upper': line_upper,
-            'boundaries': lines_boundary,
-            'arc': line_arc,
+            'cam': line_cam, 'base': line_base, 'offset': line_offset,
+            'tangent': line_tangent, 'normal': line_normal,
+            'rod': line_rod, 'tip': line_tip, 'center': line_center,
+            'lower': line_lower, 'upper': line_upper,
+            'boundaries': lines_boundary, 'arc': line_arc,
         }
 
     def _init_info_panel(self):
-        """初始化信息面板（独立的 ax_info，与动态图完全不重叠）"""
+        """初始化信息面板"""
         ax = self.ax_info
         ax.clear()
         ax.set_xticks([])
@@ -975,6 +1030,10 @@ class CamSimulator:
         self.btn_pause.config(text=t("toolbar.btn.pause", self.lang))
         self._pause_state = "paused"
         self._init_anim_artists()
+        # 设置帧进度条范围
+        if self.sim_data is not None:
+            n = len(self.sim_data['s'])
+            self.frame_scale.config(to=n - 1)
         self._animate_frame()
 
     def _stop_animation(self):
@@ -1001,7 +1060,7 @@ class CamSimulator:
             self._start_animation()
 
     def _animate_frame(self):
-        """绘制一帧动画（解析计算推杆位置，set_data 更新）"""
+        """绘制一帧动画"""
         if not self.animating or self.paused:
             return
 
@@ -1041,26 +1100,21 @@ class CamSimulator:
             self.canvas.draw_idle()
             return
 
-        # ---- 凸轮旋转 ----
         angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
         x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
         artists['cam'].set_data(x_rot, y_rot)
 
-        # ---- 基圆 ----
         if self.show_base_circle.get():
             artists['base'].set_data(data['x_base'], data['y_base'])
         else:
             artists['base'].set_data([], [])
 
-        # ---- 偏距圆 ----
         if self.show_offset_circle.get():
             artists['offset'].set_data(data['x_offset'], data['y_offset'])
         else:
             artists['offset'].set_data([], [])
 
-        # ---- 解析计算帧数据 ----
-        frame = compute_anim_frame_data(
-            s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all)
+        frame = compute_anim_frame_data(s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all)
         follower_x = frame['follower_x']
         cy = frame['contact_y']
         cx = follower_x
@@ -1068,37 +1122,22 @@ class CamSimulator:
         tx, ty = frame['tx'], frame['ty']
         alpha_i = frame['alpha_i']
 
-        # ---- 切线 ----
         if self.show_tangent.get():
-            artists['tangent'].set_data(
-                [cx - r_0 * tx, cx + r_0 * tx],
-                [cy - r_0 * ty, cy + r_0 * ty]
-            )
+            artists['tangent'].set_data([cx - r_0 * tx, cx + r_0 * tx], [cy - r_0 * ty, cy + r_0 * ty])
         else:
             artists['tangent'].set_data([], [])
 
-        # ---- 法线 ----
         if self.show_normal.get():
-            artists['normal'].set_data(
-                [cx + r_0 * nx, cx - r_0 * nx],
-                [cy + r_0 * ny, cy - r_0 * ny]
-            )
+            artists['normal'].set_data([cx + r_0 * nx, cx - r_0 * nx], [cy + r_0 * ny, cy - r_0 * ny])
         else:
             artists['normal'].set_data([], [])
 
-        # ---- 推杆（杆身 + 尖顶） ----
         tip_w = r_0 * TIP_WIDTH_RATIO
         tip_h = r_0 * TIP_HEIGHT_RATIO
         rod_top = cy + r_0 * ROD_LENGTH_RATIO
-        # 杆身（尖顶上方到顶部）
-        artists['rod'].set_data(
-            [follower_x, follower_x], [cy + tip_h, rod_top])
-        # 尖顶（小三角）
-        artists['tip'].set_data(
-            [follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w],
-            [cy + tip_h, cy, cy + tip_h, cy + tip_h])
+        artists['rod'].set_data([follower_x, follower_x], [cy + tip_h, rod_top])
+        artists['tip'].set_data([follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w], [cy + tip_h, cy, cy + tip_h, cy + tip_h])
 
-        # ---- 推杆上下限水平线 ----
         if self.show_limits.get():
             artists['lower'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0])
             artists['upper'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h])
@@ -1106,7 +1145,6 @@ class CamSimulator:
             artists['lower'].set_data([], [])
             artists['upper'].set_data([], [])
 
-        # ---- 角度分界线 ----
         if self.show_boundaries.get():
             for j, lb in enumerate(artists['boundaries']):
                 if j < len(pb) - 1:
@@ -1122,19 +1160,15 @@ class CamSimulator:
             for lb in artists['boundaries']:
                 lb.set_data([], [])
 
-        # ---- 压力角弧线 + 中心虚线 ----
         if self.show_arc.get():
             arc_r = r_0 * ARC_RADIUS_RATIO
             x_arc, y_arc = compute_pressure_angle_arc(cx, cy, nx, ny, alpha_i, arc_r)
             artists['arc'].set_data(x_arc, y_arc)
-            # 中心虚线（推杆中心延伸线，作为压力角参考）
-            artists['center'].set_data(
-                [follower_x, follower_x], [cy - r_0 * 2, cy + r_0 * 5])
+            artists['center'].set_data([follower_x, follower_x], [cy - r_0 * 2, cy + r_0 * 5])
         else:
             artists['arc'].set_data([], [])
             artists['center'].set_data([], [])
 
-        # ---- 信息面板 ----
         label_delta = t("info.label.delta", self.lang)
         label_alpha = t("info.label.alpha", self.lang)
         label_s = t("info.label.s", self.lang)
@@ -1146,26 +1180,128 @@ class CamSimulator:
         self._info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
         self._info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
 
-        # 仅每N帧刷新一次画布，减少卡顿
         if i % ANIM_FRAME_SKIP == 0:
             self.canvas.draw_idle()
 
+        # 同步帧进度条
+        self.frame_var.set(i)
+
         self.current_frame += 1
-        # 帧间隔：指数映射，最小延迟防止卡顿
         delay = max(ANIM_MIN_DELAY_MS, int(ANIM_BASE_DELAY_MS / (self.speed_var.get() ** 1.5)))
         self.anim_id = self.root.after(delay, self._animate_frame)
+
+    def _draw_single_frame(self, i):
+        """绘制指定帧（用于帧进度条拖动跳转）"""
+        data = self.sim_data
+        if data is None:
+            return
+        if self._anim_artists is None:
+            self._init_anim_artists()
+        artists = self._anim_artists
+        r_0 = data['r_0']
+        h = data['h']
+        sn = data['sn']
+        pb = data['phase_bounds']
+        s = data['s']
+        s_0 = data['s_0']
+        e = data['e']
+        pz = data['pz']
+        alpha_all = data['alpha_all']
+        N = len(s)
+        if i < 0 or i >= N:
+            return
+
+        angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
+        x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
+        artists['cam'].set_data(x_rot, y_rot)
+
+        if self.show_base_circle.get():
+            artists['base'].set_data(data['x_base'], data['y_base'])
+        else:
+            artists['base'].set_data([], [])
+        if self.show_offset_circle.get():
+            artists['offset'].set_data(data['x_offset'], data['y_offset'])
+        else:
+            artists['offset'].set_data([], [])
+
+        frame = compute_anim_frame_data(s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all)
+        follower_x = frame['follower_x']
+        cy = frame['contact_y']
+        cx = follower_x
+        nx, ny = frame['nx'], frame['ny']
+        tx, ty = frame['tx'], frame['ty']
+        alpha_i = frame['alpha_i']
+
+        if self.show_tangent.get():
+            artists['tangent'].set_data([cx - r_0 * tx, cx + r_0 * tx], [cy - r_0 * ty, cy + r_0 * ty])
+        else:
+            artists['tangent'].set_data([], [])
+        if self.show_normal.get():
+            artists['normal'].set_data([cx + r_0 * nx, cx - r_0 * nx], [cy + r_0 * ny, cy - r_0 * ny])
+        else:
+            artists['normal'].set_data([], [])
+
+        tip_w = r_0 * TIP_WIDTH_RATIO
+        tip_h = r_0 * TIP_HEIGHT_RATIO
+        rod_top = cy + r_0 * ROD_LENGTH_RATIO
+        artists['rod'].set_data([follower_x, follower_x], [cy + tip_h, rod_top])
+        artists['tip'].set_data([follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w],
+                                [cy + tip_h, cy, cy + tip_h, cy + tip_h])
+
+        if self.show_limits.get():
+            artists['lower'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0])
+            artists['upper'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h])
+        else:
+            artists['lower'].set_data([], [])
+            artists['upper'].set_data([], [])
+
+        if self.show_boundaries.get():
+            for j, lb in enumerate(artists['boundaries']):
+                if j < len(pb) - 1:
+                    b_deg = pb[j + 1]
+                    idx = int(b_deg)
+                    if idx < N:
+                        lb.set_data([0, x_rot[idx]], [0, y_rot[idx]])
+                    else:
+                        lb.set_data([], [])
+                else:
+                    lb.set_data([], [])
+        else:
+            for lb in artists['boundaries']:
+                lb.set_data([], [])
+
+        if self.show_arc.get():
+            arc_r = r_0 * ARC_RADIUS_RATIO
+            x_arc, y_arc = compute_pressure_angle_arc(cx, cy, nx, ny, alpha_i, arc_r)
+            artists['arc'].set_data(x_arc, y_arc)
+            artists['center'].set_data([follower_x, follower_x], [cy - r_0 * 2, cy + r_0 * 5])
+        else:
+            artists['arc'].set_data([], [])
+            artists['center'].set_data([], [])
+
+        # 更新信息面板
+        label_delta = t("info.label.delta", self.lang)
+        label_alpha = t("info.label.alpha", self.lang)
+        label_s = t("info.label.s", self.lang)
+        label_h = t("info.label.h", self.lang)
+        label_s0 = t("info.label.s0", self.lang)
+        self._info_labels['delta'].set_text(rf'{label_delta}: {i:3d}°/360°')
+        self._info_labels['alpha'].set_text(rf'{label_alpha}: {alpha_i:.1f}°')
+        self._info_labels['s'].set_text(rf'{label_s}: {frame["s_i"]:.2f} mm')
+        self._info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
+        self._info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
+
+        self.canvas.draw_idle()
 
     # ===================================================================
     # 按钮回调
     # ===================================================================
 
     def _on_arc_toggle(self):
-        """勾选压力角弧线时自动开启法线，关闭时同时关闭法线并清除残留"""
         if self.show_arc.get():
             self.show_normal.set(True)
         else:
             self.show_normal.set(False)
-            # 立即清除弧线、法线和中心虚线，避免残留
             if self._anim_artists:
                 self._anim_artists['arc'].set_data([], [])
                 self._anim_artists['normal'].set_data([], [])
@@ -1173,15 +1309,48 @@ class CamSimulator:
                 self.canvas.draw_idle()
 
     def _on_grid_toggle(self):
-        """切换动态图网格线"""
         self.ax_anim.grid(self.show_grid.get())
         self.canvas.draw_idle()
 
+    def _on_canvas_resize(self, event):
+        """窗口缩放时自适应调整图表（防抖）"""
+        if self._resize_after_id is not None:
+            self.root.after_cancel(self._resize_after_id)
+        self._resize_after_id = self.root.after(200, self._do_canvas_resize)
+
+    def _do_canvas_resize(self):
+        """执行图表缩放调整"""
+        self._resize_after_id = None
+        try:
+            self.canvas.draw_idle()
+        except Exception:
+            pass
+
+    def _on_frame_seek(self, value):
+        """拖动帧进度条跳转到指定帧"""
+        if not self.animating and self.sim_data is not None:
+            # 动画未运行时，允许拖动查看任意帧
+            self.current_frame = int(value)
+            self._draw_single_frame(self.current_frame)
+
+    def _validate_entry(self, entry, conv_type):
+        """实时校验输入框（FocusOut 时检查数值有效性）"""
+        try:
+            val = entry.get().strip()
+            if val:
+                conv_type(val)
+            # 输入有效，恢复正常背景
+            entry.config(bg='white')
+        except ValueError:
+            # 输入无效，高亮提示
+            entry.config(bg='#fecaca')
+
     def _on_download(self):
-        """下载勾选的图片（静态图为PNG，动态图为GIF）"""
-        # 检查是否有勾选
+        """下载勾选的图片"""
         if not any([self.dl_s.get(), self.dl_v.get(), self.dl_a.get(),
-                     self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get()]):
+                     self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get(),
+                     self.dl_alpha.get(), self.dl_curvature.get(),
+                     self.dl_svg.get(), self.dl_csv.get()]):
             self.status_var.set(t("status.no_download_selection", self.lang))
             return
 
@@ -1198,7 +1367,6 @@ class CamSimulator:
         data = self.sim_data
         errors = []
 
-        # ---- 位移曲线 ----
         if self.dl_s.get():
             try:
                 fig_s = Figure(figsize=(6, 4), dpi=dpi)
@@ -1211,7 +1379,6 @@ class CamSimulator:
             except Exception as exc:
                 errors.append(f"displacement: {exc}")
 
-        # ---- 速度曲线 ----
         if self.dl_v.get():
             try:
                 fig_v = Figure(figsize=(6, 4), dpi=dpi)
@@ -1224,7 +1391,6 @@ class CamSimulator:
             except Exception as exc:
                 errors.append(f"velocity: {exc}")
 
-        # ---- 加速度曲线 ----
         if self.dl_a.get():
             try:
                 fig_a = Figure(figsize=(6, 4), dpi=dpi)
@@ -1237,7 +1403,6 @@ class CamSimulator:
             except Exception as exc:
                 errors.append(f"acceleration: {exc}")
 
-        # ---- 凸轮廓形 ----
         if self.dl_profile.get():
             try:
                 fig_p = Figure(figsize=(6, 6), dpi=dpi)
@@ -1250,11 +1415,82 @@ class CamSimulator:
             except Exception as exc:
                 errors.append(f"profile: {exc}")
 
-        # ---- Excel 数据表 ----
+        if self.dl_alpha.get():
+            try:
+                fig_alpha = Figure(figsize=(6, 4), dpi=dpi)
+                ax_alpha = fig_alpha.add_subplot(111)
+                self._draw_pressure_angle_curve(ax_alpha, data)
+                filename_alpha = t("export.filename.pressure_angle", self.lang) + ".tiff"
+                fig_alpha.savefig(os.path.join(folder, filename_alpha), dpi=dpi, bbox_inches='tight', format='tiff')
+                plt.close(fig_alpha)
+                saved.append(filename_alpha)
+            except Exception as exc:
+                errors.append(f"pressure_angle: {exc}")
+
+        if self.dl_curvature.get():
+            try:
+                fig_rho = Figure(figsize=(6, 4), dpi=dpi)
+                ax_rho = fig_rho.add_subplot(111)
+                self._draw_curvature_radius_curve(ax_rho, data)
+                filename_rho = t("export.filename.curvature", self.lang) + ".tiff"
+                fig_rho.savefig(os.path.join(folder, filename_rho), dpi=dpi, bbox_inches='tight', format='tiff')
+                plt.close(fig_rho)
+                saved.append(filename_rho)
+            except Exception as exc:
+                errors.append(f"curvature: {exc}")
+
+        # SVG 矢量图导出（P7-5）
+        if self.dl_svg.get():
+            try:
+                fig_svg = Figure(figsize=(14, 7), dpi=100)
+                gs_svg = GridSpec(2, 2, figure=fig_svg, wspace=0.30, hspace=0.35)
+                ax_s_svg = fig_svg.add_subplot(gs_svg[0, 0])
+                ax_v_svg = fig_svg.add_subplot(gs_svg[0, 1])
+                ax_a_svg = fig_svg.add_subplot(gs_svg[1, 0])
+                ax_p_svg = fig_svg.add_subplot(gs_svg[1, 1])
+                self._draw_displacement_curve(ax_s_svg, data)
+                self._draw_velocity_curve(ax_v_svg, data)
+                self._draw_acceleration_curve(ax_a_svg, data)
+                self._draw_profile_plot(ax_p_svg, data)
+                filename_svg = "camforge_all.svg"
+                fig_svg.savefig(os.path.join(folder, filename_svg), format='svg', bbox_inches='tight')
+                plt.close(fig_svg)
+                saved.append(filename_svg)
+            except Exception as exc:
+                errors.append(f"svg: {exc}")
+
+        # CSV 数据表导出（P7-5）
+        if self.dl_csv.get():
+            try:
+                import csv as csv_mod
+                filename_csv = "camforge_data.csv"
+                filepath_csv = os.path.join(folder, filename_csv)
+                delta_deg = data['delta_deg']
+                s_arr = data['s']
+                v_arr = data['v']
+                a_arr = data['a']
+                x_arr = data['x']
+                y_arr = data['y']
+                R_arr = np.hypot(x_arr, y_arr)
+                alpha_arr = data['alpha_all']
+                with open(filepath_csv, 'w', newline='', encoding='utf-8-sig') as f:
+                    writer = csv_mod.writer(f)
+                    writer.writerow(['delta_deg', 's_mm', 'v_mm_s', 'a_mm_s2',
+                                     'x_mm', 'y_mm', 'R_mm', 'alpha_deg'])
+                    for i in range(len(delta_deg)):
+                        writer.writerow([
+                            round(delta_deg[i], 2), round(s_arr[i], 4),
+                            round(v_arr[i], 4), round(a_arr[i], 4),
+                            round(x_arr[i], 4), round(y_arr[i], 4),
+                            round(R_arr[i], 4), round(alpha_arr[i], 4),
+                        ])
+                saved.append(filename_csv)
+            except Exception as exc:
+                errors.append(f"csv: {exc}")
+
         if self.dl_excel.get():
             self._export_excel(folder, saved)
 
-        # 动态图：保存完整360帧为GIF（后台线程，避免UI冻结）
         if self.dl_anim.get():
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
             filepath = os.path.join(folder, filename_anim)
@@ -1286,7 +1522,6 @@ class CamSimulator:
             ws = wb.active
             ws.title = t("excel.sheet_name", self.lang)
 
-            # 表头
             headers = [
                 t("excel.col.delta", self.lang),
                 t("excel.col.radius", self.lang),
@@ -1295,16 +1530,9 @@ class CamSimulator:
             ]
             ws.append(headers)
 
-            # 数据（批量行写入）
             for i in range(len(delta_deg)):
-                ws.append([
-                    round(delta_deg[i], 1),
-                    round(R[i], 4),
-                    round(v[i], 4),
-                    round(a[i], 4),
-                ])
+                ws.append([round(delta_deg[i], 1), round(R[i], 4), round(v[i], 4), round(a[i], 4)])
 
-            # 列宽自适应
             for col in range(1, 5):
                 max_len = len(str(ws.cell(row=1, column=col).value))
                 for row in range(2, min(10, len(delta_deg) + 2)):
@@ -1321,12 +1549,11 @@ class CamSimulator:
             self.status_var.set(t("status.export_failed", self.lang, error=str(exc)))
 
     def _export_gif(self, filepath, folder, saved_list):
-        """在后台线程中导出GIF动画（300 DPI），显示进度对话框"""
+        """在后台线程中导出GIF动画"""
         if PILImage is None:
             self.status_var.set(t("status.gif_failed", self.lang, error="Pillow not installed"))
             return
 
-        # Capture lang and display options for thread safety
         lang = self.lang
         show_base = self.show_base_circle.get()
         show_offset = self.show_offset_circle.get()
@@ -1336,12 +1563,10 @@ class CamSimulator:
         show_arc_gif = self.show_arc.get()
         show_boundaries_gif = self.show_boundaries.get()
 
-        # 线程安全：加锁快照 sim_data，防止主线程并发修改
         with self._sim_data_lock:
             data = self.sim_data
             if data is None:
                 return
-            # 深拷贝 numpy 数组，确保线程独立
             s = data['s'].copy()
             ds_ddelta = data['ds_ddelta'].copy()
             alpha_all = data['alpha_all'].copy()
@@ -1369,7 +1594,6 @@ class CamSimulator:
         xlim = self.ax_anim.get_xlim()
         ylim = self.ax_anim.get_ylim()
 
-        # 进度对话框
         progress_win = tk.Toplevel(self.root)
         progress_win.title(t("export.gif_dialog.title", lang))
         progress_win.geometry("320x100")
@@ -1383,7 +1607,6 @@ class CamSimulator:
         progress_label = tk.Label(progress_win, text="0 / 360", font=(self._tk_font_family, 9))
         progress_label.pack()
 
-        # 线程间共享状态
         gif_result = {'error': None}
 
         def generate():
@@ -1392,7 +1615,6 @@ class CamSimulator:
                 ax_gif = fig_gif.add_axes([0.05, 0.08, 0.65, 0.87])
                 ax_info_gif = fig_gif.add_axes([0.73, 0.08, 0.25, 0.87])
 
-                # Pre-compute translated labels for GIF
                 label_delta_gif = t("info.label.delta", lang)
                 label_alpha_gif = t("info.label.alpha", lang)
                 label_s_gif = t("info.label.s", lang)
@@ -1400,9 +1622,6 @@ class CamSimulator:
                 label_s0_gif = t("info.label.s0", lang)
                 title_anim_gif = t("plot.title.animation", lang)
 
-                # 预渲染静态元素（基圆、偏距圆、固定铰支座等不随帧变化）
-                # 逐帧渲染 + 即时收集 PIL Image，最后一次性写入 GIF
-                # 优化：仅保留当前帧的 PIL Image，写入临时文件列表
                 frame_images = []
 
                 for i in range(N):
@@ -1416,8 +1635,7 @@ class CamSimulator:
                     if show_offset:
                         ax_gif.plot(x_offset, y_offset, 'c-', linewidth=1)
 
-                    frame_data = compute_anim_frame_data(
-                        s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all)
+                    frame_data = compute_anim_frame_data(s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all)
                     fx = frame_data['follower_x']
                     cy = frame_data['contact_y']
                     alpha_i = frame_data['alpha_i']
@@ -1426,17 +1644,14 @@ class CamSimulator:
                     tip_w = r_0 * TIP_WIDTH_RATIO
                     tip_h = r_0 * TIP_HEIGHT_RATIO
                     ax_gif.plot([fx, fx], [cy + tip_h, cy + r_0 * ROD_LENGTH_RATIO], 'k-', linewidth=3)
-                    ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w],
-                                [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
+                    ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w], [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
                     if show_limits:
                         ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
                         ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h], 'm--', linewidth=1)
                     if show_tangent_gif:
-                        ax_gif.plot([fx - r_0 * tx_i, fx + r_0 * tx_i],
-                                    [cy - r_0 * ty_i, cy + r_0 * ty_i], 'm-', linewidth=1)
+                        ax_gif.plot([fx - r_0 * tx_i, fx + r_0 * tx_i], [cy - r_0 * ty_i, cy + r_0 * ty_i], 'm-', linewidth=1)
                     if show_normal_gif:
-                        ax_gif.plot([fx + r_0 * nx_i, fx - r_0 * nx_i],
-                                    [cy + r_0 * ny_i, cy - r_0 * ny_i], 'm-', linewidth=1)
+                        ax_gif.plot([fx + r_0 * nx_i, fx - r_0 * nx_i], [cy + r_0 * ny_i, cy - r_0 * ny_i], 'm-', linewidth=1)
                     if show_boundaries_gif:
                         for j_b in range(len(pb) - 1):
                             idx_b = int(pb[j_b + 1])
@@ -1468,7 +1683,6 @@ class CamSimulator:
                         ax_info_gif.text(0.05, y_pos, text, transform=ax_info_gif.transAxes,
                                          fontsize=10, ha='left', va='top', color=THEME['info_text'])
 
-                    # 渲染当前帧为 PIL Image（逐帧渲染，即时收集）
                     buf = BytesIO()
                     fig_gif.savefig(buf, format='png', dpi=GIF_DPI)
                     buf.seek(0)
@@ -1476,22 +1690,16 @@ class CamSimulator:
                     buf.close()
                     frame_images.append(img)
 
-                    # 更新进度（线程安全）
                     self.root.after(0, lambda idx=i: (
                         progress_bar.configure(value=idx + 1),
                         progress_label.configure(text=f"{idx + 1} / {N}")
                     ))
 
                 plt.close(fig_gif)
-                # 提示正在合成GIF
-                self.root.after(0, lambda: progress_label.configure(
-                    text=t("status.gif_composing", lang)))
-                # 一次性写入 GIF（首帧 + append_images）
+                self.root.after(0, lambda: progress_label.configure(text=t("status.gif_composing", lang)))
                 if frame_images:
-                    frame_images[0].save(filepath, save_all=True,
-                                         append_images=frame_images[1:],
-                                         duration=GIF_DURATION_MS, loop=0,
-                                         optimize=True)
+                    frame_images[0].save(filepath, save_all=True, append_images=frame_images[1:],
+                                         duration=GIF_DURATION_MS, loop=0, optimize=True)
                 saved_list.append(os.path.basename(filepath))
             except Exception as exc:
                 gif_result['error'] = str(exc)
@@ -1510,10 +1718,17 @@ class CamSimulator:
     def _on_clear_params(self):
         """清除参数并恢复默认值"""
         defaults = {
-            self.entry_delta_0: "90", self.entry_delta_01: "60",
-            self.entry_delta_ret: "120", self.entry_delta_02: "90",
-            self.entry_h: "10", self.entry_omega: "1",
-            self.entry_r0: "40", self.entry_e: "5",
+            self.entry_delta_0: str(DEFAULT_PARAMS['delta_0']),
+            self.entry_delta_01: str(DEFAULT_PARAMS['delta_01']),
+            self.entry_delta_ret: str(DEFAULT_PARAMS['delta_ret']),
+            self.entry_delta_02: str(DEFAULT_PARAMS['delta_02']),
+            self.entry_h: str(DEFAULT_PARAMS['h']),
+            self.entry_omega: str(DEFAULT_PARAMS['omega']),
+            self.entry_r0: str(DEFAULT_PARAMS['r_0']),
+            self.entry_e: str(DEFAULT_PARAMS['e']),
+            self.entry_rr: str(DEFAULT_PARAMS['r_r']),
+            self.entry_n_points: str(DEFAULT_PARAMS['n_points']),
+            self.entry_alpha_threshold: str(DEFAULT_PARAMS['alpha_threshold']),
         }
         for entry, val in defaults.items():
             entry.delete(0, tk.END)
@@ -1529,14 +1744,14 @@ class CamSimulator:
         """清除图像"""
         self._stop_animation()
         for ax in [self.ax_s, self.ax_v, self.ax_a,
-                   self.ax_profile, self.ax_anim, self.ax_info]:
+                   self.ax_alpha, self.ax_profile, self.ax_rho,
+                   self.ax_anim, self.ax_info]:
             ax.clear()
         self.canvas.draw()
 
     def _on_random(self):
         """随机凸轮参数"""
         params = generate_random_params()
-        # 清空输入框再填入随机值（不调用 _on_clear_params 避免恢复默认值后叠加）
         for entry in [self.entry_delta_0, self.entry_delta_01,
                       self.entry_delta_ret, self.entry_delta_02,
                       self.entry_h, self.entry_r0, self.entry_e,
@@ -1557,6 +1772,98 @@ class CamSimulator:
         self.popup_sn.current(0 if params['sn'] == 1 else 1)
         self.popup_pz.current(0 if params['pz'] == 1 else 1)
 
+        # 新参数保持默认值
+        self.entry_rr.delete(0, tk.END)
+        self.entry_rr.insert(0, str(DEFAULT_PARAMS['r_r']))
+        self.entry_n_points.delete(0, tk.END)
+        self.entry_n_points.insert(0, str(DEFAULT_PARAMS['n_points']))
+        self.entry_alpha_threshold.delete(0, tk.END)
+        self.entry_alpha_threshold.insert(0, str(DEFAULT_PARAMS['alpha_threshold']))
+
+    # ===================================================================
+    # 参数预设系统（P6-4）
+    # ===================================================================
+
+    def _on_save_preset(self):
+        """保存当前参数为 JSON 预设文件"""
+        import json
+        try:
+            preset = {
+                'delta_0': self.entry_delta_0.get(),
+                'delta_01': self.entry_delta_01.get(),
+                'delta_ret': self.entry_delta_ret.get(),
+                'delta_02': self.entry_delta_02.get(),
+                'h': self.entry_h.get(),
+                'omega': self.entry_omega.get(),
+                'r_0': self.entry_r0.get(),
+                'e': self.entry_e.get(),
+                'r_r': self.entry_rr.get(),
+                'n_points': self.entry_n_points.get(),
+                'alpha_threshold': self.entry_alpha_threshold.get(),
+                'tc_law': self.popup_tc.current(),
+                'hc_law': self.popup_hc.current(),
+                'sn': self.popup_sn.current(),
+                'pz': self.popup_pz.current(),
+            }
+            filepath = filedialog.asksaveasfilename(
+                title=t("export.preset_dialog.save_title", self.lang),
+                defaultextension=".json",
+                filetypes=[("JSON", "*.json"), ("All", "*.*")]
+            )
+            if not filepath:
+                return
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(preset, f, indent=2, ensure_ascii=False)
+            self.status_var.set(t("status.preset_saved", self.lang, file=os.path.basename(filepath)))
+        except Exception as exc:
+            self.status_var.set(t("status.preset_save_failed", self.lang, error=str(exc)))
+
+    def _on_load_preset(self):
+        """从 JSON 预设文件加载参数"""
+        import json
+        try:
+            filepath = filedialog.askopenfilename(
+                title=t("export.preset_dialog.load_title", self.lang),
+                filetypes=[("JSON", "*.json"), ("All", "*.*")]
+            )
+            if not filepath:
+                return
+            with open(filepath, 'r', encoding='utf-8') as f:
+                preset = json.load(f)
+
+            entry_map = {
+                'delta_0': self.entry_delta_0,
+                'delta_01': self.entry_delta_01,
+                'delta_ret': self.entry_delta_ret,
+                'delta_02': self.entry_delta_02,
+                'h': self.entry_h,
+                'omega': self.entry_omega,
+                'r_0': self.entry_r0,
+                'e': self.entry_e,
+                'r_r': self.entry_rr,
+                'n_points': self.entry_n_points,
+                'alpha_threshold': self.entry_alpha_threshold,
+            }
+            for key, entry in entry_map.items():
+                if key in preset:
+                    entry.delete(0, tk.END)
+                    entry.insert(0, str(preset[key]))
+
+            combo_map = {
+                'tc_law': self.popup_tc,
+                'hc_law': self.popup_hc,
+                'sn': self.popup_sn,
+                'pz': self.popup_pz,
+            }
+            for key, combo in combo_map.items():
+                if key in preset:
+                    idx = int(preset[key])
+                    combo.current(idx)
+
+            self.status_var.set(t("status.preset_loaded", self.lang, file=os.path.basename(filepath)))
+        except Exception as exc:
+            self.status_var.set(t("status.preset_load_failed", self.lang, error=str(exc)))
+
     def _on_close(self):
         """窗口关闭处理"""
         self._stop_animation()
@@ -1567,6 +1874,11 @@ class CamSimulator:
         self.root.mainloop()
 
 
-if __name__ == '__main__':
+def main():
+    """Entry point for pip-installed camforge command."""
     app = CamSimulator()
     app.run()
+
+
+if __name__ == '__main__':
+    main()

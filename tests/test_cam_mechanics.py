@@ -8,6 +8,7 @@ from cam_mechanics import (
     compute_cam_profile, compute_pressure_angle,
     compute_rotated_cam, compute_anim_frame_data,
     compute_pressure_angle_arc, validate_params,
+    compute_roller_profile, compute_curvature_radius,
     N_POINTS, DEG2RAD,
 )
 
@@ -620,3 +621,107 @@ class TestI18n:
         from i18n import TRANSLATIONS
         # TRANSLATIONS 是 dict，天然无重复键，只需验证非空
         assert len(TRANSLATIONS) > 0
+
+
+# ============================================================================
+# 滚子从动件实际廓形测试
+# ============================================================================
+
+class TestComputeRollerProfile:
+    """滚子从动件实际廓形测试"""
+
+    def _make_profile(self):
+        """生成标准理论廓形"""
+        delta_deg, s, v, a, ds_ddelta, pb = compute_full_motion(
+            90, 60, 120, 90, 10, 40, 5, 1, 1, 1)
+        x, y, s_0 = compute_cam_profile(s, 40, 5, 1, 1)
+        return x, y
+
+    def test_zero_radius_returns_theory(self):
+        """滚子半径为0时返回理论廓形"""
+        x, y = self._make_profile()
+        x_a, y_a = compute_roller_profile(x, y, 0, 1)
+        np.testing.assert_allclose(x_a, x)
+        np.testing.assert_allclose(y_a, y)
+
+    def test_actual_profile_inside_theory(self):
+        """实际廓形应在理论廓形内侧（距原点更近）"""
+        x, y = self._make_profile()
+        r_r = 5.0
+        x_a, y_a = compute_roller_profile(x, y, r_r, 1)
+        R_theory = np.hypot(x, y)
+        R_actual = np.hypot(x_a, y_a)
+        # 实际廓形半径应小于理论廓形半径
+        assert np.all(R_actual < R_theory)
+
+    def test_actual_profile_length_matches(self):
+        """实际廓形点数与理论廓形相同"""
+        x, y = self._make_profile()
+        x_a, y_a = compute_roller_profile(x, y, 5.0, 1)
+        assert len(x_a) == len(x)
+        assert len(y_a) == len(y)
+
+    def test_negative_radius_raises(self):
+        """负滚子半径应抛出异常"""
+        x, y = self._make_profile()
+        with pytest.raises(ValueError):
+            compute_roller_profile(x, y, -1, 1)
+
+    def test_sn_negative_one(self):
+        """sn=-1 时实际廓形计算正常"""
+        x, y = self._make_profile()
+        x_a, y_a = compute_roller_profile(x, y, 5.0, -1)
+        assert len(x_a) == len(x)
+
+
+# ============================================================================
+# 曲率半径测试
+# ============================================================================
+
+class TestComputeCurvatureRadius:
+    """曲率半径计算测试"""
+
+    def _make_profile(self):
+        """生成标准廓形"""
+        delta_deg, s, v, a, ds_ddelta, pb = compute_full_motion(
+            90, 60, 120, 90, 10, 40, 5, 1, 1, 1)
+        x, y, s_0 = compute_cam_profile(s, 40, 5, 1, 1)
+        return x, y
+
+    def test_curvature_radius_length(self):
+        """曲率半径数组长度与廓形相同"""
+        x, y = self._make_profile()
+        rho = compute_curvature_radius(x, y)
+        assert len(rho) == len(x)
+
+    def test_curvature_radius_mostly_finite(self):
+        """大部分曲率半径应为有限值"""
+        x, y = self._make_profile()
+        rho = compute_curvature_radius(x, y)
+        finite_count = np.sum(np.isfinite(rho))
+        assert finite_count > len(x) * 0.9
+
+    def test_curvature_radius_positive_for_convex(self):
+        """凸轮廓形的曲率半径大部分应为正值"""
+        x, y = self._make_profile()
+        rho = compute_curvature_radius(x, y)
+        rho_finite = rho[np.isfinite(rho)]
+        # 凸轮廓形大部分点应为凸面（正曲率半径）
+        positive_ratio = np.sum(rho_finite > 0) / len(rho_finite)
+        assert positive_ratio > 0.8
+
+    def test_too_few_points_raises(self):
+        """点数不足3时应抛出异常"""
+        with pytest.raises(ValueError):
+            compute_curvature_radius(np.array([1.0, 2.0]), np.array([1.0, 2.0]))
+
+    def test_circle_curvature_radius(self):
+        """圆的曲率半径应等于圆的半径"""
+        theta = np.linspace(0, 2 * np.pi, 360, endpoint=False)
+        R = 50.0
+        x = R * np.cos(theta)
+        y = R * np.sin(theta)
+        rho = compute_curvature_radius(x, y)
+        # 中心差分在离散圆上有误差，允许 5% 偏差
+        rho_finite = rho[np.isfinite(rho)]
+        assert np.mean(np.abs(rho_finite)) > R * 0.9

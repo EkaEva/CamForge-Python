@@ -48,6 +48,9 @@ TRANSLATIONS = {
     "sidebar.group.display": {
         "zh": "动态显示", "en": "Display Options",
     },
+    "sidebar.group.theme": {
+        "zh": "主题", "en": "Theme",
+    },
 
     # ---- Sidebar Labels ----
     "sidebar.label.delta_0": {
@@ -85,6 +88,15 @@ TRANSLATIONS = {
     },
     "sidebar.label.offset_dir": {
         "zh": "偏距方向", "en": "Offset Direction",
+    },
+    "sidebar.label.r_r": {
+        "zh": "滚子半径 (mm)", "en": "Roller Radius (mm)",
+    },
+    "sidebar.label.n_points": {
+        "zh": "离散点数", "en": "Discrete Points",
+    },
+    "sidebar.label.alpha_threshold": {
+        "zh": "压力角阈值 (°)", "en": "Pressure Angle Threshold (°)",
     },
 
     # ---- Sidebar Checkbuttons ----
@@ -138,8 +150,17 @@ TRANSLATIONS = {
     "toolbar.btn.download": {
         "zh": "下载", "en": "Download",
     },
+    "toolbar.btn.save_preset": {
+        "zh": "保存预设", "en": "Save Preset",
+    },
+    "toolbar.btn.load_preset": {
+        "zh": "加载预设", "en": "Load Preset",
+    },
     "toolbar.label.speed": {
         "zh": "仿真速度:", "en": "Sim Speed:",
+    },
+    "toolbar.label.frame": {
+        "zh": "帧:", "en": "Frame:",
     },
 
     # ---- Download Checkboxes ----
@@ -161,6 +182,18 @@ TRANSLATIONS = {
     "toolbar.cb.dl_excel": {
         "zh": "Excel", "en": "Excel",
     },
+    "toolbar.cb.dl_alpha": {
+        "zh": "压力角", "en": "Press. Angle",
+    },
+    "toolbar.cb.dl_curvature": {
+        "zh": "曲率", "en": "Curvature",
+    },
+    "toolbar.cb.dl_svg": {
+        "zh": "SVG", "en": "SVG",
+    },
+    "toolbar.cb.dl_csv": {
+        "zh": "CSV", "en": "CSV",
+    },
 
     # ---- Plot Titles ----
     "plot.title.displacement": {
@@ -178,6 +211,12 @@ TRANSLATIONS = {
     "plot.title.animation": {
         "zh": "凸轮动态仿真", "en": "Cam Dynamic Simulation",
     },
+    "plot.title.pressure_angle": {
+        "zh": r"压力角 $\alpha$", "en": r"Pressure Angle $\alpha$",
+    },
+    "plot.title.curvature": {
+        "zh": r"曲率半径 $\rho$", "en": r"Radius of Curvature $\rho$",
+    },
 
     # ---- Plot Legends ----
     "plot.legend.profile": {
@@ -188,6 +227,12 @@ TRANSLATIONS = {
     },
     "plot.legend.offset_circle": {
         "zh": "偏距圆", "en": "Offset Circle",
+    },
+    "plot.legend.roller_profile": {
+        "zh": "实际廓形", "en": "Actual Profile",
+    },
+    "plot.legend.min_curvature": {
+        "zh": "最小曲率半径", "en": "Min Curvature Radius",
     },
 
     # ---- Plot Subtitle ----
@@ -257,6 +302,25 @@ TRANSLATIONS = {
         "zh": "{name}：{raw} 已取整为 {rounded}",
         "en": "{name}: {raw} rounded to {rounded}",
     },
+    "status.preset_saved": {
+        "zh": "预设已保存: {file}", "en": "Preset saved: {file}",
+    },
+    "status.preset_loaded": {
+        "zh": "预设已加载: {file}", "en": "Preset loaded: {file}",
+    },
+    "status.preset_save_failed": {
+        "zh": "预设保存失败: {error}", "en": "Preset save failed: {error}",
+    },
+    "status.preset_load_failed": {
+        "zh": "预设加载失败: {error}", "en": "Preset load failed: {error}",
+    },
+    "status.warning_min_curvature": {
+        "zh": "警告：最小曲率半径 {val:.2f} mm 小于滚子半径 {r_r:.1f} mm，可能发生干涉",
+        "en": "Warning: Min curvature radius {val:.2f} mm < roller radius {r_r:.1f} mm, interference possible",
+    },
+    "status.input_invalid": {
+        "zh": "输入无效: {error}", "en": "Invalid input: {error}",
+    },
 
     # ---- Error Keys (returned by cam_mechanics.validate_params) ----
     "error.angles_sum": {
@@ -321,6 +385,12 @@ TRANSLATIONS = {
     "export.filename.excel": {
         "zh": "凸轮数据", "en": "cam_data",
     },
+    "export.filename.pressure_angle": {
+        "zh": "压力角曲线", "en": "pressure_angle",
+    },
+    "export.filename.curvature": {
+        "zh": "曲率半径曲线", "en": "curvature_radius",
+    },
 
     # ---- Excel Column Headers (plain text, no LaTeX) ----
     "excel.col.delta": {
@@ -346,6 +416,12 @@ TRANSLATIONS = {
     "export.folder_dialog.title": {
         "zh": "选择保存文件夹", "en": "Select Save Folder",
     },
+    "export.preset_dialog.save_title": {
+        "zh": "保存参数预设", "en": "Save Parameter Preset",
+    },
+    "export.preset_dialog.load_title": {
+        "zh": "加载参数预设", "en": "Load Parameter Preset",
+    },
 
     # ---- Motion Law Names ----
     "law.1": {"zh": "等速运动", "en": "Uniform"},
@@ -355,8 +431,8 @@ TRANSLATIONS = {
     "law.5": {"zh": "五次多项式", "en": "Quintic Polynomial"},
 
     # ---- Motion Law Combobox Items (sidebar, with 规律 suffix for zh) ----
-    "law.combo.1": {"zh": "等速运动", "en": "Uniform"},
-    "law.combo.2": {"zh": "等加速等减速", "en": "Const. Accel./Decel."},
+    "law.combo.1": {"zh": "等速运动规律", "en": "Uniform"},
+    "law.combo.2": {"zh": "等加速等减速规律", "en": "Const. Accel./Decel."},
     "law.combo.3": {"zh": "简谐运动规律", "en": "Simple Harmonic"},
     "law.combo.4": {"zh": "摆线运动规律", "en": "Cycloidal"},
     "law.combo.5": {"zh": "五次多项式运动规律", "en": "Quintic Polynomial"},
@@ -366,6 +442,8 @@ TRANSLATIONS = {
     "dir.ccw": {"zh": "逆时针", "en": "Counter-clockwise"},
     "dir.pos_offset": {"zh": "正偏距", "en": "Positive Offset"},
     "dir.neg_offset": {"zh": "负偏距", "en": "Negative Offset"},
+    "theme.light": {"zh": "浅色", "en": "Light"},
+    "theme.dark": {"zh": "深色", "en": "Dark"},
 }
 
 

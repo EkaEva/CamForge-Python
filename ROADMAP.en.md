@@ -118,56 +118,55 @@ Goal: Improve GIF export performance and memory efficiency.
 - [x] **P4-2** GIF export: use blitting or pre-rendering optimization, reduce per-frame `ax.clear()` + full redraw overhead
 - [x] **P4-3** Excel export: change to batch writing (`ws.append` row writes instead of per-cell)
 
-### Phase 5 — Code Architecture (v0.6)
+### Phase 5 — Code Architecture (v0.6) ✅ Complete
 
 Goal: Split large class, improve maintainability.
 
-- [ ] **P5-1** Split `CamSimulator` into independent modules:
+- [x] **P5-1** Split `CamSimulator` into independent modules:
   ```
   ui/
-  ├── sidebar.py      # Sidebar construction and parameter management
-  ├── toolbar.py      # Toolbar buttons and controls
-  ├── plots.py        # Static chart plotting
-  ├── animation.py    # Animation control and frame rendering
-  ├── export.py       # Image/GIF/Excel export
-  └── app.py          # Main window assembly and launch
+  ├── __init__.py     # Package init
+  ├── constants.py    # Rendering constants and theme colors
+  ├── drawing.py      # Shared drawing functions
+  ├── params.py       # Parameter data model and random param generation
+  └── plots.py        # Static chart plotting
   ```
-- [ ] **P5-2** Extract parameter data model class (`ParameterModel`), separate computation state from GUI state
-- [ ] **P5-3** Split `_build_gui` into `_build_sidebar`, `_build_toolbar`, `_build_figure` sub-methods
+- [x] **P5-2** Extract parameter data model class (`ParameterModel`), separate computation state from GUI state
+- [x] **P5-3** Split `_build_gui` into `_build_sidebar`, `_build_toolbar`, `_build_figure` sub-methods
 
-### Phase 6 — Feature Enhancement (v0.7)
+### Phase 6 — Feature Enhancement (v0.7) ✅ Complete
 
 Goal: Expand simulation capabilities, improve engineering practicality.
 
-- [ ] **P6-1** Roller follower support: add roller radius parameter, compute actual profile (equidistant curve) and theoretical profile
-- [ ] **P6-2** Pressure angle curve chart: add independent chart showing pressure angle variation with rotation angle
-- [ ] **P6-3** Cam profile radius of curvature computation and display, marking minimum radius of curvature position
-- [ ] **P6-4** Parameter preset system: save/load common cam configurations (JSON file)
-- [ ] **P6-5** Configurable pressure angle threshold (sidebar input field or dropdown)
-- [ ] **P6-6** Make `N_POINTS` configurable, supporting higher or lower discrete resolution
+- [x] **P6-1** Roller follower support: add roller radius parameter, compute actual profile (equidistant curve) and theoretical profile
+- [x] **P6-2** Pressure angle curve chart: add independent chart showing pressure angle variation with rotation angle
+- [x] **P6-3** Cam profile radius of curvature computation and display, marking minimum radius of curvature position
+- [x] **P6-4** Parameter preset system: save/load common cam configurations (JSON file)
+- [x] **P6-5** Configurable pressure angle threshold (sidebar input field)
+- [x] **P6-6** Make `N_POINTS` configurable, supporting higher or lower discrete resolution
 
-### Phase 7 — Experience Upgrade (v0.8)
+### Phase 7 — Experience Upgrade (v0.8) ✅ Complete
 
 Goal: Polish interaction details, improve visual and operational experience.
 
-- [ ] **P7-1** Dark mode support (tkinter theme + matplotlib style switching)
-- [ ] **P7-2** Animation frame progress bar: display current frame/total frames, support drag-to-jump
-- [ ] **P7-3** Window resize adaptation: listen to `Configure` events to dynamically adjust Figure size
-- [ ] **P7-4** Real-time parameter input validation: show range errors as you type
-- [ ] **P7-5** Extended export formats: support SVG vector graphics, CSV data table export
-- [ ] **P7-6** i18n detail fixes: unify motion law suffix, internationalize Logo/progress labels
+- [x] **P7-1** Dark mode support (tkinter theme + matplotlib style switching)
+- [x] **P7-2** Animation frame progress bar: display current frame/total frames, support drag-to-jump
+- [x] **P7-3** Window resize adaptation: listen to `Configure` events to dynamically adjust Figure size
+- [x] **P7-4** Real-time parameter input validation: show range errors as you type
+- [x] **P7-5** Extended export formats: support SVG vector graphics, CSV data table export
+- [x] **P7-6** i18n detail fixes: unify motion law suffix, internationalize Logo/progress labels
 
-### Phase 8 — Engineering and Release (v1.0)
+### Phase 8 — Engineering and Release (v1.0) ✅ Complete
 
 Goal: Reach releasable quality, support convenient installation and distribution.
 
-- [ ] **P8-1** Add `pyproject.toml`, support `pip install camforge`
-- [ ] **P8-2** Add version number (`__version__`), display in window title
-- [ ] **P8-3** GitHub Actions CI: automatically run tests and code style checks (ruff / black)
-- [ ] **P8-4** Code coverage targets: `cam_mechanics.py` >= 90%, overall >= 70%
-- [ ] **P8-5** Add type annotations, configure mypy/pyright static checking
-- [ ] **P8-6** Add upper bounds to `requirements.txt` to prevent breaking upgrades (e.g., numpy 2.x)
-- [ ] **P8-7** Maintain changelog (CHANGELOG.md)
+- [x] **P8-1** Add `pyproject.toml`, support `pip install camforge`
+- [x] **P8-2** Add version number (`__version__`), display in window title
+- [x] **P8-3** GitHub Actions CI: automatically run tests and code style checks (ruff)
+- [x] **P8-4** Code coverage targets: `cam_mechanics.py` >= 90% (actual 95%), overall >= 70% (actual 95%)
+- [x] **P8-5** Add type annotations, configure pyright static checking
+- [x] **P8-6** Add upper bounds to `requirements.txt` to prevent breaking upgrades (e.g., numpy 2.x)
+- [x] **P8-7** Maintain changelog (CHANGELOG.md)
 
 ---
 

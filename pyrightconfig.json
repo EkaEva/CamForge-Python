@@ -1,0 +1,1 @@
+{"include": ["cam_mechanics.py", "i18n.py", "ui", "main.py"], "exclude": ["tests"], "typeCheckingMode": "basic", "reportMissingTypeStubs": false, "reportUnknownArgumentType": false, "reportUnknownVariableType": false, "reportUnknownMemberType": false, "pythonVersion": "3.10"}

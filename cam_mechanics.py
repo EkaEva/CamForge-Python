@@ -3,17 +3,28 @@ CamForge - 凸轮机构运动学计算模块
 实现五种推杆运动规律、凸轮廓形计算、压力角计算及动画辅助函数
 """
 
-import numpy as np
+from __future__ import annotations
 
-N_POINTS = 360  # 一圈离散点数（1度步长）
-DEG2RAD = np.pi / 180
+__version__: str = "1.0.0"
+
+import numpy as np
+from numpy.typing import NDArray
+
+N_POINTS: int = 360  # 一圈离散点数（1度步长）
+DEG2RAD: float = np.pi / 180
 
 
 # ---------------------------------------------------------------------------
 # 运动规律：推程
 # ---------------------------------------------------------------------------
 
-def compute_rise(delta_arr, delta_0, h, omega, law):
+def compute_rise(
+    delta_arr: NDArray[np.floating],
+    delta_0: float,
+    h: float,
+    omega: float,
+    law: int,
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     计算推程阶段的位移、速度、加速度
 
@@ -89,7 +100,13 @@ def compute_rise(delta_arr, delta_0, h, omega, law):
 # 运动规律：回程
 # ---------------------------------------------------------------------------
 
-def compute_return(delta_arr, delta_ret, h, omega, law):
+def compute_return(
+    delta_arr: NDArray[np.floating],
+    delta_ret: float,
+    h: float,
+    omega: float,
+    law: int,
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     计算回程阶段的位移、速度、加速度
 
@@ -165,8 +182,11 @@ def compute_return(delta_arr, delta_ret, h, omega, law):
 # 全程运动计算
 # ---------------------------------------------------------------------------
 
-def compute_full_motion(delta_0_deg, delta_01_deg, delta_ret_deg, delta_02_deg,
-                        h, r_0, e, omega, tc_law, hc_law):
+def compute_full_motion(
+    delta_0_deg: float, delta_01_deg: float, delta_ret_deg: float, delta_02_deg: float,
+    h: float, r_0: float, e: float, omega: float, tc_law: int, hc_law: int,
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating],
+           NDArray[np.floating], NDArray[np.floating], list[float]]:
     """
     计算凸轮一整圈运动的位移、速度、加速度
 
@@ -273,7 +293,9 @@ def compute_full_motion(delta_0_deg, delta_01_deg, delta_ret_deg, delta_02_deg,
 # 凸轮廓形计算
 # ---------------------------------------------------------------------------
 
-def compute_cam_profile(s, r_0, e, sn, pz):
+def compute_cam_profile(
+    s: NDArray[np.floating], r_0: float, e: float, sn: int, pz: int,
+) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating]]:
     """
     计算凸轮廓形坐标
 
@@ -312,10 +334,127 @@ def compute_cam_profile(s, r_0, e, sn, pz):
 
 
 # ---------------------------------------------------------------------------
+# 滚子从动件实际廓形计算
+# ---------------------------------------------------------------------------
+
+def compute_roller_profile(
+    x_theory: NDArray[np.floating], y_theory: NDArray[np.floating],
+    r_r: float, sn: int,
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    """
+    计算滚子从动件的实际廓形（理论廓形的等距内包络线）
+
+    实际廓形 = 理论廓形向内偏移滚子半径 r_r 的等距曲线。
+    对每个理论廓形点，沿内法线方向偏移 r_r 得到实际廓形点。
+
+    Parameters
+    ----------
+    x_theory, y_theory : ndarray - 理论廓形坐标
+    r_r : float - 滚子半径（>0 时计算实际廓形，=0 时返回理论廓形）
+    sn : int - 旋向符号 (+1顺时针, -1逆时针)
+
+    Returns
+    -------
+    x_actual, y_actual : ndarray - 实际廓形坐标
+    """
+    if r_r < 0:
+        raise ValueError(f"r_r must be >= 0, got {r_r}")
+    if r_r == 0:
+        return x_theory.copy(), y_theory.copy()
+
+    n = len(x_theory)
+    x_actual = np.empty(n)
+    y_actual = np.empty(n)
+
+    for i in range(n):
+        # 中心差分求切线方向
+        i_prev = (i - 1) % n
+        i_next = (i + 1) % n
+        dx = x_theory[i_next] - x_theory[i_prev]
+        dy = y_theory[i_next] - y_theory[i_prev]
+        len_t = np.hypot(dx, dy)
+        if len_t < 1e-12:
+            x_actual[i] = x_theory[i]
+            y_actual[i] = y_theory[i]
+            continue
+        tx = dx / len_t
+        ty = dy / len_t
+        # 内法线方向（指向凸轮中心）
+        # 对于 sn=1 (顺时针)，内法线 = 切线顺时针旋转90度
+        # 对于 sn=-1 (逆时针)，内法线 = 切线逆时针旋转90度
+        if sn == 1:
+            nx = ty
+            ny = -tx
+        else:
+            nx = -ty
+            ny = tx
+        # 选择指向凸轮中心(0,0)的法线方向
+        dot = (0 - x_theory[i]) * nx + (0 - y_theory[i]) * ny
+        if dot < 0:
+            nx, ny = -nx, -ny
+        x_actual[i] = x_theory[i] + r_r * nx
+        y_actual[i] = y_theory[i] + r_r * ny
+
+    return x_actual, y_actual
+
+
+# ---------------------------------------------------------------------------
+# 凸轮廓形曲率半径计算
+# ---------------------------------------------------------------------------
+
+def compute_curvature_radius(
+    x: NDArray[np.floating], y: NDArray[np.floating],
+) -> NDArray[np.floating]:
+    """
+    计算凸轮廓形各点的曲率半径
+
+    使用参数曲线曲率公式：
+    ρ = ((x'^2 + y'^2)^(3/2)) / |x'y'' - y'x''|
+
+    Parameters
+    ----------
+    x, y : ndarray - 凸轮廓形坐标
+
+    Returns
+    -------
+    rho : ndarray - 曲率半径数组（正值表示凸面，负值表示凹面/ undercutting）
+    """
+    n = len(x)
+    if n < 3:
+        raise ValueError(f"Need at least 3 points, got {n}")
+
+    # 中心差分求一阶和二阶导数
+    dx = np.empty(n)
+    dy = np.empty(n)
+    ddx = np.empty(n)
+    ddy = np.empty(n)
+
+    for i in range(n):
+        i_prev = (i - 1) % n
+        i_next = (i + 1) % n
+        dx[i] = (x[i_next] - x[i_prev]) / 2.0
+        dy[i] = (y[i_next] - y[i_prev]) / 2.0
+        ddx[i] = x[i_next] - 2 * x[i] + x[i_prev]
+        ddy[i] = y[i_next] - 2 * y[i] + y[i_prev]
+
+    # 曲率 κ = (x'y'' - y'x'') / (x'^2 + y'^2)^(3/2)
+    cross = dx * ddy - dy * ddx
+    speed_cubed = (dx ** 2 + dy ** 2) ** 1.5
+
+    # 避免除零
+    rho = np.where(speed_cubed > 1e-12, speed_cubed / cross, np.inf)
+
+    return rho
+
+
+# ---------------------------------------------------------------------------
 # 压力角计算
 # ---------------------------------------------------------------------------
 
-def compute_pressure_angle(s, ds_ddelta, s_0, e, pz):
+def compute_pressure_angle(
+    s: NDArray[np.floating], ds_ddelta: NDArray[np.floating],
+    s_0: float, e: float, pz: int,
+) -> NDArray[np.floating]:
     """
     用解析公式计算压力角
 
@@ -349,7 +488,9 @@ def compute_pressure_angle(s, ds_ddelta, s_0, e, pz):
 # 凸轮旋转（动画用）
 # ---------------------------------------------------------------------------
 
-def compute_rotated_cam(x_static, y_static, angle_rad):
+def compute_rotated_cam(
+    x_static: NDArray[np.floating], y_static: NDArray[np.floating], angle_rad: float,
+) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
     """
     通过旋转矩阵旋转凸轮廓形坐标
 
@@ -373,7 +514,11 @@ def compute_rotated_cam(x_static, y_static, angle_rad):
 # 动画帧数据计算
 # ---------------------------------------------------------------------------
 
-def compute_anim_frame_data(s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all):
+def compute_anim_frame_data(
+    s: NDArray[np.floating], ds_ddelta: NDArray[np.floating],
+    s_0: float, e: float, r_0: float, sn: int, pz: int,
+    i: int, alpha_all: NDArray[np.floating],
+) -> dict[str, float]:
     """
     解析计算一帧动画所需的全部数据
 
@@ -513,7 +658,10 @@ def compute_pressure_angle_arc(cx, cy, nx, ny, alpha_i, arc_r):
 # 参数校验
 # ---------------------------------------------------------------------------
 
-def validate_params(delta_0, delta_01, delta_ret, delta_02, h, r_0, e, omega):
+def validate_params(
+    delta_0: float, delta_01: float, delta_ret: float, delta_02: float,
+    h: float, r_0: float, e: float, omega: float,
+) -> tuple[bool, str]:
     """
     校验凸轮参数
 
