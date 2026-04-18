@@ -420,8 +420,8 @@ class CamSimulator:
         # 注意：左侧图有右侧突出的Y轴，需要留出空间避免重叠
         gs = GridSpec(2, 3, figure=self.fig,
                       left=0.05, right=0.97, top=0.94, bottom=0.07,
-                      wspace=0.40, hspace=0.30,
-                      width_ratios=[1, 1.8, 0.35],
+                      wspace=0.55, hspace=0.30,
+                      width_ratios=[1, 2.0, 0.28],
                       height_ratios=[1, 1])
 
         # 左侧静态图区域（第0列）
