@@ -4,6 +4,9 @@
 以及 GIF 导出的帧生成逻辑。
 """
 
+import numpy as np
+import os
+
 from cam_mechanics import (
     compute_rotated_cam, compute_anim_frame_data,
     compute_pressure_angle_arc, DEG2RAD,
@@ -15,7 +18,6 @@ from ui.constants import (
 )
 from ui.drawing import draw_fixed_support
 from i18n import t
-import os
 
 
 def render_frame_artists(artists, data, i, *,
@@ -30,8 +32,8 @@ def render_frame_artists(artists, data, i, *,
     Parameters
     ----------
     artists : dict
-        Matplotlib line artists，包含键: cam, base, offset,
-        tangent, normal, rod, tip, center, lower, upper, boundaries, arc。
+        Matplotlib line artists，包含键: cam, theory, base, offset,
+        tangent, normal, rod, tip, roller, center, lower, upper, boundaries, arc。
     data : dict
         CamSimulator.sim_data 仿真数据字典。
     i : int
@@ -53,12 +55,24 @@ def render_frame_artists(artists, data, i, *,
     e = data['e']
     pz = data['pz']
     alpha_all = data['alpha_all']
+    r_r = data.get('r_r', 0)
     N = len(s)
 
     # 旋转凸轮
     angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
     x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
-    artists['cam'].set_data(x_rot, y_rot)
+
+    # 根据滚子半径决定显示哪个廓形
+    if r_r > 0:
+        # 显示实际廓形（红色实线）
+        x_actual_rot, y_actual_rot = compute_rotated_cam(data['x_actual'], data['y_actual'], angle_rad)
+        artists['cam'].set_data(x_actual_rot, y_actual_rot)
+        # 显示理论廓形（蓝色双点划线）
+        artists['theory'].set_data(x_rot, y_rot)
+    else:
+        # 显示理论廓形（红色实线）
+        artists['cam'].set_data(x_rot, y_rot)
+        artists['theory'].set_data([], [])
 
     # 基圆/偏距圆
     if show_base:
@@ -91,13 +105,27 @@ def render_frame_artists(artists, data, i, *,
     else:
         artists['normal'].set_data([], [])
 
-    # 推杆杆身和尖顶
+    # 推杆杆身
     tip_w = r_0 * TIP_WIDTH_RATIO
     tip_h = r_0 * TIP_HEIGHT_RATIO
     rod_top = cy + r_0 * ROD_LENGTH_RATIO
     artists['rod'].set_data([follower_x, follower_x], [cy + tip_h, rod_top])
-    artists['tip'].set_data([follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w],
-                            [cy + tip_h, cy, cy + tip_h, cy + tip_h])
+
+    # 推杆尖端：根据滚子半径显示不同形状
+    if r_r > 0:
+        # 滚子圆形
+        theta = np.linspace(0, 2 * np.pi, 36)
+        roller_x = follower_x + r_r * np.cos(theta)
+        roller_y = cy + r_r * np.sin(theta)
+        artists['roller'].set_data(roller_x, roller_y)
+        # 隐藏三角形尖端
+        artists['tip'].set_data([], [])
+    else:
+        # 三角形尖端
+        artists['tip'].set_data([follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w],
+                                [cy + tip_h, cy, cy + tip_h, cy + tip_h])
+        # 隐藏滚子圆形
+        artists['roller'].set_data([], [])
 
     # 推杆上下限线
     if show_limits:

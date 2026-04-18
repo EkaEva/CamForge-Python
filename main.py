@@ -553,7 +553,9 @@ class CamSimulator:
 
         # 滚子半径
         r_r = model.r_r
+        r_r_warning = None
         if r_r < 0:
+            r_r_warning = t("status.warning_r_r_negative", self.lang, val=r_r)
             r_r = 0
 
         # 计算运动
@@ -596,6 +598,8 @@ class CamSimulator:
 
         # 警告累积显示
         warnings = []
+        if r_r_warning:
+            warnings.append(r_r_warning)
         if max_alpha > alpha_threshold:
             warnings.append(t("status.warning_max_alpha", self.lang, val=max_alpha, threshold=alpha_threshold))
         if model.h > model.r_0:
@@ -729,14 +733,21 @@ class CamSimulator:
         r_0 = data['r_0']
         h = data['h']
         Rmax = data['Rmax']
+        r_r = data.get('r_r', 0)
 
+        # 主廓形线（r_r > 0 时显示实际廓形，否则显示理论廓形）
         line_cam, = ax.plot([], [], 'r-', linewidth=2)
+        # 理论廓形线（仅当 r_r > 0 时显示，蓝色双点划线）
+        line_theory, = ax.plot([], [], 'b:', linewidth=1.5)
         line_base, = ax.plot([], [], 'm-', linewidth=1)
         line_offset, = ax.plot([], [], 'c-', linewidth=1)
         line_tangent, = ax.plot([], [], 'm-', linewidth=1)
         line_normal, = ax.plot([], [], 'm-', linewidth=1)
         line_rod, = ax.plot([], [], 'k-', linewidth=3, solid_capstyle='butt')
+        # 推杆尖端（三角形或滚子圆形）
         line_tip, = ax.plot([], [], 'k-', linewidth=2)
+        # 滚子圆形（仅当 r_r > 0 时显示）
+        line_roller, = ax.plot([], [], 'k-', linewidth=1.5)
         line_center, = ax.plot([], [], 'k--', linewidth=0.8)
         line_lower, = ax.plot([], [], 'c-.', linewidth=1)
         line_upper, = ax.plot([], [], 'm--', linewidth=1)
@@ -777,9 +788,9 @@ class CamSimulator:
         self._init_info_panel()
 
         self._anim_artists = {
-            'cam': line_cam, 'base': line_base, 'offset': line_offset,
+            'cam': line_cam, 'theory': line_theory, 'base': line_base, 'offset': line_offset,
             'tangent': line_tangent, 'normal': line_normal,
-            'rod': line_rod, 'tip': line_tip, 'center': line_center,
+            'rod': line_rod, 'tip': line_tip, 'roller': line_roller, 'center': line_center,
             'lower': line_lower, 'upper': line_upper,
             'boundaries': lines_boundary, 'arc': line_arc,
         }

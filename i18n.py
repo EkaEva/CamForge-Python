@@ -359,6 +359,10 @@ TRANSLATIONS = {
         "zh": "警告：最小曲率半径 {val:.2f} mm 小于滚子半径 {r_r:.1f} mm，可能发生干涉",
         "en": "Warning: Min curvature radius {val:.2f} mm < roller radius {r_r:.1f} mm, interference possible",
     },
+    "status.warning_r_r_negative": {
+        "zh": "警告：滚子半径 {val:.1f} mm 为负值，已自动设为 0",
+        "en": "Warning: Roller radius {val:.1f} mm is negative, automatically set to 0",
+    },
     "status.input_invalid": {
         "zh": "输入无效: {error}", "en": "Invalid input: {error}",
     },
