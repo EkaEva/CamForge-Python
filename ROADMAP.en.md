@@ -198,6 +198,17 @@ Goal: Optimize animation display area.
 - [x] **P11-2** Larger animation area, info panel moved to right edge
 - [x] **P11-3** GridSpec 2x3 with width_ratios [1, 1.6, 0.4]
 
+### Phase 12 — v0.4.0 Layout Optimization and i18n Improvements ✅ Complete
+
+Goal: Optimize layout spacing, improve internationalization support.
+
+- [x] **P12-1** Three-column layout: static charts | spacer | animation, width_ratios [1, 0.25, 0.9]
+- [x] **P12-2** Increase second right Y-axis offset for motion curves (45→60 pixels)
+- [x] **P12-3** Two-row status bar: Row 1 for status message, Row 2 for stroke/initial displacement/max pressure angle
+- [x] **P12-4** Button order adjustment: Load Preset → Save Preset → Download
+- [x] **P12-5** CSV/SVG/preset filename i18n (Chinese filenames in Chinese mode)
+- [x] **P12-6** Plain text labels for status bar (avoid LaTeX symbol display issues)
+
 ---
 
 ## III. Issue Statistics

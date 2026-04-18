@@ -35,42 +35,44 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 
 ### Interface Layout
 
-**v0.3.2 New Layout**:
+**v0.4.0 New Layout**:
 
 ```
 ┌────────────┬──────────────────────────────────────────────────────────────┐
-│            │  [Start] [Pause] [Clear] [Random] [Download] ... Speed       │
-│  Language  ├───────────────────────────┬────────────────────┬─────────────┤
-│  ────────  │  ┌─────────────────────┐  │                    │             │
-│  Motion    │  │  Follower Motion    │  │                    │             │
-│  Params    │  │  (Triple Y: s/v/a)  │  │                    │  Info Panel │
-│  Rise angle│  └─────────────────────┘  │                    │             │
-│  Far dwell ├───────────────────────────┤    Cam Animation   ├─────────────┤
-│  Return ang│  ┌─────────────────────┐  │   (Profile+Follower)│  (Real-time │
-│  Near dwell│  │ Geometry Constraints│  │                    │   Data)     │
-│  Stroke/   │  │  (Dual Y: α/ρ)      │  │                    │             │
-│  Base circ │  └─────────────────────┘  │                    │             │
-│  Offset/ω  │                           │                    │             │
-│  Motion law│  Left: Static Charts      │  Right: Dynamic     │             │
-│  Rotation  │                           │                    │             │
-│  Offset dir│                           │                    │             │
-│  ────────  │                           │                    │             │
-│  Display   │                           │                    │             │
-│  ☐Tangent  │                           │                    │             │
-│  ☐Normal   │                           │                    │             │
-│  ☐Press.arc│                           │                    │             │
-│  ☐Boundaries│                          │                    │             │
-│  ☐Base circ│                           │                    │             │
-│  ☐Offset ○ │                           │                    │             │
-│  ☐Limits   │                           │                    │             │
-│  ☐Grid     │                           │                    │             │
-└────────────┴───────────────────────────┴────────────────────┴─────────────┘
+│            │  [Start] [Pause] [Clear] [Random] [Load] [Save] [Download]   │
+│  Language  ├───────────────────┬────────┬────────────────────┬───────────┤
+│  ────────  │  ┌─────────────┐  │        │                    │           │
+│  Motion    │  │ Follower    │  │        │                    │  Info     │
+│  Params    │  │ Motion Curves│  │ Spacer │    Cam Animation   │  Panel    │
+│  Rise angle│  └─────────────┘  │        │   (Profile+Follower)│  (Real-   │
+│  Far dwell ├───────────────────┤        │                    │  time)    │
+│  Return ang│  ┌─────────────┐  │        │                    │           │
+│  Near dwell│  │ Geometry    │  │        │                    │           │
+│  Stroke/   │  │ Constraints │  │        │                    │           │
+│  Base circ │  └─────────────┘  │        │                    │           │
+│  Offset/ω  │                   │        │                    │           │
+│  Motion law│  Left: Static     │ Spacer │  Right: Dynamic     │           │
+│  Rotation  │                   │        │                    │           │
+│  Offset dir│                   │        │                    │           │
+│  ────────  │                   │        │                    │           │
+│  Display   │                   │        │                    │           │
+│  ☐Tangent  │                   │        │                    │           │
+│  ☐Normal   │                   │        │                    │           │
+│  ☐Press.arc│                   │        │                    │           │
+│  ☐Boundaries│                  │        │                    │           │
+│  ☐Base circ│                   │        │                    │           │
+│  ☐Offset ○ │                   │        │                    │           │
+│  ☐Limits   │                   │        │                    │           │
+│  ☐Grid     │                   │        │                    │           │
+└────────────┴───────────────────┴────────┴────────────────────┴───────────┘
 ```
 
 **Layout Features**:
-- **Left-right split**: Static charts on left, dynamic on right
+- **Three-column layout**: Static charts | Spacer | Dynamic animation
 - **Left side**: Follower motion curves (top, Triple Y-axis) | Geometry constraints (bottom, Dual Y-axis)
-- **Right side**: Cam animation (main area) | Info panel (right edge)
+- **Right side**: Cam animation (main area) | Info panel (embedded in top-left corner)
+- **Spacer column**: Provides enough room for right Y-axes in motion curves
+- **Two-row status bar**: Row 1 shows status message, Row 2 shows stroke, initial displacement, max pressure angle
 - **Adaptive Scaling**: Automatically adjusts chart sizes when window changes, no clipping or white space
 
 ### Motion Laws Overview

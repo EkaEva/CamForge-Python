@@ -5,6 +5,28 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-18
+
+### Added
+- Three-column GridSpec layout with spacer between static plots and animation
+- i18n keys for SVG and preset filenames: `export.filename.svg`, `export.filename.preset`
+- Plain text labels for status bar: `status.label.h`, `status.label.s0`, `status.label.max_alpha`
+
+### Changed
+- Layout optimized with width_ratios [1, 0.25, 0.9] for better Y-axis spacing
+- Increased outward offset for second right Y-axis from 45 to 60 pixels
+- Status bar reorganized into two rows:
+  - Row 1: status message only
+  - Row 2: stroke | initial displacement | max pressure angle
+- Button order changed: Load Preset → Save Preset → Download
+- Info panel width increased from 0.22 to 0.28 (in animation)
+
+### Fixed
+- CSV filename and header now use i18n (Chinese: 凸轮数据.csv with Chinese headers)
+- SVG filename now uses i18n (Chinese: 凸轮综合图.svg)
+- Preset filename now uses i18n (Chinese: 凸轮预设.json)
+- LaTeX symbols no longer show as raw text in status bar labels
+
 ## [0.3.3] - 2026-04-18
 
 ### Added
