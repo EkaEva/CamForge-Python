@@ -371,14 +371,14 @@ class CamSimulator:
         speed_frame.pack(side=tk.RIGHT, padx=(0, 8))
         lbl_speed = tk.Label(speed_frame, text=t("toolbar.label.speed", self.lang), font=(self._tk_font_family, 10),
                  bg=THEME['toolbar_bg'])
-        lbl_speed.pack(side=tk.LEFT, padx=(0, 4))
+        lbl_speed.pack(side=tk.LEFT, padx=(0, 4), anchor='center')
         self._reg("toolbar.label.speed", lbl_speed, font_size=10)
         self.speed_var = tk.IntVar(value=3)
         self.speed_scale = tk.Scale(speed_frame, from_=1, to=10, orient=tk.HORIZONTAL,
                                     variable=self.speed_var, length=120,
                                     font=(self._tk_font_family, 9), bg=THEME['toolbar_bg'],
-                                    highlightthickness=0)
-        self.speed_scale.pack(side=tk.LEFT)
+                                    highlightthickness=0, sliderlength=20)
+        self.speed_scale.pack(side=tk.LEFT, anchor='center')
 
         # 帧进度条（P7-2）
         frame_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
