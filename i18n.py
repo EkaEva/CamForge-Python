@@ -196,6 +196,9 @@ TRANSLATIONS = {
     },
 
     # ---- Plot Titles ----
+    "plot.title.motion": {
+        "zh": r"推杆运动线图", "en": r"Follower Motion Curves",
+    },
     "plot.title.displacement": {
         "zh": r"推杆位移 $s$", "en": r"Follower Displacement $s$",
     },
@@ -219,6 +222,15 @@ TRANSLATIONS = {
     },
 
     # ---- Plot Legends ----
+    "plot.legend.displacement": {
+        "zh": "位移", "en": "Displacement",
+    },
+    "plot.legend.velocity": {
+        "zh": "速度", "en": "Velocity",
+    },
+    "plot.legend.acceleration": {
+        "zh": "加速度", "en": "Acceleration",
+    },
     "plot.legend.profile": {
         "zh": "廓形", "en": "Profile",
     },

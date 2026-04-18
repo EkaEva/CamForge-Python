@@ -8,6 +8,78 @@ from .constants import THEME, MAX_PRESSURE_ANGLE
 from .drawing import draw_fixed_support
 
 
+def draw_motion_curves(ax, data, lang, show_law_names=False):
+    """
+    在给定 ax 上绘制三 Y 轴推杆运动线图
+    左侧 Y 轴：位移 s（红色实线）
+    右侧 Y 轴 1：速度 v（蓝色虚线）
+    右侧 Y 轴 2：加速度 a（绿色点划线）
+    """
+    delta_deg = data['delta_deg']
+    s = data['s']
+    v = data['v']
+    a = data['a']
+    pb = data['phase_bounds']
+    h = data['h']
+
+    # 清除主轴
+    ax.clear()
+
+    # 位移曲线（左侧 Y 轴，红色实线）
+    color_s = 'tab:red'
+    ax.plot(delta_deg, s, color=color_s, linestyle='-', linewidth=1.5, label=t("plot.legend.displacement", lang))
+    ax.set_xlabel(r'$\delta$ (°)')
+    ax.set_ylabel(r'$s$ (mm)', color=color_s)
+    ax.tick_params(axis='y', labelcolor=color_s)
+    ax.set_xlim(0, 360)
+    ax.set_ylim(0, h * 1.15)
+    ax.set_xticks(range(0, 361, 60))
+    ax.grid(True, linestyle=':', alpha=0.6)
+
+    # 相位分界线
+    for b in pb[1:-1]:
+        ax.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
+
+    # 速度曲线（右侧 Y 轴 1，蓝色虚线）
+    ax_v = ax.twinx()
+    color_v = 'tab:blue'
+    v_max = np.max(np.abs(v)) * 1.15 if np.max(np.abs(v)) > 0 else 1
+    ax_v.plot(delta_deg, v, color=color_v, linestyle='--', linewidth=1.5, label=t("plot.legend.velocity", lang))
+    ax_v.set_ylabel(r'$v$ (mm/s)', color=color_v)
+    ax_v.tick_params(axis='y', labelcolor=color_v)
+    ax_v.set_ylim(-v_max, v_max)
+
+    # 加速度曲线（右侧 Y 轴 2，绿色点划线）
+    ax_a = ax.twinx()
+    color_a = 'tab:green'
+    a_max = np.max(np.abs(a)) * 1.15 if np.max(np.abs(a)) > 0 else 1
+    ax_a.plot(delta_deg, a, color=color_a, linestyle='-.', linewidth=1.5, label=t("plot.legend.acceleration", lang))
+    ax_a.set_ylabel(r'$a$ (mm/s$^2$)', color=color_a)
+    ax_a.tick_params(axis='y', labelcolor=color_a)
+    ax_a.set_ylim(-a_max, a_max)
+
+    # 调整右侧 Y 轴位置，避免重叠
+    ax_a.spines['right'].set_position(('outward', 60))
+
+    # 标题
+    if show_law_names:
+        tc_name = t(f"law.{data.get('tc_law', 1)}", lang)
+        hc_name = t(f"law.{data.get('hc_law', 1)}", lang)
+        title = rf'{t("plot.title.motion", lang)} {t("plot.title.law_format", lang, rise=t("plot.subtitle.rise", lang), tc=tc_name, ret=t("plot.subtitle.return", lang), hc=hc_name)}'
+        ax.set_title(title, fontsize=10)
+    else:
+        ax.set_title(t("plot.title.motion", lang), fontsize=11)
+
+    # 图例（合并三个轴的线条）
+    lines_s, labels_s = ax.get_legend_handles_labels()
+    lines_v, labels_v = ax_v.get_legend_handles_labels()
+    lines_a, labels_a = ax_a.get_legend_handles_labels()
+    ax.legend(lines_s + lines_v + lines_a, labels_s + labels_v + labels_a,
+              loc='upper right', fontsize=8)
+
+    return ax_v, ax_a
+
+
 def draw_displacement_curve(ax, data, lang, show_law_names=False):
     """在给定 ax 上绘制位移曲线"""
     delta_deg = data['delta_deg']

@@ -5,6 +5,20 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-18
+
+### Added
+- New layout: left-right split with 2x2 static plots on left, animation + info panel on right
+- Triple Y-axis motion curve plot: displacement (left, red solid), velocity (right, blue dashed), acceleration (right, green dash-dot)
+- `draw_motion_curves()` function in `ui/plots.py` for combined motion visualization
+- i18n keys: `plot.title.motion`, `plot.legend.displacement`, `plot.legend.velocity`, `plot.legend.acceleration`
+
+### Changed
+- Layout restructured: left side (motion curves | pressure angle, curvature | profile), right side (info panel | animation)
+- GridSpec changed from 2x4 equal columns to width_ratios=[1, 1, 0.6, 1.4]
+- Info panel now spans two rows, positioned left of animation
+- `_plot_static()` updated to use new `ax_motion` for triple Y-axis plot
+
 ## [0.2.0] - 2026-04-18
 
 ### Added
