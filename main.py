@@ -407,24 +407,24 @@ class CamSimulator:
                                      font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
         self.status_label.pack(side=tk.LEFT)
 
-        # 第二行：压力角 | 行程 | 初始位移
+        # 第二行：行程 | 初始位移 | 最大压力角
         status_row2 = tk.Frame(status_frame, bg=THEME['toolbar_bg'])
         status_row2.pack(fill=tk.X)
-
-        self.alpha_var = tk.StringVar()
-        self.alpha_label = tk.Label(status_row2, textvariable=self.alpha_var,
-                                    font=(self._tk_font_family, 10, 'bold'), anchor='w', bg=THEME['toolbar_bg'])
-        self.alpha_label.pack(side=tk.LEFT, padx=(0, 16))
 
         self.stroke_var = tk.StringVar()
         self.stroke_label = tk.Label(status_row2, textvariable=self.stroke_var,
                                      font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
-        self.stroke_label.pack(side=tk.LEFT, padx=16)
+        self.stroke_label.pack(side=tk.LEFT, padx=(0, 16))
 
         self.s0_var = tk.StringVar()
         self.s0_label = tk.Label(status_row2, textvariable=self.s0_var,
                                  font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
         self.s0_label.pack(side=tk.LEFT, padx=16)
+
+        self.alpha_var = tk.StringVar()
+        self.alpha_label = tk.Label(status_row2, textvariable=self.alpha_var,
+                                    font=(self._tk_font_family, 10, 'bold'), anchor='w', bg=THEME['toolbar_bg'])
+        self.alpha_label.pack(side=tk.LEFT, padx=16)
 
         return toolbar, status_frame
 
