@@ -753,7 +753,7 @@ class CamSimulator:
         draw_fixed_support(ax, r_0)
 
         # ax.clear() 会清除 inset_axes，需要重新创建信息面板
-        self.ax_info = ax.inset_axes([0.01, 0.72, 0.18, 0.26])
+        self.ax_info = ax.inset_axes([0.01, 0.78, 0.22, 0.20])
         self._init_info_panel()
 
         self._anim_artists = {
@@ -765,14 +765,18 @@ class CamSimulator:
         }
 
     def _init_info_panel(self):
-        """初始化信息面板（动画左上角，单列布局，透明背景）"""
+        """初始化信息面板（动画左上角，图例样式）"""
         ax = self.ax_info
         ax.clear()
         ax.set_xticks([])
         ax.set_yticks([])
 
-        # 添加更透明的背景填充
-        ax.set_facecolor((0.95, 0.95, 0.95, 0.5))  # 更透明的浅灰色
+        # 图例样式：带边框的白色半透明背景
+        ax.set_facecolor((1.0, 1.0, 1.0, 0.8))
+        for spine in ax.spines.values():
+            spine.set_visible(True)
+            spine.set_color('gray')
+            spine.set_linewidth(0.5)
 
         # 单列布局，只显示转角、压力角、位移
         items = [
@@ -783,9 +787,9 @@ class CamSimulator:
         self._info_labels = {}
 
         for idx, (key, name) in enumerate(items):
-            y_pos = 0.82 - idx * 0.26  # 最小行间距
+            y_pos = 0.78 - idx * 0.22  # 更紧凑的行间距
             lbl = ax.text(0.10, y_pos, f'{name}: --', transform=ax.transAxes,
-                          fontsize=8, ha='left', va='top', color=THEME['info_text'])
+                          fontsize=8, ha='left', va='top', color='black')
             self._info_labels[key] = lbl
 
     def _start_animation(self):
