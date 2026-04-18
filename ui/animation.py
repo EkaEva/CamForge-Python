@@ -56,10 +56,12 @@ def render_frame_artists(artists, data, i, *,
     pz = data['pz']
     alpha_all = data['alpha_all']
     r_r = data.get('r_r', 0)
+    n_points = data.get('n_points', len(s))
     N = len(s)
 
-    # 旋转凸轮
-    angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
+    # 旋转凸轮（角度需要根据 n_points 缩放）
+    angle_deg = i * 360.0 / n_points
+    angle_rad = -angle_deg * DEG2RAD if sn == 1 else angle_deg * DEG2RAD
     x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
 
     # 根据滚子半径决定显示哪个廓形
@@ -86,7 +88,7 @@ def render_frame_artists(artists, data, i, *,
         artists['offset'].set_data([], [])
 
     # 帧数据
-    frame = compute_anim_frame_data(s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all)
+    frame = compute_anim_frame_data(s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all, n_points)
     follower_x = frame['follower_x']
     cy = frame['contact_y']
     cx = follower_x
@@ -265,6 +267,7 @@ def generate_gif_frames(data, filepath, saved_list, folder,
     r_r = data.get('r_r', 0)
     x_actual = data.get('x_actual')
     y_actual = data.get('y_actual')
+    n_points = data.get('n_points', len(s))
     N = len(s)
 
     fig_gif = Figure(figsize=(8, 6), dpi=GIF_DPI)
@@ -281,7 +284,9 @@ def generate_gif_frames(data, filepath, saved_list, folder,
     frame_images = []
 
     for i in range(N):
-        angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
+        # 角度需要根据 n_points 缩放
+        angle_deg = i * 360.0 / n_points
+        angle_rad = -angle_deg * DEG2RAD if sn == 1 else angle_deg * DEG2RAD
         x_rot, y_rot = compute_rotated_cam(x_cam, y_cam, angle_rad)
 
         ax_gif.clear()
@@ -300,7 +305,7 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         if show_offset:
             ax_gif.plot(x_offset, y_offset, 'c-', linewidth=1)
 
-        frame_data = compute_anim_frame_data(s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all)
+        frame_data = compute_anim_frame_data(s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all, n_points)
         fx = frame_data['follower_x']
         cy = frame_data['contact_y']
         alpha_i = frame_data['alpha_i']
@@ -347,14 +352,14 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         ax_gif.set_xlim(xlim)
         ax_gif.set_ylim(ylim)
         ax_gif.set_aspect('equal', adjustable='box')
-        ax_gif.set_title(f'{title_anim_gif}  {i:3d}°/360°', fontsize=11)
+        ax_gif.set_title(f'{title_anim_gif}  {int(angle_deg):3d}°/360°', fontsize=11)
 
         ax_info_gif.clear()
         ax_info_gif.set_xticks([])
         ax_info_gif.set_yticks([])
         ax_info_gif.set_frame_on(False)
         info_items = [
-            (0.95, rf'{label_delta_gif}: {i:3d}°/360°'),
+            (0.95, rf'{label_delta_gif}: {int(angle_deg):3d}°/360°'),
             (0.85, rf'{label_alpha_gif}: {alpha_i:.1f}°'),
             (0.75, rf'{label_s_gif}: {frame_data["s_i"]:.2f} mm'),
             (0.65, rf'{label_h_gif}: {h:.1f} mm'),

@@ -922,7 +922,10 @@ class CamSimulator:
             show_boundaries=self.sidebar.checks['show_boundaries'].get(),
             show_arc=self.sidebar.checks['show_arc'].get(),
         )
-        h, s_0 = update_info_panel(self._info_labels, i, data['alpha_all'][i] if i < N else 0,
+        # 角度需要根据 n_points 缩放
+        n_points = data.get('n_points', N)
+        angle_deg = int(i * 360.0 / n_points)
+        h, s_0 = update_info_panel(self._info_labels, angle_deg, data['alpha_all'][i] if i < N else 0,
                           data['s'][i] if i < N else 0, data['h'], data['s_0'], self.lang)
 
         # 更新状态栏的行程和初始位移（使用纯文本标签）
@@ -962,7 +965,10 @@ class CamSimulator:
             show_boundaries=self.sidebar.checks['show_boundaries'].get(),
             show_arc=self.sidebar.checks['show_arc'].get(),
         )
-        h, s_0 = update_info_panel(self._info_labels, i, result['alpha_i'],
+        # 角度需要根据 n_points 缩放
+        n_points = data.get('n_points', N)
+        angle_deg = int(i * 360.0 / n_points)
+        h, s_0 = update_info_panel(self._info_labels, angle_deg, result['alpha_i'],
                           result['s_i'], data['h'], data['s_0'], self.lang)
         # 更新状态栏的行程和初始位移（使用纯文本标签）
         label_h = t("status.label.h", self.lang)

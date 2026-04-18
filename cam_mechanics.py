@@ -521,6 +521,7 @@ def compute_anim_frame_data(
     s: NDArray[np.floating], ds_ddelta: NDArray[np.floating],
     s_0: float, e: float, r_0: float, sn: int, pz: int,
     i: int, alpha_all: NDArray[np.floating],
+    n_points: int = 360,
 ) -> dict[str, float]:
     """
     解析计算一帧动画所需的全部数据
@@ -539,6 +540,7 @@ def compute_anim_frame_data(
     pz : int - 偏距符号
     i : int - 当前帧索引
     alpha_all : ndarray - 全程压力角数组
+    n_points : int - 离散点数（默认 360）
 
     Returns
     -------
@@ -557,8 +559,10 @@ def compute_anim_frame_data(
     #   dy0/dδ = -(s_0+s)*sin(δ) + (ds/dδ)*cos(δ) - pz*e*cos(δ)
     # 翻转后：dx/dδ = -sn * dx0/dδ,  dy/dδ = dy0/dδ
     # 旋转 θ 后：切线 = R(θ) * (dx/dδ, dy/dδ)
-    delta_i = i * DEG2RAD
-    theta = -sn * i * DEG2RAD  # sn=1时顺时针(负角)，sn=-1时逆时针(正角)
+    # 角度需要根据 n_points 缩放：角度 = i * 360 / n_points
+    angle_deg = i * 360.0 / n_points
+    delta_i = angle_deg * DEG2RAD
+    theta = -sn * delta_i  # sn=1时顺时针(负角)，sn=-1时逆时针(正角)
     cos_t, sin_t = np.cos(theta), np.sin(theta)
     cos_d, sin_d = np.cos(delta_i), np.sin(delta_i)
 
