@@ -414,21 +414,22 @@ class CamSimulator:
         """构建图表区域"""
         self.fig = Figure(figsize=(14, 8), dpi=100)
 
-        # v0.3.1 新布局：上下两部分
-        # 上方：推杆运动线图（左）| 几何约束指标图（右，压力角+曲率半径双Y轴）
-        # 下方：动画（左）| 信息面板（右）
-        gs = GridSpec(2, 2, figure=self.fig,
-                      left=0.07, right=0.95, top=0.94, bottom=0.07,
-                      wspace=0.30, hspace=0.28,
+        # v0.3.2 新布局：左右两部分
+        # 左侧：推杆运动线图（上）| 几何约束指标图（下）
+        # 右侧：动画（主区域）| 信息面板（右侧小区域）
+        gs = GridSpec(2, 3, figure=self.fig,
+                      left=0.06, right=0.97, top=0.94, bottom=0.07,
+                      wspace=0.25, hspace=0.30,
+                      width_ratios=[1, 1.6, 0.4],
                       height_ratios=[1, 1])
 
-        # 上方静态图区域
+        # 左侧静态图区域（第0列）
         self.ax_motion = self.fig.add_subplot(gs[0, 0])   # 推杆运动线图（三 Y 轴）
-        self.ax_geom = self.fig.add_subplot(gs[0, 1])     # 几何约束指标图（双 Y 轴）
+        self.ax_geom = self.fig.add_subplot(gs[1, 0])     # 几何约束指标图（双 Y 轴）
 
-        # 下方动态区域
-        self.ax_anim = self.fig.add_subplot(gs[1, 0])     # 动画
-        self.ax_info = self.fig.add_subplot(gs[1, 1])     # 信息面板
+        # 右侧动态区域（第1、2列）
+        self.ax_anim = self.fig.add_subplot(gs[:, 1])     # 动画（跨两行）
+        self.ax_info = self.fig.add_subplot(gs[:, 2])     # 信息面板（跨两行）
 
         # 信息面板样式
         self.ax_info.set_xticks([])

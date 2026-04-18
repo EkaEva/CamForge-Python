@@ -5,6 +5,15 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-04-18
+
+### Changed
+- New layout: left-right split with 2x3 grid
+  - Left column: motion curves (top) | geometry constraints (bottom)
+  - Right side: animation (main area, spans 2 rows) | info panel (right edge, spans 2 rows)
+- GridSpec width_ratios changed to [1, 1.6, 0.4] for better animation display
+- Animation area now larger, info panel moved to right edge
+
 ## [0.3.1] - 2026-04-18
 
 ### Added
