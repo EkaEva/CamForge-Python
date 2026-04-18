@@ -147,7 +147,7 @@ def update_info_panel(info_labels, i, alpha_i, s_i, h, s_0, lang):
     Parameters
     ----------
     info_labels : dict
-        信息面板 matplotlib text 对象，键: delta, alpha, s, h, s0。
+        信息面板 matplotlib text 对象，键: delta, alpha, s。
     i : int
         帧索引。
     alpha_i : float
@@ -155,22 +155,24 @@ def update_info_panel(info_labels, i, alpha_i, s_i, h, s_0, lang):
     s_i : float
         当前位移。
     h : float
-        推杆最大位移。
+        推杆最大位移（返回值，不显示）。
     s_0 : float
-        初始位移。
+        初始位移（返回值，不显示）。
     lang : str
         当前语言代码。
+
+    Returns
+    -------
+    tuple
+        (h, s_0) 用于状态栏显示
     """
     label_delta = t("info.label.delta", lang)
     label_alpha = t("info.label.alpha", lang)
     label_s = t("info.label.s", lang)
-    label_h = t("info.label.h", lang)
-    label_s0 = t("info.label.s0", lang)
     info_labels['delta'].set_text(rf'{label_delta}: {i:3d}°/360°')
     info_labels['alpha'].set_text(rf'{label_alpha}: {alpha_i:.1f}°')
     info_labels['s'].set_text(rf'{label_s}: {s_i:.2f} mm')
-    info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
-    info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
+    return h, s_0
 
 
 def generate_gif_frames(data, filepath, saved_list, folder,

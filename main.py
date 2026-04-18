@@ -408,6 +408,17 @@ class CamSimulator:
                                     font=(self._tk_font_family, 11, 'bold'), anchor='w', bg=THEME['toolbar_bg'])
         self.alpha_label.pack(side=tk.LEFT, padx=16)
 
+        # 行程和初始位移显示
+        self.stroke_var = tk.StringVar()
+        self.stroke_label = tk.Label(status_bar, textvariable=self.stroke_var,
+                                     font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
+        self.stroke_label.pack(side=tk.LEFT, padx=16)
+
+        self.s0_var = tk.StringVar()
+        self.s0_label = tk.Label(status_bar, textvariable=self.s0_var,
+                                 font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
+        self.s0_label.pack(side=tk.LEFT, padx=16)
+
         return toolbar, status_bar
 
     def _build_figure(self, main_area):
@@ -754,26 +765,26 @@ class CamSimulator:
         }
 
     def _init_info_panel(self):
-        """初始化信息面板（动画左上角，单列布局）"""
+        """初始化信息面板（动画左上角，单列布局，透明背景）"""
         ax = self.ax_info
         ax.clear()
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_frame_on(False)
 
-        # 单列布局
+        # 添加半透明背景填充
+        ax.set_facecolor((0.9, 0.9, 0.9, 0.7))  # 浅灰色半透明
+
+        # 单列布局，只显示转角、压力角、位移
         items = [
             ('delta', t("info.label.delta", self.lang)),
             ('alpha', t("info.label.alpha", self.lang)),
             ('s',     t("info.label.s", self.lang)),
-            ('h',     t("info.label.h", self.lang)),
-            ('s0',    t("info.label.s0", self.lang)),
         ]
         self._info_labels = {}
 
         for idx, (key, name) in enumerate(items):
-            y_pos = 0.92 - idx * 0.18
-            lbl = ax.text(0.08, y_pos, f'{name}: --', transform=ax.transAxes,
+            y_pos = 0.85 - idx * 0.28
+            lbl = ax.text(0.12, y_pos, f'{name}: --', transform=ax.transAxes,
                           fontsize=9, ha='left', va='top', color=THEME['info_text'])
             self._info_labels[key] = lbl
 
@@ -832,8 +843,13 @@ class CamSimulator:
             self.btn_pause.config(text=t("toolbar.btn.replay", self.lang))
             self._pause_state = "replay"
             self.alpha_var.set(t("status.max_alpha", self.lang, val=data['max_alpha']))
-            update_info_panel(self._info_labels, 360, data['max_alpha'], 0.0,
+            h, s_0 = update_info_panel(self._info_labels, 360, data['max_alpha'], 0.0,
                               data['h'], data['s_0'], self.lang)
+            # 更新状态栏的行程和初始位移
+            label_h = t("info.label.h", self.lang)
+            label_s0 = t("info.label.s0", self.lang)
+            self.stroke_var.set(f'{label_h}: {h:.1f} mm')
+            self.s0_var.set(f'{label_s0}: {s_0:.2f} mm')
             self.canvas.draw_idle()
             return
 
@@ -847,8 +863,14 @@ class CamSimulator:
             show_boundaries=self.sidebar.checks['show_boundaries'].get(),
             show_arc=self.sidebar.checks['show_arc'].get(),
         )
-        update_info_panel(self._info_labels, i, data['alpha_all'][i] if i < N else 0,
+        h, s_0 = update_info_panel(self._info_labels, i, data['alpha_all'][i] if i < N else 0,
                           data['s'][i] if i < N else 0, data['h'], data['s_0'], self.lang)
+
+        # 更新状态栏的行程和初始位移
+        label_h = t("info.label.h", self.lang)
+        label_s0 = t("info.label.s0", self.lang)
+        self.stroke_var.set(f'{label_h}: {h:.1f} mm')
+        self.s0_var.set(f'{label_s0}: {s_0:.2f} mm')
 
         if i % ANIM_FRAME_SKIP == 0:
             self.canvas.draw_idle()
@@ -881,8 +903,13 @@ class CamSimulator:
             show_boundaries=self.sidebar.checks['show_boundaries'].get(),
             show_arc=self.sidebar.checks['show_arc'].get(),
         )
-        update_info_panel(self._info_labels, i, result['alpha_i'],
+        h, s_0 = update_info_panel(self._info_labels, i, result['alpha_i'],
                           result['s_i'], data['h'], data['s_0'], self.lang)
+        # 更新状态栏的行程和初始位移
+        label_h = t("info.label.h", self.lang)
+        label_s0 = t("info.label.s0", self.lang)
+        self.stroke_var.set(f'{label_h}: {h:.1f} mm')
+        self.s0_var.set(f'{label_s0}: {s_0:.2f} mm')
         self.canvas.draw_idle()
 
     # ===================================================================
