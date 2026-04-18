@@ -753,7 +753,7 @@ class CamSimulator:
         draw_fixed_support(ax, r_0)
 
         # ax.clear() 会清除 inset_axes，需要重新创建信息面板
-        self.ax_info = ax.inset_axes([0.02, 0.55, 0.35, 0.42])
+        self.ax_info = ax.inset_axes([0.01, 0.72, 0.18, 0.26])
         self._init_info_panel()
 
         self._anim_artists = {
@@ -771,8 +771,8 @@ class CamSimulator:
         ax.set_xticks([])
         ax.set_yticks([])
 
-        # 添加半透明背景填充
-        ax.set_facecolor((0.9, 0.9, 0.9, 0.7))  # 浅灰色半透明
+        # 添加更透明的背景填充
+        ax.set_facecolor((0.95, 0.95, 0.95, 0.5))  # 更透明的浅灰色
 
         # 单列布局，只显示转角、压力角、位移
         items = [
@@ -783,9 +783,9 @@ class CamSimulator:
         self._info_labels = {}
 
         for idx, (key, name) in enumerate(items):
-            y_pos = 0.85 - idx * 0.28
-            lbl = ax.text(0.12, y_pos, f'{name}: --', transform=ax.transAxes,
-                          fontsize=9, ha='left', va='top', color=THEME['info_text'])
+            y_pos = 0.82 - idx * 0.26  # 最小行间距
+            lbl = ax.text(0.10, y_pos, f'{name}: --', transform=ax.transAxes,
+                          fontsize=8, ha='left', va='top', color=THEME['info_text'])
             self._info_labels[key] = lbl
 
     def _start_animation(self):
