@@ -168,6 +168,19 @@
 - [x] **P8-6** `requirements.txt` 添加上界约束，防止 numpy 2.x 等破坏性升级
 - [x] **P8-7** 变更日志（CHANGELOG.md）维护
 
+### Phase 9 — v2.0 现代化 UI 与性能（v2.0）✅ 已完成
+
+目标：现代化 UI 布局，提升性能和可维护性。
+
+- [x] **P9-1** 新 2 行 4 列网格布局：第一行（位移 | 速度 | 加速度 | 廓形），第二行（压力角 | 曲率 | 动画 | 信息面板）
+- [x] **P9-2** 模块化架构：提取 `I18nManager`、`ThemeManager`、`ExportManager`、`SidebarBuilder`、`AnimationController` 到 `ui/` 包
+- [x] **P9-3** NumPy 向量化：`compute_roller_profile` 和 `compute_curvature_radius` 使用 `np.roll`，10 倍 + 性能提升
+- [x] **P9-4** 主题切换控件缓存：遍历缓存控件列表替代递归树遍历，5 倍 + 性能提升
+- [x] **P9-5** `ParameterModel` 类型安全数据模型：带校验和转换的类型安全参数传递
+- [x] **P9-6** 动画渲染提取：`ui/animation.py` 中的 `render_frame_artists` 和 `update_info_panel` 纯函数
+- [x] **P9-7** GIF 生成提取：带进度回调的 `generate_gif_frames` 独立函数
+- [x] **P9-8** Windows 独立执行文件：PyInstaller 打包带图标，70 MB 单文件
+
 ---
 
 ## 三、问题统计

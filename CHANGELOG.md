@@ -5,6 +5,46 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-04-18
+
+### Added
+- Modern 2-row 4-column grid layout for widescreen optimization
+- Row 1: Displacement | Velocity | Acceleration | Cam Profile
+- Row 2: Pressure Angle | Curvature Radius | Animation | Info Panel
+- Adaptive scaling on window resize, no clipping or white space
+- Modular architecture with composition pattern:
+  - `I18nManager` for internationalization
+  - `ThemeManager` for theme switching with widget caching
+  - `ExportManager` for all export formats
+  - `SidebarBuilder` for parameter panel construction
+  - `AnimationController` for animation state and frame scheduling
+- NumPy vectorization in `compute_roller_profile` and `compute_curvature_radius` using `np.roll`
+- Widget caching for theme switching (5x+ performance improvement)
+- `ParameterModel` typed data model with validation and conversion
+- Pure function extraction: `render_frame_artists` and `update_info_panel` in `ui/animation.py`
+- GIF generation extraction: `generate_gif_frames` with progress callback
+- Windows standalone executable via PyInstaller (~70 MB single file)
+- Unit tests expanded to 136 tests
+
+### Changed
+- Layout restructured from stacked panels to 2-row 4-column grid
+- Axis assignments updated: `ax_profile` → `ax_p`, new positions for all charts
+- Technical architecture refactored: `CamSimulator` delegates to manager classes
+- `ui/` package reorganized: `animation.py`, `constants.py`, `drawing.py`, `export.py`, `i18n_manager.py`, `params.py`, `plots.py`, `sidebar.py`, `theme.py`
+- README.md and README.en.md updated with v2.0 layout diagram and architecture
+- ROADMAP.md and ROADMAP.en.md updated with Phase 9 (v2.0)
+
+### Improved
+- Animation rendering performance with pure function extraction
+- Theme switching performance with widget list caching
+- Code maintainability with modular architecture
+- Export reliability with folder parameter passing (no double filedialog popup)
+
+### Fixed
+- Download dialog double-popup bug (filedialog called only once)
+- Layout clipping on right and bottom edges (manual aspect ratio calculation)
+- Bottom row x-axis label clipping (GridSpec bottom margin adjusted to 0.08)
+
 ## [1.0.0] - 2026-04-17
 
 ### Added

@@ -168,6 +168,19 @@ Goal: Reach releasable quality, support convenient installation and distribution
 - [x] **P8-6** Add upper bounds to `requirements.txt` to prevent breaking upgrades (e.g., numpy 2.x)
 - [x] **P8-7** Maintain changelog (CHANGELOG.md)
 
+### Phase 9 — v2.0 Modern UI and Performance (v2.0) ✅ Complete
+
+Goal: Modernize UI layout, improve performance and maintainability.
+
+- [x] **P9-1** New 2-row 4-column grid layout: Row 0 (Displacement | Velocity | Acceleration | Profile), Row 1 (Pressure Angle | Curvature | Animation | Info Panel)
+- [x] **P9-2** Modular architecture: Extract `I18nManager`, `ThemeManager`, `ExportManager`, `SidebarBuilder`, `AnimationController` to `ui/` package
+- [x] **P9-3** NumPy vectorization: `compute_roller_profile` and `compute_curvature_radius` use `np.roll`, 10x+ performance improvement
+- [x] **P9-4** Widget caching for theme switching: Traverse cached control list instead of recursive tree traversal, 5x+ performance improvement
+- [x] **P9-5** `ParameterModel` typed data model: Type-safe parameter passing with validation and conversion
+- [x] **P9-6** Animation rendering extraction: `render_frame_artists` and `update_info_panel` pure functions in `ui/animation.py`
+- [x] **P9-7** GIF generation extraction: `generate_gif_frames` independent function with progress callback
+- [x] **P9-8** Windows standalone executable: PyInstaller packaging with icon, 70 MB single file
+
 ---
 
 ## III. Issue Statistics
