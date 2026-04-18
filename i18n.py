@@ -290,6 +290,14 @@ TRANSLATIONS = {
         "zh": r"初始位移 $s_{0}$", "en": r"Initial Disp. $s_{0}$",
     },
 
+    # ---- Status Bar Labels (plain text, no LaTeX) ----
+    "status.label.h": {
+        "zh": "行程 h", "en": "Stroke h",
+    },
+    "status.label.s0": {
+        "zh": "初始位移 s₀", "en": "Initial Disp. s₀",
+    },
+
     # ---- Status Messages ----
     "status.incomplete_params": {
         "zh": "请输入完整的参数数据", "en": "Please fill in all parameters",

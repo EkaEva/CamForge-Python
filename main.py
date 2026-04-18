@@ -394,32 +394,39 @@ class CamSimulator:
                                      highlightthickness=0, command=self._on_frame_seek)
         self.frame_scale.pack(side=tk.LEFT)
 
-        # 状态/警告行
-        status_bar = tk.Frame(main_area, bg=THEME['toolbar_bg'])
-        status_bar.pack(fill=tk.X, padx=12, pady=(2, 0))
+        # 状态/警告行（两行布局）
+        status_frame = tk.Frame(main_area, bg=THEME['toolbar_bg'])
+        status_frame.pack(fill=tk.X, padx=12, pady=(2, 0))
+
+        # 第一行：状态消息 | 压力角
+        status_row1 = tk.Frame(status_frame, bg=THEME['toolbar_bg'])
+        status_row1.pack(fill=tk.X)
 
         self.status_var = tk.StringVar()
-        self.status_label = tk.Label(status_bar, textvariable=self.status_var, fg=THEME['status_fg'],
+        self.status_label = tk.Label(status_row1, textvariable=self.status_var, fg=THEME['status_fg'],
                                      font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
         self.status_label.pack(side=tk.LEFT)
 
         self.alpha_var = tk.StringVar()
-        self.alpha_label = tk.Label(status_bar, textvariable=self.alpha_var,
+        self.alpha_label = tk.Label(status_row1, textvariable=self.alpha_var,
                                     font=(self._tk_font_family, 11, 'bold'), anchor='w', bg=THEME['toolbar_bg'])
         self.alpha_label.pack(side=tk.LEFT, padx=16)
 
-        # 行程和初始位移显示
+        # 第二行：行程 | 初始位移
+        status_row2 = tk.Frame(status_frame, bg=THEME['toolbar_bg'])
+        status_row2.pack(fill=tk.X)
+
         self.stroke_var = tk.StringVar()
-        self.stroke_label = tk.Label(status_bar, textvariable=self.stroke_var,
+        self.stroke_label = tk.Label(status_row2, textvariable=self.stroke_var,
                                      font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
-        self.stroke_label.pack(side=tk.LEFT, padx=16)
+        self.stroke_label.pack(side=tk.LEFT, padx=(0, 16))
 
         self.s0_var = tk.StringVar()
-        self.s0_label = tk.Label(status_bar, textvariable=self.s0_var,
+        self.s0_label = tk.Label(status_row2, textvariable=self.s0_var,
                                  font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
         self.s0_label.pack(side=tk.LEFT, padx=16)
 
-        return toolbar, status_bar
+        return toolbar, status_frame
 
     def _build_figure(self, main_area):
         """构建图表区域"""
@@ -862,9 +869,9 @@ class CamSimulator:
             self.alpha_var.set(t("status.max_alpha", self.lang, val=data['max_alpha']))
             h, s_0 = update_info_panel(self._info_labels, 360, data['max_alpha'], 0.0,
                               data['h'], data['s_0'], self.lang)
-            # 更新状态栏的行程和初始位移
-            label_h = t("info.label.h", self.lang)
-            label_s0 = t("info.label.s0", self.lang)
+            # 更新状态栏的行程和初始位移（使用纯文本标签）
+            label_h = t("status.label.h", self.lang)
+            label_s0 = t("status.label.s0", self.lang)
             self.stroke_var.set(f'{label_h}: {h:.1f} mm')
             self.s0_var.set(f'{label_s0}: {s_0:.2f} mm')
             self.canvas.draw_idle()
@@ -883,9 +890,9 @@ class CamSimulator:
         h, s_0 = update_info_panel(self._info_labels, i, data['alpha_all'][i] if i < N else 0,
                           data['s'][i] if i < N else 0, data['h'], data['s_0'], self.lang)
 
-        # 更新状态栏的行程和初始位移
-        label_h = t("info.label.h", self.lang)
-        label_s0 = t("info.label.s0", self.lang)
+        # 更新状态栏的行程和初始位移（使用纯文本标签）
+        label_h = t("status.label.h", self.lang)
+        label_s0 = t("status.label.s0", self.lang)
         self.stroke_var.set(f'{label_h}: {h:.1f} mm')
         self.s0_var.set(f'{label_s0}: {s_0:.2f} mm')
 
@@ -922,9 +929,9 @@ class CamSimulator:
         )
         h, s_0 = update_info_panel(self._info_labels, i, result['alpha_i'],
                           result['s_i'], data['h'], data['s_0'], self.lang)
-        # 更新状态栏的行程和初始位移
-        label_h = t("info.label.h", self.lang)
-        label_s0 = t("info.label.s0", self.lang)
+        # 更新状态栏的行程和初始位移（使用纯文本标签）
+        label_h = t("status.label.h", self.lang)
+        label_s0 = t("status.label.s0", self.lang)
         self.stroke_var.set(f'{label_h}: {h:.1f} mm')
         self.s0_var.set(f'{label_s0}: {s_0:.2f} mm')
         self.canvas.draw_idle()
