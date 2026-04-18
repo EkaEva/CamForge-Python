@@ -432,7 +432,7 @@ class CamSimulator:
         gs = GridSpec(2, 3, figure=self.fig,
                       left=0.055, right=0.98, top=0.94, bottom=0.07,
                       wspace=0.15, hspace=0.28,
-                      width_ratios=[1, 0.15, 0.9],
+                      width_ratios=[1, 0.25, 0.9],
                       height_ratios=[1, 1])
 
         # 左侧静态图区域（第0列）
@@ -444,7 +444,7 @@ class CamSimulator:
 
         # 信息面板作为动画的 inset，位于动画左上角，分两列显示
         # [left, bottom, width, height] in axes coordinates (0-1)
-        self.ax_info = self.ax_anim.inset_axes([0.02, 0.55, 0.35, 0.42])
+        self.ax_info = self.ax_anim.inset_axes([0.02, 0.55, 0.40, 0.42])
         self.ax_info.set_xticks([])
         self.ax_info.set_yticks([])
         self.ax_info.set_frame_on(False)
@@ -766,7 +766,7 @@ class CamSimulator:
         draw_fixed_support(ax, r_0)
 
         # ax.clear() 会清除 inset_axes，需要重新创建信息面板
-        self.ax_info = ax.inset_axes([0.01, 0.78, 0.22, 0.20])
+        self.ax_info = ax.inset_axes([0.01, 0.78, 0.28, 0.20])
         self._init_info_panel()
 
         self._anim_artists = {
