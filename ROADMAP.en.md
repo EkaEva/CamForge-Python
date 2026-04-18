@@ -190,6 +190,14 @@ Goal: Simplify layout, merge related charts.
 - [x] **P10-3** Remove static profile plot (profile still shown in animation)
 - [x] **P10-4** Simplify layout to 2x2 grid: static charts on top, dynamic on bottom
 
+### Phase 11 — v0.3.2 Left-Right Split Layout ✅ Complete
+
+Goal: Optimize animation display area.
+
+- [x] **P11-1** Left-right split: left side (motion curves + geometry constraints), right side (animation + info panel)
+- [x] **P11-2** Larger animation area, info panel moved to right edge
+- [x] **P11-3** GridSpec 2x3 with width_ratios [1, 1.6, 0.4]
+
 ---
 
 ## III. Issue Statistics
