@@ -571,13 +571,14 @@ class CamSimulator:
             self.status_var.set(str(exc))
             return
 
-        # 滚子半径最大值校验（必须小于最小曲率半径）
+        # 滚子半径最大值校验（必须小于最小曲率半径的绝对值）
         if r_r > 0:
             rho_finite = rho[np.isfinite(rho)]
             if len(rho_finite) > 0:
-                min_rho = np.min(rho_finite)
-                if r_r >= min_rho:
-                    self.status_var.set(t("status.warning_r_r_exceed", self.lang, r_r=r_r, min_rho=min_rho))
+                # 滚子半径必须小于所有曲率半径的绝对值
+                min_abs_rho = np.min(np.abs(rho_finite))
+                if r_r >= min_abs_rho:
+                    self.status_var.set(t("status.warning_r_r_exceed", self.lang, r_r=r_r, min_rho=min_abs_rho))
                     return
 
         # 计算运动
