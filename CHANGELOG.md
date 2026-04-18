@@ -11,8 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New layout: left-right split with 2x3 grid
   - Left column: motion curves (top) | geometry constraints (bottom)
   - Right side: animation (main area, spans 2 rows) | info panel (right edge, spans 2 rows)
-- GridSpec width_ratios changed to [1, 1.6, 0.4] for better animation display
-- Animation area now larger, info panel moved to right edge
+- GridSpec width_ratios [1, 1.8, 0.35], wspace=0.40 for better spacing
+- Animation area larger, info panel on right edge
+
+### Fixed
+- Adjusted wspace and width_ratios to prevent triple Y-axis from overlapping with animation area
 
 ## [0.3.1] - 2026-04-18
 
