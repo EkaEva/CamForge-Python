@@ -324,7 +324,7 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         else:
             # 三角形尖端
             ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w], [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
-            ax_gif.plot([fx, fx], [cy + tip_h, rod_top], 'k-', linewidth=3)
+            ax_gif.plot([fx, fx], [cy + tip_h, rod_top], 'k-', linewidth=2)
 
         if show_limits:
             ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
@@ -346,7 +346,7 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         draw_fixed_support(ax_gif, r_0)
         ax_gif.set_xlim(xlim)
         ax_gif.set_ylim(ylim)
-        # 不使用 set_aspect('equal')，xlim/ylim 已由主界面计算好等比例范围
+        ax_gif.set_aspect('equal', adjustable='box')
         ax_gif.set_title(f'{title_anim_gif}  {i:3d}°/360°', fontsize=11)
 
         ax_info_gif.clear()
