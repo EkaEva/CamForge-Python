@@ -250,9 +250,11 @@ def compute_full_motion(
     delta_02 = np.radians(delta_02_deg)
 
     # 阶段分界索引（带边界保护）
-    i1 = int(round(delta_0_deg))            # 推程结束
-    i2 = i1 + int(round(delta_01_deg))      # 远休止结束
-    i3 = i2 + int(round(delta_ret_deg))     # 回程结束
+    # 索引需要根据 n_points 缩放：角度/360° * n_points
+    scale = n_points / 360.0
+    i1 = int(round(delta_0_deg * scale))            # 推程结束
+    i2 = i1 + int(round(delta_01_deg * scale))      # 远休止结束
+    i3 = i2 + int(round(delta_ret_deg * scale))     # 回程结束
     # 确保索引不越界：i1 >= 1, i2 > i1, i3 <= n_total
     i1 = max(1, min(i1, n_total - 2))
     i2 = max(i1 + 1, min(i2, n_total - 1))
