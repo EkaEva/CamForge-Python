@@ -183,7 +183,7 @@ TRANSLATIONS = {
         "zh": "加速度", "en": "Accel.",
     },
     "toolbar.cb.dl_profile": {
-        "zh": "廓形", "en": "Profile",
+        "zh": "廓形图", "en": "Profile",
     },
     "toolbar.cb.dl_anim": {
         "zh": "动态图", "en": "Anim.",
