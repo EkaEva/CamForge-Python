@@ -180,12 +180,14 @@ Check the items to export, then click the **"Download"** button:
 
 | Type | Format | Description |
 |------|--------|-------------|
-| Displacement | TIFF (600 DPI) | Follower displacement vs. angle |
-| Velocity | TIFF (600 DPI) | Follower velocity vs. angle |
-| Acceleration | TIFF (600 DPI) | Follower acceleration vs. angle |
-| Cam Profile | TIFF (600 DPI) | Cam profile + base circle + offset circle + fixed support |
-| Animation | GIF (150 DPI) | 360-frame looping animation with progress indicator |
-| Excel | XLSX | Angle δ, Radius R, Velocity v, Acceleration a |
+| Motion | TIFF (600 DPI) | Triple Y-axis: displacement/velocity/acceleration |
+| Geometry | TIFF (600 DPI) | Dual Y-axis: pressure angle/curvature radius |
+| Profile | TIFF (600 DPI) | Cam profile + base circle + offset circle + fixed support |
+| Anim. | GIF (150 DPI) | 360-frame looping animation with progress indicator |
+| CSV | CSV | Angle, radius, displacement, velocity, acceleration, curvature, pressure angle |
+| Excel | XLSX | Same as CSV, 7 columns |
+| SVG | SVG | Vector graphics: motion curves + geometry constraints |
+| Preset | JSON | Current parameter configuration, can be loaded |
 
 ### 7. Random Exploration
 
