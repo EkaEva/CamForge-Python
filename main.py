@@ -417,10 +417,11 @@ class CamSimulator:
         # v0.3.2 新布局：左右两部分
         # 左侧：推杆运动线图（上）| 几何约束指标图（下）
         # 右侧：动画（主区域）| 信息面板（右侧小区域）
+        # 注意：左侧图有右侧突出的Y轴，需要留出空间避免重叠
         gs = GridSpec(2, 3, figure=self.fig,
-                      left=0.06, right=0.97, top=0.94, bottom=0.07,
-                      wspace=0.25, hspace=0.30,
-                      width_ratios=[1, 1.6, 0.4],
+                      left=0.05, right=0.97, top=0.94, bottom=0.07,
+                      wspace=0.40, hspace=0.30,
+                      width_ratios=[1, 1.8, 0.35],
                       height_ratios=[1, 1])
 
         # 左侧静态图区域（第0列）
