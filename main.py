@@ -754,36 +754,26 @@ class CamSimulator:
         }
 
     def _init_info_panel(self):
-        """初始化信息面板（动画左上角，两列布局）"""
+        """初始化信息面板（动画左上角，单列布局）"""
         ax = self.ax_info
         ax.clear()
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_frame_on(False)
 
-        # 两列布局：左列 3 项，右列 2 项
-        left_items = [
+        # 单列布局
+        items = [
             ('delta', t("info.label.delta", self.lang)),
             ('alpha', t("info.label.alpha", self.lang)),
             ('s',     t("info.label.s", self.lang)),
-        ]
-        right_items = [
             ('h',     t("info.label.h", self.lang)),
             ('s0',    t("info.label.s0", self.lang)),
         ]
         self._info_labels = {}
 
-        # 左列
-        for idx, (key, name) in enumerate(left_items):
-            y_pos = 0.88 - idx * 0.30
+        for idx, (key, name) in enumerate(items):
+            y_pos = 0.92 - idx * 0.18
             lbl = ax.text(0.08, y_pos, f'{name}: --', transform=ax.transAxes,
-                          fontsize=9, ha='left', va='top', color=THEME['info_text'])
-            self._info_labels[key] = lbl
-
-        # 右列
-        for idx, (key, name) in enumerate(right_items):
-            y_pos = 0.88 - idx * 0.30
-            lbl = ax.text(0.55, y_pos, f'{name}: --', transform=ax.transAxes,
                           fontsize=9, ha='left', va='top', color=THEME['info_text'])
             self._info_labels[key] = lbl
 
