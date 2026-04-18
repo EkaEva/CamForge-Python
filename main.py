@@ -315,7 +315,7 @@ class CamSimulator:
         self.btn_load_preset.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.load_preset", self.btn_load_preset, font_size=10)
 
-        # 下载勾选项 — 两行排列避免溢出
+        # 下载勾选项 — 两行四列排列
         dl_cb_kw = {'font': (self._tk_font_family, 9), 'bg': THEME['toolbar_bg'], 'anchor': 'w'}
         dl_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
         dl_frame.pack(side=tk.LEFT, fill=tk.Y)
@@ -324,47 +324,47 @@ class CamSimulator:
         dl_row2 = tk.Frame(dl_frame, bg=THEME['toolbar_bg'])
         dl_row2.pack(side=tk.TOP, fill=tk.X)
 
-        self.dl_s = tk.BooleanVar(value=True)
-        cb_dl_s = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_s", self.lang), variable=self.dl_s, **dl_cb_kw)
-        cb_dl_s.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_s", cb_dl_s, font_size=9)
-        self.dl_v = tk.BooleanVar(value=True)
-        cb_dl_v = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_v", self.lang), variable=self.dl_v, **dl_cb_kw)
-        cb_dl_v.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_v", cb_dl_v, font_size=9)
-        self.dl_a = tk.BooleanVar(value=True)
-        cb_dl_a = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_a", self.lang), variable=self.dl_a, **dl_cb_kw)
-        cb_dl_a.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_a", cb_dl_a, font_size=9)
+        # 第一行：运动线图 | 廓形 | CSV | Excel
+        self.dl_motion = tk.BooleanVar(value=True)
+        cb_dl_motion = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_motion", self.lang), variable=self.dl_motion, **dl_cb_kw)
+        cb_dl_motion.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_motion", cb_dl_motion, font_size=9)
+
         self.dl_profile = tk.BooleanVar(value=True)
         cb_dl_profile = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_profile", self.lang), variable=self.dl_profile, **dl_cb_kw)
         cb_dl_profile.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_profile", cb_dl_profile, font_size=9)
+
+        self.dl_csv = tk.BooleanVar(value=True)
+        cb_dl_csv = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_csv", self.lang), variable=self.dl_csv, **dl_cb_kw)
+        cb_dl_csv.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_csv", cb_dl_csv, font_size=9)
+
+        self.dl_excel = tk.BooleanVar(value=True)
+        cb_dl_excel = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_excel", self.lang), variable=self.dl_excel, **dl_cb_kw)
+        cb_dl_excel.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_excel", cb_dl_excel, font_size=9)
+
+        # 第二行：几何约束 | 动画 | SVG | 预设
+        self.dl_geom = tk.BooleanVar(value=True)
+        cb_dl_geom = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_geom", self.lang), variable=self.dl_geom, **dl_cb_kw)
+        cb_dl_geom.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_geom", cb_dl_geom, font_size=9)
+
         self.dl_anim = tk.BooleanVar(value=True)
-        cb_dl_anim = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_anim", self.lang), variable=self.dl_anim, **dl_cb_kw)
+        cb_dl_anim = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_anim", self.lang), variable=self.dl_anim, **dl_cb_kw)
         cb_dl_anim.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_anim", cb_dl_anim, font_size=9)
 
-        self.dl_excel = tk.BooleanVar(value=True)
-        cb_dl_excel = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_excel", self.lang), variable=self.dl_excel, **dl_cb_kw)
-        cb_dl_excel.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_excel", cb_dl_excel, font_size=9)
-        self.dl_alpha = tk.BooleanVar(value=True)
-        cb_dl_alpha = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_alpha", self.lang), variable=self.dl_alpha, **dl_cb_kw)
-        cb_dl_alpha.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_alpha", cb_dl_alpha, font_size=9)
-        self.dl_curvature = tk.BooleanVar(value=False)
-        cb_dl_curvature = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_curvature", self.lang), variable=self.dl_curvature, **dl_cb_kw)
-        cb_dl_curvature.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_curvature", cb_dl_curvature, font_size=9)
-        self.dl_svg = tk.BooleanVar(value=False)
+        self.dl_svg = tk.BooleanVar(value=True)
         cb_dl_svg = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_svg", self.lang), variable=self.dl_svg, **dl_cb_kw)
         cb_dl_svg.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_svg", cb_dl_svg, font_size=9)
-        self.dl_csv = tk.BooleanVar(value=False)
-        cb_dl_csv = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_csv", self.lang), variable=self.dl_csv, **dl_cb_kw)
-        cb_dl_csv.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_csv", cb_dl_csv, font_size=9)
+
+        self.dl_preset = tk.BooleanVar(value=True)
+        cb_dl_preset = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_preset", self.lang), variable=self.dl_preset, **dl_cb_kw)
+        cb_dl_preset.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_preset", cb_dl_preset, font_size=9)
 
         # 速度滑块（靠右，标签在左滑块在右）
         speed_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
@@ -982,10 +982,9 @@ class CamSimulator:
 
     def _on_download(self):
         """下载勾选的图片"""
-        if not any([self.dl_s.get(), self.dl_v.get(), self.dl_a.get(),
+        if not any([self.dl_motion.get(), self.dl_geom.get(),
                      self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get(),
-                     self.dl_alpha.get(), self.dl_curvature.get(),
-                     self.dl_svg.get(), self.dl_csv.get()]):
+                     self.dl_svg.get(), self.dl_csv.get(), self.dl_preset.get()]):
             self.status_var.set(t("status.no_download_selection", self.lang))
             return
 
@@ -1004,19 +1003,17 @@ class CamSimulator:
         # 使用 ExportManager 处理静态图导出
         export_mgr = ExportManager(self.root, self._sim_data_lock)
         toggles = {
-            's': self.dl_s.get(), 'v': self.dl_v.get(),
-            'a': self.dl_a.get(), 'profile': self.dl_profile.get(),
-            'alpha': self.dl_alpha.get(), 'curvature': self.dl_curvature.get(),
-            'svg': self.dl_svg.get(), 'csv': self.dl_csv.get(),
+            'motion': self.dl_motion.get(),
+            'geom': self.dl_geom.get(),
+            'profile': self.dl_profile.get(),
+            'svg': self.dl_svg.get(),
+            'csv': self.dl_csv.get(),
             'anim': False, 'excel': False,
         }
         draw_funcs = {
-            'displacement': self._draw_displacement_curve,
-            'velocity': self._draw_velocity_curve,
-            'acceleration': self._draw_acceleration_curve,
+            'motion_curves': self._draw_motion_curves,
+            'geometry_constraints': self._draw_geometry_constraints,
             'profile': self._draw_profile_plot,
-            'pressure_angle': self._draw_pressure_angle_curve,
-            'curvature_radius': self._draw_curvature_radius_curve,
         }
 
         if any(toggles.values()):
@@ -1037,6 +1034,10 @@ class CamSimulator:
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
             filepath = os.path.join(folder, filename_anim)
             self._export_gif(filepath, folder, saved)
+
+        # 预设保存
+        if self.dl_preset.get():
+            self._save_preset_to_folder(folder, saved, errors)
 
         if saved:
             self.status_var.set(t("status.saved", self.lang, files=', '.join(saved), folder=folder))
@@ -1209,6 +1210,18 @@ class CamSimulator:
             self.status_var.set(t("status.preset_loaded", self.lang, file=os.path.basename(filepath)))
         except Exception as exc:
             self.status_var.set(t("status.preset_load_failed", self.lang, error=str(exc)))
+
+    def _save_preset_to_folder(self, folder, saved_list, errors):
+        """保存预设到指定文件夹"""
+        try:
+            preset = self.sidebar.get_preset_data()
+            filename = "camforge_preset.json"
+            filepath = os.path.join(folder, filename)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(preset, f, indent=2, ensure_ascii=False)
+            saved_list.append(filename)
+        except Exception as exc:
+            errors.append(f"preset: {exc}")
 
     def _on_close(self):
         """窗口关闭处理"""

@@ -164,6 +164,15 @@ TRANSLATIONS = {
     },
 
     # ---- Download Checkboxes ----
+    "toolbar.cb.dl_motion": {
+        "zh": "运动线图", "en": "Motion",
+    },
+    "toolbar.cb.dl_geom": {
+        "zh": "几何约束", "en": "Geometry",
+    },
+    "toolbar.cb.dl_preset": {
+        "zh": "预设", "en": "Preset",
+    },
     "toolbar.cb.dl_s": {
         "zh": "位移", "en": "Displ.",
     },
@@ -388,6 +397,12 @@ TRANSLATIONS = {
     },
 
     # ---- Export Filenames (without extension) ----
+    "export.filename.motion": {
+        "zh": "推杆运动线图", "en": "motion_curves",
+    },
+    "export.filename.geometry": {
+        "zh": "几何约束指标", "en": "geometry_constraints",
+    },
     "export.filename.displacement": {
         "zh": "位移曲线", "en": "displacement",
     },
@@ -420,11 +435,20 @@ TRANSLATIONS = {
     "excel.col.radius": {
         "zh": "向径 R (mm)", "en": "Radius R (mm)",
     },
+    "excel.col.displacement": {
+        "zh": "推杆位移 s (mm)", "en": "Displacement s (mm)",
+    },
     "excel.col.velocity": {
-        "zh": "推杆速度 v (mm/s)", "en": "Follower Velocity v (mm/s)",
+        "zh": "推杆速度 v (mm/s)", "en": "Velocity v (mm/s)",
     },
     "excel.col.acceleration": {
-        "zh": "推杆加速度 a (mm/s²)", "en": "Follower Acceleration a (mm/s²)",
+        "zh": "推杆加速度 a (mm/s²)", "en": "Acceleration a (mm/s²)",
+    },
+    "excel.col.curvature": {
+        "zh": "曲率半径 ρ (mm)", "en": "Curvature ρ (mm)",
+    },
+    "excel.col.pressure_angle": {
+        "zh": "压力角 α (°)", "en": "Pressure Angle α (°)",
     },
 
     # ---- GIF Export Dialog ----

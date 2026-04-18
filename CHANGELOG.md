@@ -5,6 +5,24 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-04-18
+
+### Added
+- New download checkbox layout with 8 options in 2 rows:
+  - Row 1: 运动线图 | 廓形 | CSV | Excel
+  - Row 2: 几何约束 | 动画 | SVG | 预设
+- Preset save in download: saves current parameters as JSON file
+- Excel export now includes 7 columns: 转角, 向径, 推杆位移, 推杆速度, 推杆加速度, 曲率半径, 压力角
+- CSV export now includes curvature radius column
+- i18n keys: `toolbar.cb.dl_motion`, `toolbar.cb.dl_geom`, `toolbar.cb.dl_preset`
+- i18n keys: `export.filename.motion`, `export.filename.geometry`
+- i18n keys: `excel.col.displacement`, `excel.col.curvature`, `excel.col.pressure_angle`
+
+### Changed
+- Download section reorganized to match static plot layout (motion curves + geometry constraints)
+- SVG export now shows motion curves and geometry constraints side by side
+- ExportManager simplified to handle new combined plots
+
 ## [0.3.2] - 2026-04-18
 
 ### Changed
