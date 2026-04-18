@@ -80,6 +80,78 @@ def draw_motion_curves(ax, data, lang, show_law_names=False):
     return ax_v, ax_a
 
 
+def draw_geometry_constraints(ax, data, lang):
+    """
+    在给定 ax 上绘制双 Y 轴几何约束指标图
+    左侧 Y 轴：压力角 α（红色实线）
+    右侧 Y 轴：曲率半径 ρ（蓝色虚线）
+    """
+    delta_deg = data['delta_deg']
+    alpha = data['alpha_all']
+    rho = data['rho']
+    pb = data['phase_bounds']
+    threshold = data.get('alpha_threshold', MAX_PRESSURE_ANGLE)
+    r_r = data.get('r_r', 0)
+
+    # 清除主轴
+    ax.clear()
+
+    # 压力角曲线（左侧 Y 轴，红色实线）
+    color_alpha = 'tab:red'
+    ax.plot(delta_deg, alpha, color=color_alpha, linestyle='-', linewidth=1.5, label=t("plot.legend.pressure_angle", lang))
+    # 压力角阈值线
+    ax.axhline(y=threshold, color='orange', linestyle='--', linewidth=1, alpha=0.7)
+    ax.axhline(y=-threshold, color='orange', linestyle='--', linewidth=1, alpha=0.7)
+
+    ax.set_xlabel(r'$\delta$ (°)')
+    ax.set_ylabel(r'$\alpha$ (°)', color=color_alpha)
+    ax.tick_params(axis='y', labelcolor=color_alpha)
+    ax.set_xlim(0, 360)
+    alpha_max = np.max(np.abs(alpha)) * 1.15 if np.max(np.abs(alpha)) > 0 else 30
+    ax.set_ylim(-alpha_max, alpha_max)
+    ax.set_xticks(range(0, 361, 60))
+    ax.grid(True, linestyle=':', alpha=0.6)
+
+    # 相位分界线
+    for b in pb[1:-1]:
+        ax.axvline(x=b, color='gray', linestyle='--', linewidth=0.8)
+
+    # 曲率半径曲线（右侧 Y 轴，蓝色虚线）
+    ax_rho = ax.twinx()
+    color_rho = 'tab:blue'
+    ax_rho.plot(delta_deg, rho, color=color_rho, linestyle='--', linewidth=1.5, label=t("plot.legend.curvature", lang))
+    # 滚子半径阈值线
+    if r_r > 0:
+        ax_rho.axhline(y=r_r, color='cyan', linestyle='--', linewidth=1, alpha=0.7)
+
+    ax_rho.set_ylabel(r'$\rho$ (mm)', color=color_rho)
+    ax_rho.tick_params(axis='y', labelcolor=color_rho)
+
+    # 限制曲率半径 y 轴范围
+    rho_finite = rho[np.isfinite(rho)]
+    if len(rho_finite) > 0:
+        rho_min = np.min(rho_finite)
+        rho_max = np.max(rho_finite)
+        if rho_max - rho_min > 10 * (np.percentile(rho_finite, 90) - np.percentile(rho_finite, 10) + 1):
+            lo = np.percentile(rho_finite, 5)
+            hi = np.percentile(rho_finite, 95)
+            ax_rho.set_ylim(lo - (hi - lo) * 0.1, hi + (hi - lo) * 0.1)
+        else:
+            ax_rho.set_ylim(rho_min * 0.9 if rho_min > 0 else rho_min - 1,
+                            rho_max * 1.1 if rho_max > 0 else rho_max + 1)
+
+    # 标题
+    ax.set_title(t("plot.title.geometry_constraints", lang), fontsize=11)
+
+    # 图例（合并两个轴的线条）
+    lines_alpha, labels_alpha = ax.get_legend_handles_labels()
+    lines_rho, labels_rho = ax_rho.get_legend_handles_labels()
+    ax.legend(lines_alpha + lines_rho, labels_alpha + labels_rho,
+              loc='upper right', fontsize=8)
+
+    return ax_rho
+
+
 def draw_displacement_curve(ax, data, lang, show_law_names=False):
     """在给定 ax 上绘制位移曲线"""
     delta_deg = data['delta_deg']

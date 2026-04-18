@@ -49,7 +49,7 @@ plt.rcParams['axes.unicode_minus'] = False
 from ui.constants import *
 from ui.drawing import draw_fixed_support
 from ui.params import ParameterModel
-from ui.plots import (draw_motion_curves, draw_displacement_curve, draw_velocity_curve,
+from ui.plots import (draw_motion_curves, draw_geometry_constraints, draw_displacement_curve, draw_velocity_curve,
                       draw_acceleration_curve, draw_profile_plot,
                       draw_pressure_angle_curve, draw_curvature_radius_curve)
 from ui.constants import THEME_DARK
@@ -414,26 +414,21 @@ class CamSimulator:
         """构建图表区域"""
         self.fig = Figure(figsize=(14, 8), dpi=100)
 
-        # v0.3.0 新布局：左右两大区域
-        # 左侧：2 行 2 列静态图（运动线图 | 压力角，曲率 | 廓形）
-        # 右侧：动画 + 信息面板（信息面板在动画左侧对齐）
-        gs = GridSpec(2, 4, figure=self.fig,
-                      left=0.06, right=0.97, top=0.94, bottom=0.07,
-                      wspace=0.35, hspace=0.35,
-                      width_ratios=[1, 1, 0.6, 1.4])
+        # v0.3.1 新布局：上下两部分
+        # 上方：推杆运动线图（左）| 几何约束指标图（右，压力角+曲率半径双Y轴）
+        # 下方：动画（左）| 信息面板（右）
+        gs = GridSpec(2, 2, figure=self.fig,
+                      left=0.07, right=0.95, top=0.94, bottom=0.07,
+                      wspace=0.30, hspace=0.28,
+                      height_ratios=[1, 1])
 
-        # 左侧静态图区域 (2x2)
-        # 第一行：推杆运动线图（三 Y 轴）、压力角
-        self.ax_motion = self.fig.add_subplot(gs[0, 0])  # 三 Y 轴运动线图
-        self.ax_alpha = self.fig.add_subplot(gs[0, 1])   # 压力角
-        # 第二行：曲率、廓形
-        self.ax_rho = self.fig.add_subplot(gs[1, 0])     # 曲率半径
-        self.ax_p = self.fig.add_subplot(gs[1, 1])       # 凸轮廓形
+        # 上方静态图区域
+        self.ax_motion = self.fig.add_subplot(gs[0, 0])   # 推杆运动线图（三 Y 轴）
+        self.ax_geom = self.fig.add_subplot(gs[0, 1])     # 几何约束指标图（双 Y 轴）
 
-        # 右侧动态区域
-        # 信息面板在动画左侧对齐（占第 2 列），动画占第 3 列
-        self.ax_info = self.fig.add_subplot(gs[:, 2])    # 信息面板（跨两行）
-        self.ax_anim = self.fig.add_subplot(gs[:, 3])    # 动画（跨两行）
+        # 下方动态区域
+        self.ax_anim = self.fig.add_subplot(gs[1, 0])     # 动画
+        self.ax_info = self.fig.add_subplot(gs[1, 1])     # 信息面板
 
         # 信息面板样式
         self.ax_info.set_xticks([])
@@ -630,6 +625,9 @@ class CamSimulator:
     def _draw_motion_curves(self, ax, data, show_law_names=False):
         draw_motion_curves(ax, data, self.lang, show_law_names)
 
+    def _draw_geometry_constraints(self, ax, data):
+        draw_geometry_constraints(ax, data, self.lang)
+
     def _draw_displacement_curve(self, ax, data, show_law_names=False):
         draw_displacement_curve(ax, data, self.lang, show_law_names)
 
@@ -675,17 +673,13 @@ class CamSimulator:
         data = self.sim_data
 
         # 清除所有静态图轴
-        for ax in [self.ax_motion, self.ax_p, self.ax_alpha, self.ax_rho]:
+        for ax in [self.ax_motion, self.ax_geom]:
             ax.clear()
 
         # 绘制三 Y 轴推杆运动线图
         self._draw_motion_curves(self.ax_motion, data, show_law_names=True)
-        # 绘制压力角曲线
-        self._draw_pressure_angle_curve(self.ax_alpha, data)
-        # 绘制曲率半径曲线
-        self._draw_curvature_radius_curve(self.ax_rho, data)
-        # 绘制凸轮廓形
-        self._draw_profile_plot(self.ax_p, data)
+        # 绘制双 Y 轴几何约束指标图（压力角+曲率半径）
+        self._draw_geometry_constraints(self.ax_geom, data)
 
         self.canvas.draw()
 

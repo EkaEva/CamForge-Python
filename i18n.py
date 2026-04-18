@@ -199,6 +199,9 @@ TRANSLATIONS = {
     "plot.title.motion": {
         "zh": r"推杆运动线图", "en": r"Follower Motion Curves",
     },
+    "plot.title.geometry_constraints": {
+        "zh": r"几何约束指标", "en": r"Geometry Constraints",
+    },
     "plot.title.displacement": {
         "zh": r"推杆位移 $s$", "en": r"Follower Displacement $s$",
     },
@@ -230,6 +233,12 @@ TRANSLATIONS = {
     },
     "plot.legend.acceleration": {
         "zh": "加速度", "en": "Acceleration",
+    },
+    "plot.legend.pressure_angle": {
+        "zh": "压力角", "en": "Pressure Angle",
+    },
+    "plot.legend.curvature": {
+        "zh": "曲率半径", "en": "Curvature Radius",
     },
     "plot.legend.profile": {
         "zh": "廓形", "en": "Profile",

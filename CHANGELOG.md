@@ -5,6 +5,23 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-18
+
+### Added
+- New layout: top-bottom split with 2x1 grid
+  - Top row: motion curves (left) | geometry constraints (right)
+  - Bottom row: animation (left) | info panel (right)
+- Dual Y-axis geometry constraints plot: pressure angle (left, red solid) + curvature radius (right, blue dashed)
+- `draw_geometry_constraints()` function in `ui/plots.py`
+- i18n keys: `plot.title.geometry_constraints`, `plot.legend.pressure_angle`, `plot.legend.curvature`
+
+### Removed
+- Cam profile plot removed from static charts (profile still shown in animation)
+
+### Changed
+- Simplified layout from 2x4 to 2x2 GridSpec
+- `_plot_static()` now uses `ax_geom` for combined geometry constraints
+
 ## [0.3.0] - 2026-04-18
 
 ### Added
