@@ -425,21 +425,22 @@ class CamSimulator:
         """构建图表区域"""
         self.fig = Figure(figsize=(14, 8), dpi=100)
 
-        # v0.3.2 新布局：左右两部分
-        # 左侧：推杆运动线图（上）| 几何约束指标图（下）
-        # 右侧：动画（主区域）| 信息面板（嵌入动画左上角）
-        gs = GridSpec(2, 2, figure=self.fig,
+        # v0.3.3 新布局：三列布局
+        # 第0列：推杆运动线图（上）| 几何约束指标图（下）
+        # 第1列：空白间隔区域
+        # 第2列：动画（主区域）| 信息面板（嵌入动画左上角）
+        gs = GridSpec(2, 3, figure=self.fig,
                       left=0.055, right=0.98, top=0.94, bottom=0.07,
-                      wspace=0.28, hspace=0.28,
-                      width_ratios=[1, 0.85],
+                      wspace=0.15, hspace=0.28,
+                      width_ratios=[1, 0.15, 0.9],
                       height_ratios=[1, 1])
 
         # 左侧静态图区域（第0列）
         self.ax_motion = self.fig.add_subplot(gs[0, 0])   # 推杆运动线图（三 Y 轴）
         self.ax_geom = self.fig.add_subplot(gs[1, 0])     # 几何约束指标图（双 Y 轴）
 
-        # 右侧动态区域（第1列）
-        self.ax_anim = self.fig.add_subplot(gs[:, 1])     # 动画（跨两行）
+        # 右侧动态区域（第2列）
+        self.ax_anim = self.fig.add_subplot(gs[:, 2])     # 动画（跨两行）
 
         # 信息面板作为动画的 inset，位于动画左上角，分两列显示
         # [left, bottom, width, height] in axes coordinates (0-1)
