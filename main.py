@@ -419,7 +419,7 @@ class CamSimulator:
         # 右侧：动画（主区域）| 信息面板（嵌入动画左上角）
         gs = GridSpec(2, 2, figure=self.fig,
                       left=0.055, right=0.98, top=0.94, bottom=0.07,
-                      wspace=0.28, hspace=0.28,
+                      wspace=0.32, hspace=0.28,
                       width_ratios=[1, 1.3],
                       height_ratios=[1, 1])
 
@@ -741,6 +741,8 @@ class CamSimulator:
 
         draw_fixed_support(ax, r_0)
 
+        # ax.clear() 会清除 inset_axes，需要重新创建信息面板
+        self.ax_info = ax.inset_axes([0.02, 0.55, 0.35, 0.42])
         self._init_info_panel()
 
         self._anim_artists = {
