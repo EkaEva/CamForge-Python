@@ -22,12 +22,15 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 
 - **Five Motion Laws** — Constant velocity, constant acceleration-deceleration, simple harmonic, cycloidal, and fifth-order polynomial; rise and return can be independently selected
 - **Analytical Computation** — Profile coordinates and pressure angle are both computed using analytical formulas (not numerical differentiation), ensuring high precision without jitter
-- **Real-time Animation** — 360-frame rotation animation with speed control, pause/resume/replay, synchronized pressure angle arcs and normal/tangent lines
+- **Real-time Animation** — Configurable frame count rotation animation with speed control, pause/resume/replay, synchronized pressure angle arcs and normal/tangent lines
+- **Roller Follower** — Supports roller radius parameter, automatically computes actual and theoretical profiles with interference warning
 - **Multilingual UI** — Supports Chinese and English with runtime switching; export filenames adapt to the selected language
-- **One-click Export** — Static charts exported as 600 DPI high-resolution TIFF, animation as 150 DPI looping GIF, data as Excel spreadsheet
+- **One-click Export** — Static charts exported as 600 DPI high-resolution TIFF, animation as 150 DPI looping GIF, data as Excel/CSV
 - **Random Parameters** — Generate valid random cam parameters with one click for quick exploration of different configurations
-- **Parameter Validation** — Automatic detection of constraints such as sum of four angles and offset range, with instant alerts for invalid parameters
+- **Parameter Validation** — Automatic detection of constraints such as sum of four angles, offset range, roller interference, with instant alerts for invalid parameters
 - **Keyboard Shortcuts** — Enter to start, Space to pause/resume/replay, R for random cam
+- **Modern Layout** — Three-column grid layout, static and dynamic charts separated, widescreen adaptive
+- **High Performance** — NumPy vectorized computation, control caching for theme switching, smooth animation
 
 ---
 
@@ -139,6 +142,9 @@ Enter cam design parameters in the left panel:
 | Base circle radius | $r_0$ | Cam base circle radius | > 0 mm |
 | Offset | $e$ | Follower guide offset | < $r_0$ mm |
 | Angular velocity | $\omega$ | Cam rotation angular velocity | > 0 rad/s |
+| Roller radius | $r_r$ | Roller follower radius | < min curvature radius, 0 for knife-edge |
+| Discrete points | — | Computation resolution | 36-3600, default 360 |
+| Pressure angle threshold | — | Warning threshold | > 0°, default 30° |
 
 > The sum of the four angles must equal exactly **360°**.
 
@@ -245,13 +251,13 @@ CamForge/
 └── .gitignore                 # Git ignore rules
 ```
 
-### Design Principles (v0.2)
+### Design Principles
 
 - **Composition Pattern**: CamSimulator uses composition to delegate managers, clear responsibilities, easy to maintain
 - **Computation and Presentation Separation**: `cam_mechanics.py` is a pure math library, no GUI framework dependency
 - **NumPy Vectorization**: `compute_roller_profile` and `compute_curvature_radius` use `np.roll` instead of Python loops, 10x+ performance improvement
 - **Analytical First**: All derivatives and pressure angles use analytical formulas (`ds/dδ = v/ω`), avoiding precision loss from numerical differentiation
-- **1° Step Discretization**: 360 discrete points across the full stroke, one computation point per integer degree, balancing precision and performance
+- **Configurable Discretization**: Supports 36-3600 points; spline interpolation for smooth display at low point counts
 - **Internationalization Design**: All UI strings resolved via i18n key lookup, runtime language switch without restart
 - **Control Caching**: Theme switching traverses cached control list instead of recursively traversing control tree, 5x+ performance improvement
 - **ParameterModel**: Type-safe parameter model, replaces naked dict passing, supports validation and conversion
@@ -288,10 +294,11 @@ When the maximum pressure angle exceeds **30°**, a red warning will be displaye
 
 | Dependency | Version Requirement | Purpose |
 |-----|---------|------|
-| [numpy](https://numpy.org/) | >= 1.20 | Numerical computation (array operations, trigonometric functions) |
-| [matplotlib](https://matplotlib.org/) | >= 3.5 | Chart plotting and tkinter embedding |
-| [Pillow](https://python-pillow.org/) | >= 9.0 | GIF animation export |
-| [openpyxl](https://openpyxl.readthedocs.io/) | >= 3.0 | Excel data export |
+| [numpy](https://numpy.org/) | >= 1.24 | Numerical computation (array operations, trigonometric functions) |
+| [matplotlib](https://matplotlib.org/) | >= 3.7 | Chart plotting and tkinter embedding |
+| [scipy](https://scipy.org/) | >= 1.10 | Spline interpolation (smooth display at low point counts) |
+| [Pillow](https://python-pillow.org/) | >= 10.0 | GIF animation export |
+| [openpyxl](https://openpyxl.readthedocs.io/) | >= 3.1 | Excel data export |
 | tkinter | Standard library | GUI framework (bundled with Python) |
 
 ---
