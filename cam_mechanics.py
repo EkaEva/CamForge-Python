@@ -185,6 +185,7 @@ def compute_return(
 def compute_full_motion(
     delta_0_deg: float, delta_01_deg: float, delta_ret_deg: float, delta_02_deg: float,
     h: float, r_0: float, e: float, omega: float, tc_law: int, hc_law: int,
+    n_points: int = 360,
 ) -> tuple[NDArray[np.floating], NDArray[np.floating], NDArray[np.floating],
            NDArray[np.floating], NDArray[np.floating], list[float]]:
     """
@@ -202,6 +203,7 @@ def compute_full_motion(
     omega : float - 凸轮角速度
     tc_law : int - 推程运动规律 (1-5)
     hc_law : int - 回程运动规律 (1-5)
+    n_points : int - 离散点数 (默认 360)
 
     Returns
     -------
@@ -231,7 +233,9 @@ def compute_full_motion(
         raise ValueError(f"tc_law must be 1-5, got {tc_law}")
     if hc_law not in (1, 2, 3, 4, 5):
         raise ValueError(f"hc_law must be 1-5, got {hc_law}")
-    n_total = N_POINTS
+    if n_points < 36:
+        raise ValueError(f"n_points must be >= 36, got {n_points}")
+    n_total = n_points
     delta = np.linspace(0, 2 * np.pi, n_total, endpoint=False)
     delta_deg_arr = np.degrees(delta)
 
@@ -249,7 +253,7 @@ def compute_full_motion(
     i1 = int(round(delta_0_deg))            # 推程结束
     i2 = i1 + int(round(delta_01_deg))      # 远休止结束
     i3 = i2 + int(round(delta_ret_deg))     # 回程结束
-    # 确保索引不越界：i1 >= 1, i2 > i1, i3 <= N_POINTS
+    # 确保索引不越界：i1 >= 1, i2 > i1, i3 <= n_total
     i1 = max(1, min(i1, n_total - 2))
     i2 = max(i1 + 1, min(i2, n_total - 1))
     i3 = max(i2 + 1, min(i3, n_total))

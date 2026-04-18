@@ -35,7 +35,6 @@ from cam_mechanics import (
     compute_roller_profile, compute_curvature_radius,
     DEG2RAD, __version__,
 )
-import cam_mechanics
 
 from i18n import t, SUPPORTED_LANGS, DEFAULT_LANG, FONT_MAP, detect_mpl_fonts
 
@@ -538,13 +537,12 @@ class CamSimulator:
         if model is None:
             return
 
-        # 设置离散点数（P6-6: N_POINTS 可配置）
+        # 设置离散点数（P6-6: n_points 可配置）
         n_points = model.n_points
         if n_points < 36:
             n_points = 36
         elif n_points > 3600:
             n_points = 3600
-        cam_mechanics.N_POINTS = n_points
 
         # 压力角阈值（P6-5: 可配置）
         alpha_threshold = model.alpha_threshold
@@ -563,7 +561,8 @@ class CamSimulator:
                 model.delta_0, model.delta_01,
                 model.delta_ret, model.delta_02,
                 model.h, model.r_0, model.e,
-                model.omega, model.tc_law, model.hc_law
+                model.omega, model.tc_law, model.hc_law,
+                n_points=n_points
             )
             x, y, s_0 = compute_cam_profile(s, model.r_0, model.e, model.sn, model.pz)
             rho = compute_curvature_radius(x, y)
@@ -587,7 +586,8 @@ class CamSimulator:
                 model.delta_0, model.delta_01,
                 model.delta_ret, model.delta_02,
                 model.h, model.r_0, model.e,
-                model.omega, model.tc_law, model.hc_law
+                model.omega, model.tc_law, model.hc_law,
+                n_points=n_points
             )
 
             # 计算凸轮廓形
