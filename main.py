@@ -37,7 +37,7 @@ from cam_mechanics import (
 )
 import cam_mechanics
 
-from i18n import t, SUPPORTED_LANGS, DEFAULT_LANG, FONT_MAP, LANG_DISPLAY_NAMES, get_motion_law_list, get_rotation_list, get_offset_dir_list, get_lang_display_list, detect_mpl_fonts
+from i18n import t, SUPPORTED_LANGS, DEFAULT_LANG, FONT_MAP, detect_mpl_fonts
 
 import sys
 import platform
@@ -48,11 +48,16 @@ plt.rcParams['axes.unicode_minus'] = False
 # 从 ui 包导入常量、绘图函数和参数模型
 from ui.constants import *
 from ui.drawing import draw_fixed_support
-from ui.params import ParameterModel, generate_random_params
+from ui.params import ParameterModel
 from ui.plots import (draw_displacement_curve, draw_velocity_curve,
                       draw_acceleration_curve, draw_profile_plot,
                       draw_pressure_angle_curve, draw_curvature_radius_curve)
 from ui.constants import THEME_DARK
+from ui.animation import render_frame_artists, update_info_panel, generate_gif_frames
+from ui.i18n_manager import I18nManager
+from ui.theme import ThemeManager
+from ui.export import ExportManager
+from ui.sidebar import SidebarBuilder
 
 
 class CamSimulator:
@@ -61,12 +66,19 @@ class CamSimulator:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title(f"{t('app.title', DEFAULT_LANG)} v{__version__}")
+        self.root.config(bg=THEME['toolbar_bg'])
 
-        self.lang = DEFAULT_LANG
-        self._tk_font_family = FONT_MAP[DEFAULT_LANG]["tk"]
-        self._translatable = {}  # key -> (widget, font_size)
-        self._pause_state = "paused"
+        # 管理器
+        self.i18n_mgr = I18nManager(DEFAULT_LANG)
+        self.theme_mgr = ThemeManager()
+        self.sidebar = None  # 在 _build_gui 中创建
+
+        # 兼容属性（供旧代码引用）
+        self.lang = self.i18n_mgr.lang
+        self._tk_font_family = self.i18n_mgr.tk_font_family
+        self._translatable = self.i18n_mgr._translatable
         self._dark_mode = False
+        self._pause_state = "paused"
 
         # 跨平台窗口最大化
         if platform.system() == 'Windows':
@@ -100,31 +112,38 @@ class CamSimulator:
 
         self._build_gui()
 
+        # 注册所有控件到主题管理器（P5: 缓存替代递归遍历）
+        self.theme_mgr.register_children(self.root)
+
         # 延迟刷新侧边栏，确保初始内容正确显示
         self.root.after(50, self._refresh_sidebar)
 
     # ===================================================================
-    # i18n helpers
+    # i18n helpers（委托给 I18nManager）
     # ===================================================================
 
     def _reg(self, key, widget, font_size=None):
         """Register a widget for language-switch updates"""
-        self._translatable[key] = (widget, font_size)
+        self.i18n_mgr.register(key, widget, font_size)
+        self._translatable = self.i18n_mgr._translatable
 
     def _law_name(self, law_id):
         """Get motion law name in current language"""
-        return t(f"law.{law_id}", self.lang)
+        return self.i18n_mgr.law_name(law_id)
 
     def _on_language_change(self, event=None):
         """Handle language switch"""
-        idx = self.popup_lang.current()
+        idx = self.sidebar.combos['lang'].current()
         new_lang = SUPPORTED_LANGS[idx]
         if new_lang == self.lang:
             return
         self.lang = new_lang
+        self.i18n_mgr.lang = new_lang
         self._tk_font_family = FONT_MAP[new_lang]["tk"]
+        self.i18n_mgr._tk_font_family = self._tk_font_family
         self._apply_language()
-        self._update_mpl_fonts(new_lang)
+        self.sidebar.update_combo_values(self.lang)
+        self.i18n_mgr.update_mpl_fonts(new_lang)
         if self.sim_data is not None:
             self._plot_static()
             if self._anim_artists is not None:
@@ -134,94 +153,34 @@ class CamSimulator:
 
     def _apply_language(self):
         """Update all registered widgets for current language"""
-        for key, (widget, font_size) in self._translatable.items():
-            text = t(key, self.lang)
-            try:
-                widget.config(text=text)
-            except tk.TclError:
-                pass
-            if font_size is not None:
-                try:
-                    widget.config(font=(self._tk_font_family, font_size))
-                except tk.TclError:
-                    pass
-        # Update combobox values (preserve current index)
-        tc_idx = self.popup_tc.current()
-        hc_idx = self.popup_hc.current()
-        sn_idx = self.popup_sn.current()
-        pz_idx = self.popup_pz.current()
-        self.popup_tc.config(values=get_motion_law_list(self.lang))
-        self.popup_hc.config(values=get_motion_law_list(self.lang))
-        self.popup_sn.config(values=get_rotation_list(self.lang))
-        self.popup_pz.config(values=get_offset_dir_list(self.lang))
-        self.popup_tc.current(tc_idx)
-        self.popup_hc.current(hc_idx)
-        self.popup_sn.current(sn_idx)
-        self.popup_pz.current(pz_idx)
+        combo_widgets = {
+            'tc': self.sidebar.combos['tc_law'], 'hc': self.sidebar.combos['hc_law'],
+            'sn': self.sidebar.combos['sn'], 'pz': self.sidebar.combos['pz'],
+        }
+        self.i18n_mgr.apply_language(self.lang, combo_widgets=combo_widgets)
         self.root.title(f"{t('app.title', self.lang)} v{__version__}")
 
     def _update_mpl_fonts(self, lang):
         """Update matplotlib font config"""
-        plt.rcParams['font.sans-serif'] = detect_mpl_fonts(lang)
-        plt.rcParams['axes.unicode_minus'] = False
+        self.i18n_mgr.update_mpl_fonts(lang)
 
     def _on_theme_change(self, event=None):
         """Handle theme switch (light/dark)"""
-        is_dark = self.popup_theme.current() == 1
-        if is_dark == self._dark_mode:
+        is_dark = self.sidebar.combos['theme'].current() == 1
+        if not self.theme_mgr.toggle(is_dark):
             return
         self._dark_mode = is_dark
         self._apply_theme()
 
     def _apply_theme(self):
         """Apply current theme to all widgets"""
-        theme = THEME_DARK if self._dark_mode else THEME
-
-        # Update sidebar & toolbar frame backgrounds
-        self._sb_canvas.config(bg=theme['sidebar_bg'])
-        # Recursively update all widget colors
-        self._update_widget_colors(self.root, theme)
-
-        # Update matplotlib style
-        if self._dark_mode:
-            plt.rcParams.update({
-                'figure.facecolor': '#0f172a',
-                'axes.facecolor': '#1e293b',
-                'axes.edgecolor': '#475569',
-                'axes.labelcolor': '#e2e8f0',
-                'xtick.color': '#94a3b8',
-                'ytick.color': '#94a3b8',
-                'text.color': '#e2e8f0',
-                'grid.color': '#334155',
-                'legend.facecolor': '#1e293b',
-                'legend.edgecolor': '#334155',
-            })
-        else:
-            plt.rcParams.update({
-                'figure.facecolor': 'white',
-                'axes.facecolor': 'white',
-                'axes.edgecolor': 'black',
-                'axes.labelcolor': 'black',
-                'xtick.color': 'black',
-                'ytick.color': 'black',
-                'text.color': 'black',
-                'grid.color': '#d0d0d0',
-                'legend.facecolor': 'white',
-                'legend.edgecolor': '#d0d0d0',
-            })
-
-        # Apply matplotlib style to figure and all axes
-        self.fig.set_facecolor(plt.rcParams['figure.facecolor'])
-        for ax in [self.ax_s, self.ax_v, self.ax_a,
-                   self.ax_alpha, self.ax_profile, self.ax_rho,
-                   self.ax_anim, self.ax_info]:
-            ax.set_facecolor(plt.rcParams['axes.facecolor'])
-            ax.tick_params(colors=plt.rcParams['xtick.color'])
-            for spine in ax.spines.values():
-                spine.set_edgecolor(plt.rcParams['axes.edgecolor'])
-            ax.xaxis.label.set_color(plt.rcParams['axes.labelcolor'])
-            ax.yaxis.label.set_color(plt.rcParams['axes.labelcolor'])
-            ax.title.set_color(plt.rcParams['text.color'])
+        axes = [self.ax_s, self.ax_v, self.ax_a,
+                self.ax_p, self.ax_alpha, self.ax_rho,
+                self.ax_anim, self.ax_info]
+        self.theme_mgr.apply_theme(
+            self.root, sb_canvas=self._sb_canvas,
+            axes=axes, canvas=self.canvas,
+        )
 
         # Redraw if simulation data exists
         if self.sim_data is not None:
@@ -230,71 +189,6 @@ class CamSimulator:
                 self.canvas.draw_idle()
         else:
             self.canvas.draw_idle()
-
-    def _update_widget_colors(self, widget, theme):
-        """Recursively update widget background/foreground colors"""
-        try:
-            wclass = widget.winfo_class()
-            if wclass in ('Frame', 'Labelframe'):
-                bg = widget.cget('bg')
-                # Map known background colors to their theme equivalents
-                light_bgs = {THEME['sidebar_bg'], THEME['toolbar_bg'], THEME['status_bg']}
-                dark_bgs = {THEME_DARK['sidebar_bg'], THEME_DARK['toolbar_bg'], THEME_DARK['status_bg']}
-                if bg in light_bgs or bg in dark_bgs:
-                    if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']):
-                        widget.config(bg=theme['sidebar_bg'])
-                    else:
-                        widget.config(bg=theme['toolbar_bg'])
-            elif wclass == 'Label':
-                bg = widget.cget('bg')
-                if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']):
-                    widget.config(bg=theme['sidebar_bg'])
-                elif bg in (THEME['toolbar_bg'], THEME_DARK['toolbar_bg'],
-                            THEME['status_bg'], THEME_DARK['status_bg']):
-                    widget.config(bg=theme['toolbar_bg'])
-                fg = widget.cget('fg')
-                if fg in (THEME['group_fg'], THEME_DARK['group_fg']):
-                    widget.config(fg=theme['group_fg'])
-                elif fg in (THEME['logo_fg'], THEME_DARK['logo_fg']):
-                    widget.config(fg=theme['logo_fg'])
-                elif fg in (THEME['status_fg'], THEME_DARK['status_fg']):
-                    widget.config(fg=theme['status_fg'])
-                elif fg in (THEME['info_text'], THEME_DARK['info_text']):
-                    widget.config(fg=theme['info_text'])
-            elif wclass == 'Checkbutton':
-                bg = widget.cget('bg')
-                if bg in (THEME['sidebar_bg'], THEME_DARK['sidebar_bg']):
-                    widget.config(bg=theme['sidebar_bg'])
-                elif bg in (THEME['toolbar_bg'], THEME_DARK['toolbar_bg']):
-                    widget.config(bg=theme['toolbar_bg'])
-                fg = widget.cget('fg')
-                if self._dark_mode:
-                    widget.config(fg='#e2e8f0', selectcolor='#334155',
-                                  activebackground=theme['toolbar_bg'], activeforeground='#e2e8f0')
-                else:
-                    widget.config(fg='black', selectcolor='white',
-                                  activebackground=theme['toolbar_bg'], activeforeground='black')
-            elif wclass == 'Entry':
-                if self._dark_mode:
-                    widget.config(bg='#1e293b', fg='#e2e8f0', insertbackground='#e2e8f0',
-                                  selectbackground='#334155')
-                else:
-                    widget.config(bg='white', fg='black', insertbackground='black',
-                                  selectbackground='#b4d5fe')
-            elif wclass == 'Scale':
-                if self._dark_mode:
-                    widget.config(bg=theme['toolbar_bg'], fg='#e2e8f0',
-                                  troughcolor='#334155', highlightbackground=theme['toolbar_bg'])
-                else:
-                    widget.config(bg=theme['toolbar_bg'], fg='black',
-                                  troughcolor='#d0d0d0', highlightbackground=theme['toolbar_bg'])
-            elif wclass == 'Button':
-                # Re-apply button colors from theme
-                pass  # Buttons keep their styled colors
-        except (tk.TclError, TypeError):
-            pass
-        for child in widget.winfo_children():
-            self._update_widget_colors(child, theme)
 
     # ===================================================================
     # GUI 构建（拆分为子方法）
@@ -324,195 +218,22 @@ class CamSimulator:
         self._sb_canvas.bind('<Enter>', self._bind_mousewheel)
         self._sb_canvas.bind('<Leave>', self._unbind_mousewheel)
 
-        main_area = tk.Frame(self.root)
+        main_area = tk.Frame(self.root, bg=THEME['toolbar_bg'])
         main_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # 拆分为子方法构建
-        self._build_sidebar(sidebar)
+        self.sidebar = SidebarBuilder(sidebar, self.i18n_mgr, self.theme_mgr,
+                                      on_validate_entry=self._validate_entry)
+        self.sidebar.build(self.lang,
+                           arc_command=self._on_arc_toggle,
+                           grid_command=self._on_grid_toggle)
+
+        # 绑定语言/主题切换事件
+        self.sidebar.combos['lang'].bind('<<ComboboxSelected>>', self._on_language_change)
+        self.sidebar.combos['theme'].bind('<<ComboboxSelected>>', self._on_theme_change)
+
         toolbar, status_bar = self._build_toolbar(main_area)
         self._build_figure(main_area)
-
-    def _build_sidebar(self, sidebar):
-        """构建侧边栏内容"""
-        lbl_font = (self._tk_font_family, 10)
-        ent_font = (self._tk_font_family, 10)
-        lbl_kw = {'font': lbl_font, 'bg': THEME['sidebar_bg'], 'anchor': 'w'}
-        ent_kw = {'font': ent_font, 'width': 14}
-
-        # Logo
-        tk.Label(sidebar, text="CamForge", font=(self._tk_font_family, 16, 'bold'),
-                 fg=THEME['logo_fg'], bg=THEME['sidebar_bg'], anchor='w').pack(fill=tk.X, padx=16, pady=(16, 20))
-
-        # ---- 语言选择组 ----
-        self._sidebar_group(sidebar, t("sidebar.group.language", self.lang), i18n_key="sidebar.group.language")
-        self.popup_lang = ttk.Combobox(sidebar, values=get_lang_display_list(), state='readonly', width=14)
-        self.popup_lang.current(SUPPORTED_LANGS.index(DEFAULT_LANG))
-        self.popup_lang.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.popup_lang.bind('<<ComboboxSelected>>', self._on_language_change)
-
-        # ---- 主题选择组 ----
-        self._sidebar_group(sidebar, t("sidebar.group.theme", self.lang), i18n_key="sidebar.group.theme")
-        theme_values = [t("theme.light", self.lang), t("theme.dark", self.lang)]
-        self.popup_theme = ttk.Combobox(sidebar, values=theme_values, state='readonly', width=14)
-        self.popup_theme.current(0)
-        self.popup_theme.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.popup_theme.bind('<<ComboboxSelected>>', self._on_theme_change)
-
-        # ---- 运动参数组 ----
-        self._sidebar_group(sidebar, t("sidebar.group.motion", self.lang), i18n_key="sidebar.group.motion")
-
-        self._sidebar_item(sidebar, t("sidebar.label.delta_0", self.lang), lbl_kw, i18n_key="sidebar.label.delta_0")
-        self.entry_delta_0 = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_0.insert(0, str(DEFAULT_PARAMS['delta_0']))
-        self.entry_delta_0.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_delta_0.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_0, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.delta_01", self.lang), lbl_kw, i18n_key="sidebar.label.delta_01")
-        self.entry_delta_01 = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_01.insert(0, str(DEFAULT_PARAMS['delta_01']))
-        self.entry_delta_01.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_delta_01.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_01, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.delta_ret", self.lang), lbl_kw, i18n_key="sidebar.label.delta_ret")
-        self.entry_delta_ret = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_ret.insert(0, str(DEFAULT_PARAMS['delta_ret']))
-        self.entry_delta_ret.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_delta_ret.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_ret, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.delta_02", self.lang), lbl_kw, i18n_key="sidebar.label.delta_02")
-        self.entry_delta_02 = tk.Entry(sidebar, **ent_kw)
-        self.entry_delta_02.insert(0, str(DEFAULT_PARAMS['delta_02']))
-        self.entry_delta_02.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_delta_02.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_delta_02, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.h", self.lang), lbl_kw, i18n_key="sidebar.label.h")
-        self.entry_h = tk.Entry(sidebar, **ent_kw)
-        self.entry_h.insert(0, str(DEFAULT_PARAMS['h']))
-        self.entry_h.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_h.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_h, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.omega", self.lang), lbl_kw, i18n_key="sidebar.label.omega")
-        self.entry_omega = tk.Entry(sidebar, **ent_kw)
-        self.entry_omega.insert(0, str(DEFAULT_PARAMS['omega']))
-        self.entry_omega.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_omega.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_omega, float))
-
-        # ---- 几何参数组 ----
-        self._sidebar_group(sidebar, t("sidebar.group.geometry", self.lang), i18n_key="sidebar.group.geometry")
-
-        self._sidebar_item(sidebar, t("sidebar.label.r_0", self.lang), lbl_kw, i18n_key="sidebar.label.r_0")
-        self.entry_r0 = tk.Entry(sidebar, **ent_kw)
-        self.entry_r0.insert(0, str(DEFAULT_PARAMS['r_0']))
-        self.entry_r0.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_r0.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_r0, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.e", self.lang), lbl_kw, i18n_key="sidebar.label.e")
-        self.entry_e = tk.Entry(sidebar, **ent_kw)
-        self.entry_e.insert(0, str(DEFAULT_PARAMS['e']))
-        self.entry_e.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_e.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_e, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.r_r", self.lang), lbl_kw, i18n_key="sidebar.label.r_r")
-        self.entry_rr = tk.Entry(sidebar, **ent_kw)
-        self.entry_rr.insert(0, str(DEFAULT_PARAMS['r_r']))
-        self.entry_rr.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_rr.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_rr, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.alpha_threshold", self.lang), lbl_kw, i18n_key="sidebar.label.alpha_threshold")
-        self.entry_alpha_threshold = tk.Entry(sidebar, **ent_kw)
-        self.entry_alpha_threshold.insert(0, str(DEFAULT_PARAMS['alpha_threshold']))
-        self.entry_alpha_threshold.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_alpha_threshold.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_alpha_threshold, float))
-
-        self._sidebar_item(sidebar, t("sidebar.label.n_points", self.lang), lbl_kw, i18n_key="sidebar.label.n_points")
-        self.entry_n_points = tk.Entry(sidebar, **ent_kw)
-        self.entry_n_points.insert(0, str(DEFAULT_PARAMS['n_points']))
-        self.entry_n_points.pack(fill=tk.X, padx=16, pady=(0, 8))
-        self.entry_n_points.bind('<FocusOut>', lambda e: self._validate_entry(self.entry_n_points, int))
-
-        # ---- 运动规律组 ----
-        self._sidebar_group(sidebar, t("sidebar.group.law", self.lang), i18n_key="sidebar.group.law")
-
-        motion_laws = get_motion_law_list(self.lang)
-        combo_kw = {'state': 'readonly', 'width': 14}
-
-        self._sidebar_item(sidebar, t("sidebar.label.tc_law", self.lang), lbl_kw, i18n_key="sidebar.label.tc_law")
-        self.popup_tc = ttk.Combobox(sidebar, values=motion_laws, **combo_kw)
-        self.popup_tc.current(0)
-        self.popup_tc.pack(fill=tk.X, padx=16, pady=(0, 8))
-
-        self._sidebar_item(sidebar, t("sidebar.label.hc_law", self.lang), lbl_kw, i18n_key="sidebar.label.hc_law")
-        self.popup_hc = ttk.Combobox(sidebar, values=motion_laws, **combo_kw)
-        self.popup_hc.current(0)
-        self.popup_hc.pack(fill=tk.X, padx=16, pady=(0, 8))
-
-        self._sidebar_item(sidebar, t("sidebar.label.rotation", self.lang), lbl_kw, i18n_key="sidebar.label.rotation")
-        self.popup_sn = ttk.Combobox(sidebar, values=get_rotation_list(self.lang), **combo_kw)
-        self.popup_sn.current(0)
-        self.popup_sn.pack(fill=tk.X, padx=16, pady=(0, 8))
-
-        self._sidebar_item(sidebar, t("sidebar.label.offset_dir", self.lang), lbl_kw, i18n_key="sidebar.label.offset_dir")
-        self.popup_pz = ttk.Combobox(sidebar, values=get_offset_dir_list(self.lang), **combo_kw)
-        self.popup_pz.current(0)
-        self.popup_pz.pack(fill=tk.X, padx=16, pady=(0, 8))
-
-        # ---- 动态显示组（两列布局） ----
-        self._sidebar_group(sidebar, t("sidebar.group.display", self.lang), i18n_key="sidebar.group.display")
-
-        cb_kw = {'font': (self._tk_font_family, 10), 'anchor': 'w', 'bg': THEME['sidebar_bg']}
-
-        display_grid = tk.Frame(sidebar, bg=THEME['sidebar_bg'])
-        display_grid.pack(fill=tk.X, padx=16, pady=2)
-        display_grid.columnconfigure(0, weight=1)
-        display_grid.columnconfigure(1, weight=1)
-
-        self.show_tangent = tk.BooleanVar(value=False)
-        cb_tangent = tk.Checkbutton(display_grid, text=t("sidebar.cb.tangent", self.lang), variable=self.show_tangent,
-                       **cb_kw)
-        cb_tangent.grid(row=0, column=0, sticky='w', pady=1)
-        self._reg("sidebar.cb.tangent", cb_tangent, font_size=10)
-
-        self.show_normal = tk.BooleanVar(value=False)
-        cb_normal = tk.Checkbutton(display_grid, text=t("sidebar.cb.normal", self.lang), variable=self.show_normal,
-                       **cb_kw)
-        cb_normal.grid(row=0, column=1, sticky='w', pady=1)
-        self._reg("sidebar.cb.normal", cb_normal, font_size=10)
-
-        self.show_arc = tk.BooleanVar(value=False)
-        cb_arc = tk.Checkbutton(display_grid, text=t("sidebar.cb.arc", self.lang), variable=self.show_arc,
-                       command=self._on_arc_toggle, **cb_kw)
-        cb_arc.grid(row=1, column=0, sticky='w', pady=1)
-        self._reg("sidebar.cb.arc", cb_arc, font_size=10)
-
-        self.show_boundaries = tk.BooleanVar(value=False)
-        cb_boundaries = tk.Checkbutton(display_grid, text=t("sidebar.cb.boundaries", self.lang), variable=self.show_boundaries,
-                       **cb_kw)
-        cb_boundaries.grid(row=1, column=1, sticky='w', pady=1)
-        self._reg("sidebar.cb.boundaries", cb_boundaries, font_size=10)
-
-        self.show_base_circle = tk.BooleanVar(value=False)
-        cb_base_circle = tk.Checkbutton(display_grid, text=t("sidebar.cb.base_circle", self.lang), variable=self.show_base_circle,
-                       **cb_kw)
-        cb_base_circle.grid(row=2, column=0, sticky='w', pady=1)
-        self._reg("sidebar.cb.base_circle", cb_base_circle, font_size=10)
-
-        self.show_offset_circle = tk.BooleanVar(value=False)
-        cb_offset_circle = tk.Checkbutton(display_grid, text=t("sidebar.cb.offset_circle", self.lang), variable=self.show_offset_circle,
-                       **cb_kw)
-        cb_offset_circle.grid(row=2, column=1, sticky='w', pady=1)
-        self._reg("sidebar.cb.offset_circle", cb_offset_circle, font_size=10)
-
-        self.show_limits = tk.BooleanVar(value=False)
-        cb_limits = tk.Checkbutton(display_grid, text=t("sidebar.cb.limits", self.lang), variable=self.show_limits,
-                       **cb_kw)
-        cb_limits.grid(row=3, column=0, sticky='w', pady=1)
-        self._reg("sidebar.cb.limits", cb_limits, font_size=10)
-
-        self.show_grid = tk.BooleanVar(value=False)
-        cb_grid = tk.Checkbutton(display_grid, text=t("sidebar.cb.grid", self.lang), variable=self.show_grid,
-                       command=self._on_grid_toggle, **cb_kw)
-        cb_grid.grid(row=3, column=1, sticky='w', pady=1)
-        self._reg("sidebar.cb.grid", cb_grid, font_size=10)
 
     def _build_toolbar(self, main_area):
         """构建工具栏与状态栏"""
@@ -594,12 +315,14 @@ class CamSimulator:
         self.btn_load_preset.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.load_preset", self.btn_load_preset, font_size=10)
 
-        # 下载勾选项 — 分两行排列避免溢出
+        # 下载勾选项 — 两行排列避免溢出
         dl_cb_kw = {'font': (self._tk_font_family, 9), 'bg': THEME['toolbar_bg'], 'anchor': 'w'}
-        dl_row1 = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
-        dl_row1.pack(side=tk.LEFT, fill=tk.Y)
-        dl_row2 = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
-        dl_row2.pack(side=tk.LEFT, fill=tk.Y)
+        dl_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
+        dl_frame.pack(side=tk.LEFT, fill=tk.Y)
+        dl_row1 = tk.Frame(dl_frame, bg=THEME['toolbar_bg'])
+        dl_row1.pack(side=tk.TOP, fill=tk.X)
+        dl_row2 = tk.Frame(dl_frame, bg=THEME['toolbar_bg'])
+        dl_row2.pack(side=tk.TOP, fill=tk.X)
 
         self.dl_s = tk.BooleanVar(value=True)
         cb_dl_s = tk.Checkbutton(dl_row1, text=t("toolbar.cb.dl_s", self.lang), variable=self.dl_s, **dl_cb_kw)
@@ -689,23 +412,26 @@ class CamSimulator:
 
     def _build_figure(self, main_area):
         """构建图表区域"""
-        self.fig = Figure(figsize=(14, 7), dpi=100)
+        self.fig = Figure(figsize=(14, 8), dpi=100)
 
+        # 2 行 4 列，8 个板块
+        # Row 0: 位移 | 速度 | 加速度 | 廓形
+        # Row 1: 压力角 | 曲率 | 动画 | 信息面板
         gs = GridSpec(2, 4, figure=self.fig,
-                      left=0.04, right=0.80, top=0.95, bottom=0.08,
-                      wspace=0.30, hspace=0.35,
-                      width_ratios=[1, 1, 1, 1.6])
+                      left=0.06, right=0.97, top=0.94, bottom=0.07,
+                      wspace=0.32, hspace=0.38,
+                      width_ratios=[1, 1, 1, 1.4])
 
+        # 第一行：位移、速度、加速度、廓形
         self.ax_s = self.fig.add_subplot(gs[0, 0])
         self.ax_v = self.fig.add_subplot(gs[0, 1])
-        self.ax_alpha = self.fig.add_subplot(gs[0, 2])
-        self.ax_a = self.fig.add_subplot(gs[1, 0])
-        self.ax_profile = self.fig.add_subplot(gs[1, 1])
-        self.ax_rho = self.fig.add_subplot(gs[1, 2])
-        self.ax_anim = self.fig.add_subplot(gs[:, 3])
-
-        # 信息面板：紧贴动态图右侧，上下对齐
-        self.ax_info = self.fig.add_axes([0.83, 0.08, 0.14, 0.87])
+        self.ax_a = self.fig.add_subplot(gs[0, 2])
+        self.ax_p = self.fig.add_subplot(gs[0, 3])
+        # 第二行：压力角、曲率、动画、信息面板
+        self.ax_alpha = self.fig.add_subplot(gs[1, 0])
+        self.ax_rho = self.fig.add_subplot(gs[1, 1])
+        self.ax_anim = self.fig.add_subplot(gs[1, 2])
+        self.ax_info = self.fig.add_subplot(gs[1, 3])
         self.ax_info.set_xticks([])
         self.ax_info.set_yticks([])
         self.ax_info.set_frame_on(False)
@@ -755,96 +481,30 @@ class CamSimulator:
         self._sb_canvas.configure(scrollregion=self._sb_canvas.bbox('all'))
         self._sb_canvas.itemconfig(self._sb_win, width=self._sb_canvas.winfo_width())
 
-    def _sidebar_group(self, parent, title, i18n_key=None):
-        """侧边栏分组标题"""
-        frame = tk.Frame(parent, bg=THEME['sidebar_bg'])
-        frame.pack(fill=tk.X, padx=16, pady=(12, 4))
-        lbl = tk.Label(frame, text=title, font=(self._tk_font_family, 9),
-                 fg=THEME['group_fg'], bg=THEME['sidebar_bg'], anchor='w')
-        lbl.pack(fill=tk.X)
-        tk.Frame(frame, height=1, bg=THEME['separator']).pack(fill=tk.X, pady=(2, 0))
-        if i18n_key:
-            self._reg(i18n_key, lbl, font_size=9)
-
-    def _sidebar_item(self, parent, text, lbl_kw, i18n_key=None):
-        """侧边栏参数标签"""
-        lbl = tk.Label(parent, text=text, **lbl_kw)
-        lbl.pack(fill=tk.X, padx=16, pady=(4, 0))
-        if i18n_key:
-            self._reg(i18n_key, lbl, font_size=10)
-
     # ===================================================================
     # 参数读取与校验
     # ===================================================================
 
     def _read_params(self):
-        """读取并校验参数，返回 dict 或 None"""
-        try:
-            raw_angles = {
-                'delta_0': float(self.entry_delta_0.get()),
-                'delta_01': float(self.entry_delta_01.get()),
-                'delta_ret': float(self.entry_delta_ret.get()),
-                'delta_02': float(self.entry_delta_02.get()),
-            }
-            vals = {
-                'delta_0': int(raw_angles['delta_0']),
-                'delta_01': int(raw_angles['delta_01']),
-                'delta_ret': int(raw_angles['delta_ret']),
-                'delta_02': int(raw_angles['delta_02']),
-                'h': float(self.entry_h.get()),
-                'r_0': float(self.entry_r0.get()),
-                'e': float(self.entry_e.get()),
-                'omega': float(self.entry_omega.get()),
-                'r_r': float(self.entry_rr.get()),
-                'n_points': int(float(self.entry_n_points.get())),
-                'alpha_threshold': float(self.entry_alpha_threshold.get()),
-            }
-        except ValueError:
-            self.status_var.set(t("status.incomplete_params", self.lang))
+        """读取并校验参数，返回 ParameterModel 或 None"""
+        result = self.sidebar.read_params(self.lang)
+        if result is None:
+            # 不应发生，read_params 总是返回 (model, warnings) 或 (None, error)
             return None
 
-        # 检查角度浮点截断，提示用户
-        truncation_warnings = []
-        angle_names = {
-            'delta_0': t("sidebar.label.delta_0", self.lang),
-            'delta_01': t("sidebar.label.delta_01", self.lang),
-            'delta_ret': t("sidebar.label.delta_ret", self.lang),
-            'delta_02': t("sidebar.label.delta_02", self.lang),
-        }
-        for key, raw_val in raw_angles.items():
-            int_val = int(raw_val)
-            if abs(raw_val - int_val) > 1e-9:
-                truncation_warnings.append(
-                    t("status.angle_truncated", self.lang, name=angle_names[key], raw=raw_val, rounded=int_val)
-                )
-
-        ok, err = validate_params(
-            vals['delta_0'], vals['delta_01'], vals['delta_ret'], vals['delta_02'],
-            vals['h'], vals['r_0'], vals['e'], vals['omega']
-        )
-        if not ok:
-            if isinstance(err, tuple):
-                key, name_key = err
-                name = t(name_key, self.lang)
-                self.status_var.set(t(key, self.lang, name=name))
-            else:
-                self.status_var.set(t(err, self.lang))
+        model, detail = result
+        if model is None:
+            # detail 是错误消息字符串
+            self.status_var.set(detail)
             return None
 
-        # 读取下拉菜单
-        vals['tc_law'] = self.popup_tc.current() + 1
-        vals['hc_law'] = self.popup_hc.current() + 1
-        vals['sn'] = 1 if self.popup_sn.current() == 0 else -1
-        vals['pz'] = 1 if self.popup_pz.current() == 0 else -1
-        vals['e'] = abs(vals['e'])  # 偏距取正值，方向由 pz 控制
-
-        # 显示截断提示（如有）
-        if truncation_warnings:
-            self.status_var.set(" | ".join(truncation_warnings))
+        # detail 是截断警告列表
+        if detail:
+            self.status_var.set(" | ".join(detail))
         else:
             self.status_var.set("")
         self.alpha_var.set("")
-        return vals
+        return model
 
     # ===================================================================
     # 计算与启动
@@ -854,12 +514,12 @@ class CamSimulator:
         """开始仿真"""
         self._stop_animation()
 
-        params = self._read_params()
-        if params is None:
+        model = self._read_params()
+        if model is None:
             return
 
         # 设置离散点数（P6-6: N_POINTS 可配置）
-        n_points = params.get('n_points', 360)
+        n_points = model.n_points
         if n_points < 36:
             n_points = 36
         elif n_points > 3600:
@@ -867,31 +527,31 @@ class CamSimulator:
         cam_mechanics.N_POINTS = n_points
 
         # 压力角阈值（P6-5: 可配置）
-        alpha_threshold = params.get('alpha_threshold', MAX_PRESSURE_ANGLE)
+        alpha_threshold = model.alpha_threshold
         if alpha_threshold <= 0:
             alpha_threshold = MAX_PRESSURE_ANGLE
 
         # 滚子半径
-        r_r = params.get('r_r', 0)
+        r_r = model.r_r
         if r_r < 0:
             r_r = 0
 
         # 计算运动
         try:
             delta_deg, s, v, a, ds_ddelta, phase_bounds = compute_full_motion(
-                params['delta_0'], params['delta_01'],
-                params['delta_ret'], params['delta_02'],
-                params['h'], params['r_0'], params['e'],
-                params['omega'], params['tc_law'], params['hc_law']
+                model.delta_0, model.delta_01,
+                model.delta_ret, model.delta_02,
+                model.h, model.r_0, model.e,
+                model.omega, model.tc_law, model.hc_law
             )
 
             # 计算凸轮廓形
             x, y, s_0 = compute_cam_profile(
-                s, params['r_0'], params['e'], params['sn'], params['pz']
+                s, model.r_0, model.e, model.sn, model.pz
             )
 
             # 计算滚子实际廓形
-            x_actual, y_actual = compute_roller_profile(x, y, r_r, params['sn'])
+            x_actual, y_actual = compute_roller_profile(x, y, r_r, model.sn)
 
             # 计算曲率半径
             rho = compute_curvature_radius(x, y)
@@ -901,25 +561,25 @@ class CamSimulator:
 
         # 预计算基圆/偏距圆坐标
         delta_full = np.linspace(0, 2 * np.pi, 360, endpoint=False)
-        x_base = params['r_0'] * np.cos(delta_full)
-        y_base = params['r_0'] * np.sin(delta_full)
-        x_offset = x_base / params['r_0'] * params['e']
-        y_offset = y_base / params['r_0'] * params['e']
+        x_base = model.r_0 * np.cos(delta_full)
+        y_base = model.r_0 * np.sin(delta_full)
+        x_offset = x_base / model.r_0 * model.e
+        y_offset = y_base / model.r_0 * model.e
 
         # 预计算 Rmax
         R = np.hypot(x, y)
         Rmax = np.max(R)
 
         # 解析压力角
-        alpha_all = compute_pressure_angle(s, ds_ddelta, s_0, params['e'], params['pz'])
+        alpha_all = compute_pressure_angle(s, ds_ddelta, s_0, model.e, model.pz)
         max_alpha = np.max(np.abs(alpha_all))
 
         # 警告累积显示
         warnings = []
         if max_alpha > alpha_threshold:
             warnings.append(t("status.warning_max_alpha", self.lang, val=max_alpha, threshold=alpha_threshold))
-        if params['h'] > params['r_0']:
-            warnings.append(t("status.warning_h_gt_r0", self.lang, h=params['h'], r0=params['r_0']))
+        if model.h > model.r_0:
+            warnings.append(t("status.warning_h_gt_r0", self.lang, h=model.h, r0=model.r_0))
         # 曲率半径干涉警告
         rho_finite = rho[np.isfinite(rho)]
         if len(rho_finite) > 0 and r_r > 0:
@@ -935,9 +595,9 @@ class CamSimulator:
                 'delta_deg': delta_deg, 's': s, 'v': v, 'a': a,
                 'ds_ddelta': ds_ddelta, 'phase_bounds': phase_bounds,
                 'x': x, 'y': y, 's_0': s_0,
-                'r_0': params['r_0'], 'e': params['e'], 'h': params['h'],
-                'omega': params['omega'], 'sn': params['sn'], 'pz': params['pz'],
-                'tc_law': params['tc_law'], 'hc_law': params['hc_law'],
+                'r_0': model.r_0, 'e': model.e, 'h': model.h,
+                'omega': model.omega, 'sn': model.sn, 'pz': model.pz,
+                'tc_law': model.tc_law, 'hc_law': model.hc_law,
                 'x_base': x_base, 'y_base': y_base,
                 'x_offset': x_offset, 'y_offset': y_offset,
                 'Rmax': Rmax, 'max_alpha': max_alpha,
@@ -981,19 +641,41 @@ class CamSimulator:
     def _draw_curvature_radius_curve(self, ax, data):
         draw_curvature_radius_curve(ax, data, self.lang)
 
+    def _on_canvas_configure(self, event):
+        """画布大小变化时自适应 figure 尺寸（防抖）"""
+        if self._resize_after_id is not None:
+            self.root.after_cancel(self._resize_after_id)
+        self._resize_after_id = self.root.after(50, self._resize_figure_to_widget)
+
+    def _resize_figure_to_widget(self):
+        """将 figure 尺寸同步到 tkinter 控件实际大小"""
+        self._resize_after_id = None
+        widget = self.canvas.get_tk_widget()
+        w_px = widget.winfo_width()
+        h_px = widget.winfo_height()
+        if w_px < 10 or h_px < 10:
+            return
+        dpi = self.fig.dpi
+        new_w = w_px / dpi
+        new_h = h_px / dpi
+        cur_w, cur_h = self.fig.get_size_inches()
+        if abs(new_w - cur_w) > 0.05 or abs(new_h - cur_h) > 0.05:
+            self.fig.set_size_inches(new_w, new_h, forward=False)
+            self.canvas.draw_idle()
+
     def _plot_static(self):
         """绘制静态图表"""
         data = self.sim_data
 
         for ax in [self.ax_s, self.ax_v, self.ax_a,
-                   self.ax_alpha, self.ax_profile, self.ax_rho]:
+                   self.ax_p, self.ax_alpha, self.ax_rho]:
             ax.clear()
 
         self._draw_displacement_curve(self.ax_s, data, show_law_names=True)
         self._draw_velocity_curve(self.ax_v, data)
-        self._draw_pressure_angle_curve(self.ax_alpha, data)
         self._draw_acceleration_curve(self.ax_a, data)
-        self._draw_profile_plot(self.ax_profile, data)
+        self._draw_profile_plot(self.ax_p, data)
+        self._draw_pressure_angle_curve(self.ax_alpha, data)
         self._draw_curvature_radius_curve(self.ax_rho, data)
 
         self.canvas.draw()
@@ -1028,20 +710,32 @@ class CamSimulator:
             lines_boundary.append(lb)
         line_arc, = ax.plot([], [], 'k-', linewidth=1)
 
-        ax.set_xlim(-Rmax - h, Rmax + h)
-        ax.set_ylim(-Rmax - r_0, Rmax + r_0)
-        ax.set_aspect('equal')
-        ax.grid(self.show_grid.get())
+        # 不使用 set_aspect('equal')，手动计算等比例坐标范围
+        # 根据轴框实际像素尺寸调整 xlim/ylim，使视觉上等比例且不裁剪
+        self.fig.canvas.draw()
+        bbox = ax.get_window_extent()
+        px_w, px_h = bbox.width, bbox.height
+        x_data = 2 * (Rmax + h)
+        y_data = 2 * (Rmax + r_0)
+        pixel_aspect = px_w / px_h if px_h > 0 else 1
+        data_aspect = x_data / y_data
+        if pixel_aspect > data_aspect:
+            x_data = y_data * pixel_aspect
+        else:
+            y_data = x_data / pixel_aspect
+        ax.set_xlim(-x_data / 2, x_data / 2)
+        ax.set_ylim(-y_data / 2, y_data / 2)
+        ax.grid(self.sidebar.checks['show_grid'].get())
+
+        # 绘制前同步 figure 尺寸
+        self._resize_figure_to_widget()
+        self.fig.canvas.draw()
         ax.set_title(t("plot.title.animation", self.lang), fontsize=12)
         ax.set_xlabel(r'$x$ (mm)')
         ax.set_ylabel(r'$y$ (mm)')
 
         draw_fixed_support(ax, r_0)
 
-        anim_pos = ax.get_position()
-        info_x0 = anim_pos.x1 + 0.01
-        info_w = 0.14
-        self.ax_info.set_position([info_x0, anim_pos.y0, info_w, anim_pos.y1 - anim_pos.y0])
         self._init_info_panel()
 
         self._anim_artists = {
@@ -1053,7 +747,7 @@ class CamSimulator:
         }
 
     def _init_info_panel(self):
-        """初始化信息面板"""
+        """初始化信息面板（右下板块，垂直排列）"""
         ax = self.ax_info
         ax.clear()
         ax.set_xticks([])
@@ -1069,8 +763,8 @@ class CamSimulator:
         ]
         self._info_labels = {}
         for idx, (key, name) in enumerate(info_items):
-            y_pos = 0.95 - idx * 0.10
-            lbl = ax.text(0.05, y_pos, f'{name}: --', transform=ax.transAxes,
+            y_pos = 0.90 - idx * 0.15
+            lbl = ax.text(0.1, y_pos, f'{name}: --', transform=ax.transAxes,
                           fontsize=10, ha='left', va='top', color=THEME['info_text'])
             self._info_labels[key] = lbl
 
@@ -1121,17 +815,7 @@ class CamSimulator:
         if artists is None:
             return
 
-        r_0 = data['r_0']
-        h = data['h']
-        sn = data['sn']
-        pb = data['phase_bounds']
-        s = data['s']
-        s_0 = data['s_0']
-        e = data['e']
-        pz = data['pz']
-        alpha_all = data['alpha_all']
-
-        N = len(s)
+        N = len(data['s'])
         i = self.current_frame
 
         if i >= N:
@@ -1139,98 +823,23 @@ class CamSimulator:
             self.btn_pause.config(text=t("toolbar.btn.replay", self.lang))
             self._pause_state = "replay"
             self.alpha_var.set(t("status.max_alpha", self.lang, val=data['max_alpha']))
-            label_delta = t("info.label.delta", self.lang)
-            label_alpha = t("info.label.alpha", self.lang)
-            label_s = t("info.label.s", self.lang)
-            label_h = t("info.label.h", self.lang)
-            label_s0 = t("info.label.s0", self.lang)
-            self._info_labels['delta'].set_text(rf'{label_delta}: 360°/360°')
-            self._info_labels['alpha'].set_text(rf'{label_alpha}: {data["max_alpha"]:.2f}°')
-            self._info_labels['s'].set_text(rf'{label_s}: 0.00 mm')
-            self._info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
-            self._info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
+            update_info_panel(self._info_labels, 360, data['max_alpha'], 0.0,
+                              data['h'], data['s_0'], self.lang)
             self.canvas.draw_idle()
             return
 
-        angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
-        x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
-        artists['cam'].set_data(x_rot, y_rot)
-
-        if self.show_base_circle.get():
-            artists['base'].set_data(data['x_base'], data['y_base'])
-        else:
-            artists['base'].set_data([], [])
-
-        if self.show_offset_circle.get():
-            artists['offset'].set_data(data['x_offset'], data['y_offset'])
-        else:
-            artists['offset'].set_data([], [])
-
-        frame = compute_anim_frame_data(s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all)
-        follower_x = frame['follower_x']
-        cy = frame['contact_y']
-        cx = follower_x
-        nx, ny = frame['nx'], frame['ny']
-        tx, ty = frame['tx'], frame['ty']
-        alpha_i = frame['alpha_i']
-
-        if self.show_tangent.get():
-            artists['tangent'].set_data([cx - r_0 * tx, cx + r_0 * tx], [cy - r_0 * ty, cy + r_0 * ty])
-        else:
-            artists['tangent'].set_data([], [])
-
-        if self.show_normal.get():
-            artists['normal'].set_data([cx + r_0 * nx, cx - r_0 * nx], [cy + r_0 * ny, cy - r_0 * ny])
-        else:
-            artists['normal'].set_data([], [])
-
-        tip_w = r_0 * TIP_WIDTH_RATIO
-        tip_h = r_0 * TIP_HEIGHT_RATIO
-        rod_top = cy + r_0 * ROD_LENGTH_RATIO
-        artists['rod'].set_data([follower_x, follower_x], [cy + tip_h, rod_top])
-        artists['tip'].set_data([follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w], [cy + tip_h, cy, cy + tip_h, cy + tip_h])
-
-        if self.show_limits.get():
-            artists['lower'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0])
-            artists['upper'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h])
-        else:
-            artists['lower'].set_data([], [])
-            artists['upper'].set_data([], [])
-
-        if self.show_boundaries.get():
-            for j, lb in enumerate(artists['boundaries']):
-                if j < len(pb) - 1:
-                    b_deg = pb[j + 1]
-                    idx = int(b_deg)
-                    if idx < N:
-                        lb.set_data([0, x_rot[idx]], [0, y_rot[idx]])
-                    else:
-                        lb.set_data([], [])
-                else:
-                    lb.set_data([], [])
-        else:
-            for lb in artists['boundaries']:
-                lb.set_data([], [])
-
-        if self.show_arc.get():
-            arc_r = r_0 * ARC_RADIUS_RATIO
-            x_arc, y_arc = compute_pressure_angle_arc(cx, cy, nx, ny, alpha_i, arc_r)
-            artists['arc'].set_data(x_arc, y_arc)
-            artists['center'].set_data([follower_x, follower_x], [cy - r_0 * 2, cy + r_0 * 5])
-        else:
-            artists['arc'].set_data([], [])
-            artists['center'].set_data([], [])
-
-        label_delta = t("info.label.delta", self.lang)
-        label_alpha = t("info.label.alpha", self.lang)
-        label_s = t("info.label.s", self.lang)
-        label_h = t("info.label.h", self.lang)
-        label_s0 = t("info.label.s0", self.lang)
-        self._info_labels['delta'].set_text(rf'{label_delta}: {i:3d}°/360°')
-        self._info_labels['alpha'].set_text(rf'{label_alpha}: {alpha_i:.1f}°')
-        self._info_labels['s'].set_text(rf'{label_s}: {frame["s_i"]:.2f} mm')
-        self._info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
-        self._info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
+        render_frame_artists(
+            artists, data, i,
+            show_base=self.sidebar.checks['show_base_circle'].get(),
+            show_offset=self.sidebar.checks['show_offset_circle'].get(),
+            show_tangent=self.sidebar.checks['show_tangent'].get(),
+            show_normal=self.sidebar.checks['show_normal'].get(),
+            show_limits=self.sidebar.checks['show_limits'].get(),
+            show_boundaries=self.sidebar.checks['show_boundaries'].get(),
+            show_arc=self.sidebar.checks['show_arc'].get(),
+        )
+        update_info_panel(self._info_labels, i, data['alpha_all'][i] if i < N else 0,
+                          data['s'][i] if i < N else 0, data['h'], data['s_0'], self.lang)
 
         if i % ANIM_FRAME_SKIP == 0:
             self.canvas.draw_idle()
@@ -1249,100 +858,22 @@ class CamSimulator:
             return
         if self._anim_artists is None:
             self._init_anim_artists()
-        artists = self._anim_artists
-        r_0 = data['r_0']
-        h = data['h']
-        sn = data['sn']
-        pb = data['phase_bounds']
-        s = data['s']
-        s_0 = data['s_0']
-        e = data['e']
-        pz = data['pz']
-        alpha_all = data['alpha_all']
-        N = len(s)
+        N = len(data['s'])
         if i < 0 or i >= N:
             return
 
-        angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
-        x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
-        artists['cam'].set_data(x_rot, y_rot)
-
-        if self.show_base_circle.get():
-            artists['base'].set_data(data['x_base'], data['y_base'])
-        else:
-            artists['base'].set_data([], [])
-        if self.show_offset_circle.get():
-            artists['offset'].set_data(data['x_offset'], data['y_offset'])
-        else:
-            artists['offset'].set_data([], [])
-
-        frame = compute_anim_frame_data(s, data['ds_ddelta'], s_0, e, r_0, sn, pz, i, alpha_all)
-        follower_x = frame['follower_x']
-        cy = frame['contact_y']
-        cx = follower_x
-        nx, ny = frame['nx'], frame['ny']
-        tx, ty = frame['tx'], frame['ty']
-        alpha_i = frame['alpha_i']
-
-        if self.show_tangent.get():
-            artists['tangent'].set_data([cx - r_0 * tx, cx + r_0 * tx], [cy - r_0 * ty, cy + r_0 * ty])
-        else:
-            artists['tangent'].set_data([], [])
-        if self.show_normal.get():
-            artists['normal'].set_data([cx + r_0 * nx, cx - r_0 * nx], [cy + r_0 * ny, cy - r_0 * ny])
-        else:
-            artists['normal'].set_data([], [])
-
-        tip_w = r_0 * TIP_WIDTH_RATIO
-        tip_h = r_0 * TIP_HEIGHT_RATIO
-        rod_top = cy + r_0 * ROD_LENGTH_RATIO
-        artists['rod'].set_data([follower_x, follower_x], [cy + tip_h, rod_top])
-        artists['tip'].set_data([follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w],
-                                [cy + tip_h, cy, cy + tip_h, cy + tip_h])
-
-        if self.show_limits.get():
-            artists['lower'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0])
-            artists['upper'].set_data([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h])
-        else:
-            artists['lower'].set_data([], [])
-            artists['upper'].set_data([], [])
-
-        if self.show_boundaries.get():
-            for j, lb in enumerate(artists['boundaries']):
-                if j < len(pb) - 1:
-                    b_deg = pb[j + 1]
-                    idx = int(b_deg)
-                    if idx < N:
-                        lb.set_data([0, x_rot[idx]], [0, y_rot[idx]])
-                    else:
-                        lb.set_data([], [])
-                else:
-                    lb.set_data([], [])
-        else:
-            for lb in artists['boundaries']:
-                lb.set_data([], [])
-
-        if self.show_arc.get():
-            arc_r = r_0 * ARC_RADIUS_RATIO
-            x_arc, y_arc = compute_pressure_angle_arc(cx, cy, nx, ny, alpha_i, arc_r)
-            artists['arc'].set_data(x_arc, y_arc)
-            artists['center'].set_data([follower_x, follower_x], [cy - r_0 * 2, cy + r_0 * 5])
-        else:
-            artists['arc'].set_data([], [])
-            artists['center'].set_data([], [])
-
-        # 更新信息面板
-        label_delta = t("info.label.delta", self.lang)
-        label_alpha = t("info.label.alpha", self.lang)
-        label_s = t("info.label.s", self.lang)
-        label_h = t("info.label.h", self.lang)
-        label_s0 = t("info.label.s0", self.lang)
-        self._info_labels['delta'].set_text(rf'{label_delta}: {i:3d}°/360°')
-        self._info_labels['alpha'].set_text(rf'{label_alpha}: {alpha_i:.1f}°')
-        self._info_labels['s'].set_text(rf'{label_s}: {frame["s_i"]:.2f} mm')
-        self._info_labels['h'].set_text(rf'{label_h}: {h:.1f} mm')
-        self._info_labels['s0'].set_text(rf'{label_s0}: {s_0:.2f} mm')
-
+        result = render_frame_artists(
+            self._anim_artists, data, i,
+            show_base=self.sidebar.checks['show_base_circle'].get(),
+            show_offset=self.sidebar.checks['show_offset_circle'].get(),
+            show_tangent=self.sidebar.checks['show_tangent'].get(),
+            show_normal=self.sidebar.checks['show_normal'].get(),
+            show_limits=self.sidebar.checks['show_limits'].get(),
+            show_boundaries=self.sidebar.checks['show_boundaries'].get(),
+            show_arc=self.sidebar.checks['show_arc'].get(),
+        )
+        update_info_panel(self._info_labels, i, result['alpha_i'],
+                          result['s_i'], data['h'], data['s_0'], self.lang)
         self.canvas.draw_idle()
 
     # ===================================================================
@@ -1350,10 +881,10 @@ class CamSimulator:
     # ===================================================================
 
     def _on_arc_toggle(self):
-        if self.show_arc.get():
-            self.show_normal.set(True)
+        if self.sidebar.checks['show_arc'].get():
+            self.sidebar.checks['show_normal'].set(True)
         else:
-            self.show_normal.set(False)
+            self.sidebar.checks['show_normal'].set(False)
             if self._anim_artists:
                 self._anim_artists['arc'].set_data([], [])
                 self._anim_artists['normal'].set_data([], [])
@@ -1361,7 +892,7 @@ class CamSimulator:
                 self.canvas.draw_idle()
 
     def _on_grid_toggle(self):
-        self.ax_anim.grid(self.show_grid.get())
+        self.ax_anim.grid(self.sidebar.checks['show_grid'].get())
         self.canvas.draw_idle()
 
     def _on_canvas_resize(self, event):
@@ -1414,135 +945,42 @@ class CamSimulator:
         if not folder:
             return
 
-        dpi = STATIC_DPI
-        saved = []
         data = self.sim_data
+        saved = []
         errors = []
 
-        if self.dl_s.get():
-            try:
-                fig_s = Figure(figsize=(6, 4), dpi=dpi)
-                ax_s = fig_s.add_subplot(111)
-                self._draw_displacement_curve(ax_s, data)
-                filename_s = t("export.filename.displacement", self.lang) + ".tiff"
-                fig_s.savefig(os.path.join(folder, filename_s), dpi=dpi, bbox_inches='tight', format='tiff')
-                plt.close(fig_s)
-                saved.append(filename_s)
-            except Exception as exc:
-                errors.append(f"displacement: {exc}")
+        # 使用 ExportManager 处理静态图导出
+        export_mgr = ExportManager(self.root, self._sim_data_lock)
+        toggles = {
+            's': self.dl_s.get(), 'v': self.dl_v.get(),
+            'a': self.dl_a.get(), 'profile': self.dl_profile.get(),
+            'alpha': self.dl_alpha.get(), 'curvature': self.dl_curvature.get(),
+            'svg': self.dl_svg.get(), 'csv': self.dl_csv.get(),
+            'anim': False, 'excel': False,
+        }
+        draw_funcs = {
+            'displacement': self._draw_displacement_curve,
+            'velocity': self._draw_velocity_curve,
+            'acceleration': self._draw_acceleration_curve,
+            'profile': self._draw_profile_plot,
+            'pressure_angle': self._draw_pressure_angle_curve,
+            'curvature_radius': self._draw_curvature_radius_curve,
+        }
 
-        if self.dl_v.get():
-            try:
-                fig_v = Figure(figsize=(6, 4), dpi=dpi)
-                ax_v = fig_v.add_subplot(111)
-                self._draw_velocity_curve(ax_v, data)
-                filename_v = t("export.filename.velocity", self.lang) + ".tiff"
-                fig_v.savefig(os.path.join(folder, filename_v), dpi=dpi, bbox_inches='tight', format='tiff')
-                plt.close(fig_v)
-                saved.append(filename_v)
-            except Exception as exc:
-                errors.append(f"velocity: {exc}")
+        if any(toggles.values()):
+            result = export_mgr.download(
+                data, toggles, draw_funcs, self.lang,
+                self._tk_font_family, {'ax_anim': self.ax_anim},
+                self.status_var, folder,
+            )
+            if result is not None:
+                saved, errors, folder = result
 
-        if self.dl_a.get():
-            try:
-                fig_a = Figure(figsize=(6, 4), dpi=dpi)
-                ax_a = fig_a.add_subplot(111)
-                self._draw_acceleration_curve(ax_a, data)
-                filename_a = t("export.filename.acceleration", self.lang) + ".tiff"
-                fig_a.savefig(os.path.join(folder, filename_a), dpi=dpi, bbox_inches='tight', format='tiff')
-                plt.close(fig_a)
-                saved.append(filename_a)
-            except Exception as exc:
-                errors.append(f"acceleration: {exc}")
-
-        if self.dl_profile.get():
-            try:
-                fig_p = Figure(figsize=(6, 6), dpi=dpi)
-                ax_p = fig_p.add_subplot(111)
-                self._draw_profile_plot(ax_p, data)
-                filename_p = t("export.filename.profile", self.lang) + ".tiff"
-                fig_p.savefig(os.path.join(folder, filename_p), dpi=dpi, bbox_inches='tight', format='tiff')
-                plt.close(fig_p)
-                saved.append(filename_p)
-            except Exception as exc:
-                errors.append(f"profile: {exc}")
-
-        if self.dl_alpha.get():
-            try:
-                fig_alpha = Figure(figsize=(6, 4), dpi=dpi)
-                ax_alpha = fig_alpha.add_subplot(111)
-                self._draw_pressure_angle_curve(ax_alpha, data)
-                filename_alpha = t("export.filename.pressure_angle", self.lang) + ".tiff"
-                fig_alpha.savefig(os.path.join(folder, filename_alpha), dpi=dpi, bbox_inches='tight', format='tiff')
-                plt.close(fig_alpha)
-                saved.append(filename_alpha)
-            except Exception as exc:
-                errors.append(f"pressure_angle: {exc}")
-
-        if self.dl_curvature.get():
-            try:
-                fig_rho = Figure(figsize=(6, 4), dpi=dpi)
-                ax_rho = fig_rho.add_subplot(111)
-                self._draw_curvature_radius_curve(ax_rho, data)
-                filename_rho = t("export.filename.curvature", self.lang) + ".tiff"
-                fig_rho.savefig(os.path.join(folder, filename_rho), dpi=dpi, bbox_inches='tight', format='tiff')
-                plt.close(fig_rho)
-                saved.append(filename_rho)
-            except Exception as exc:
-                errors.append(f"curvature: {exc}")
-
-        # SVG 矢量图导出（P7-5）
-        if self.dl_svg.get():
-            try:
-                fig_svg = Figure(figsize=(14, 7), dpi=100)
-                gs_svg = GridSpec(2, 2, figure=fig_svg, wspace=0.30, hspace=0.35)
-                ax_s_svg = fig_svg.add_subplot(gs_svg[0, 0])
-                ax_v_svg = fig_svg.add_subplot(gs_svg[0, 1])
-                ax_a_svg = fig_svg.add_subplot(gs_svg[1, 0])
-                ax_p_svg = fig_svg.add_subplot(gs_svg[1, 1])
-                self._draw_displacement_curve(ax_s_svg, data)
-                self._draw_velocity_curve(ax_v_svg, data)
-                self._draw_acceleration_curve(ax_a_svg, data)
-                self._draw_profile_plot(ax_p_svg, data)
-                filename_svg = "camforge_all.svg"
-                fig_svg.savefig(os.path.join(folder, filename_svg), format='svg', bbox_inches='tight')
-                plt.close(fig_svg)
-                saved.append(filename_svg)
-            except Exception as exc:
-                errors.append(f"svg: {exc}")
-
-        # CSV 数据表导出（P7-5）
-        if self.dl_csv.get():
-            try:
-                import csv as csv_mod
-                filename_csv = "camforge_data.csv"
-                filepath_csv = os.path.join(folder, filename_csv)
-                delta_deg = data['delta_deg']
-                s_arr = data['s']
-                v_arr = data['v']
-                a_arr = data['a']
-                x_arr = data['x']
-                y_arr = data['y']
-                R_arr = np.hypot(x_arr, y_arr)
-                alpha_arr = data['alpha_all']
-                with open(filepath_csv, 'w', newline='', encoding='utf-8-sig') as f:
-                    writer = csv_mod.writer(f)
-                    writer.writerow(['delta_deg', 's_mm', 'v_mm_s', 'a_mm_s2',
-                                     'x_mm', 'y_mm', 'R_mm', 'alpha_deg'])
-                    for i in range(len(delta_deg)):
-                        writer.writerow([
-                            round(delta_deg[i], 2), round(s_arr[i], 4),
-                            round(v_arr[i], 4), round(a_arr[i], 4),
-                            round(x_arr[i], 4), round(y_arr[i], 4),
-                            round(R_arr[i], 4), round(alpha_arr[i], 4),
-                        ])
-                saved.append(filename_csv)
-            except Exception as exc:
-                errors.append(f"csv: {exc}")
-
+        # Excel 导出
         if self.dl_excel.get():
-            self._export_excel(folder, saved)
+            export_mgr._export_excel(folder, saved, data, self.lang, errors)
 
+        # GIF 动画导出
         if self.dl_anim.get():
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
             filepath = os.path.join(folder, filename_anim)
@@ -1553,52 +991,11 @@ class CamSimulator:
         elif self.dl_anim.get():
             self.status_var.set(t("status.gif_exporting", self.lang))
         if errors:
-            self.status_var.set(t("status.export_failed", self.lang, error='; '.join(errors)))
-
-    def _export_excel(self, folder, saved_list):
-        """导出凸轮数据为 Excel 表格"""
-        if openpyxl is None:
-            self.status_var.set(t("error.openpyxl_missing", self.lang))
-            return
-
-        try:
-            data = self.sim_data
-            delta_deg = data['delta_deg']
-            v = data['v']
-            a = data['a']
-            x = data['x']
-            y = data['y']
-            R = np.hypot(x, y)
-
-            wb = openpyxl.Workbook()
-            ws = wb.active
-            ws.title = t("excel.sheet_name", self.lang)
-
-            headers = [
-                t("excel.col.delta", self.lang),
-                t("excel.col.radius", self.lang),
-                t("excel.col.velocity", self.lang),
-                t("excel.col.acceleration", self.lang),
-            ]
-            ws.append(headers)
-
-            for i in range(len(delta_deg)):
-                ws.append([round(delta_deg[i], 1), round(R[i], 4), round(v[i], 4), round(a[i], 4)])
-
-            for col in range(1, 5):
-                max_len = len(str(ws.cell(row=1, column=col).value))
-                for row in range(2, min(10, len(delta_deg) + 2)):
-                    cell_len = len(str(ws.cell(row=row, column=col).value))
-                    if cell_len > max_len:
-                        max_len = cell_len
-                ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = max_len + 4
-
-            filename = t("export.filename.excel", self.lang) + ".xlsx"
-            filepath = os.path.join(folder, filename)
-            wb.save(filepath)
-            saved_list.append(filename)
-        except Exception as exc:
-            self.status_var.set(t("status.export_failed", self.lang, error=str(exc)))
+            err_msg = '; '.join(e for e in errors if e != 'openpyxl_missing')
+            if 'openpyxl_missing' in errors:
+                self.status_var.set(t("error.openpyxl_missing", self.lang))
+            elif err_msg:
+                self.status_var.set(t("status.export_failed", self.lang, error=err_msg))
 
     def _export_gif(self, filepath, folder, saved_list):
         """在后台线程中导出GIF动画"""
@@ -1607,42 +1004,38 @@ class CamSimulator:
             return
 
         lang = self.lang
-        show_base = self.show_base_circle.get()
-        show_offset = self.show_offset_circle.get()
-        show_limits = self.show_limits.get()
-        show_tangent_gif = self.show_tangent.get()
-        show_normal_gif = self.show_normal.get()
-        show_arc_gif = self.show_arc.get()
-        show_boundaries_gif = self.show_boundaries.get()
+        show_base = self.sidebar.checks['show_base_circle'].get()
+        show_offset = self.sidebar.checks['show_offset_circle'].get()
+        show_limits = self.sidebar.checks['show_limits'].get()
+        show_tangent_gif = self.sidebar.checks['show_tangent'].get()
+        show_normal_gif = self.sidebar.checks['show_normal'].get()
+        show_arc_gif = self.sidebar.checks['show_arc'].get()
+        show_boundaries_gif = self.sidebar.checks['show_boundaries'].get()
 
         with self._sim_data_lock:
             data = self.sim_data
             if data is None:
                 return
-            s = data['s'].copy()
-            ds_ddelta = data['ds_ddelta'].copy()
-            alpha_all = data['alpha_all'].copy()
-            x_cam = data['x'].copy()
-            y_cam = data['y'].copy()
-            x_base = data['x_base'].copy()
-            y_base = data['y_base'].copy()
-            x_offset = data['x_offset'].copy()
-            y_offset = data['y_offset'].copy()
-            s_0 = data['s_0']
-            e = data['e']
-            r_0 = data['r_0']
-            h = data['h']
-            sn = data['sn']
-            pz = data['pz']
-            pb = list(data['phase_bounds'])
-            Rmax = data['Rmax']
-            max_alpha = data['max_alpha']
-            delta_deg = data['delta_deg'].copy()
-            v_arr = data['v'].copy()
-            a_arr = data['a'].copy()
-            tc_law = data['tc_law']
-            hc_law = data['hc_law']
-        N = len(s)
+            # 复制数据以确保线程安全
+            thread_data = {
+                's': data['s'].copy(),
+                'ds_ddelta': data['ds_ddelta'].copy(),
+                'alpha_all': data['alpha_all'].copy(),
+                'x': data['x'].copy(),
+                'y': data['y'].copy(),
+                'x_base': data['x_base'].copy(),
+                'y_base': data['y_base'].copy(),
+                'x_offset': data['x_offset'].copy(),
+                'y_offset': data['y_offset'].copy(),
+                's_0': data['s_0'],
+                'e': data['e'],
+                'r_0': data['r_0'],
+                'h': data['h'],
+                'sn': data['sn'],
+                'pz': data['pz'],
+                'phase_bounds': list(data['phase_bounds']),
+            }
+
         xlim = self.ax_anim.get_xlim()
         ylim = self.ax_anim.get_ylim()
 
@@ -1654,6 +1047,7 @@ class CamSimulator:
         progress_win.grab_set()
         tk.Label(progress_win, text=t("export.gif_dialog.message", lang),
                  font=(self._tk_font_family, 10)).pack(pady=(12, 4))
+        N = len(thread_data['s'])
         progress_bar = ttk.Progressbar(progress_win, length=280, mode='determinate', maximum=N)
         progress_bar.pack(pady=4)
         progress_label = tk.Label(progress_win, text="0 / 360", font=(self._tk_font_family, 9))
@@ -1661,98 +1055,27 @@ class CamSimulator:
 
         gif_result = {'error': None}
 
+        def progress_callback(idx, total, phase_text):
+            if phase_text is None:
+                self.root.after(0, lambda: (
+                    progress_bar.configure(value=idx + 1),
+                    progress_label.configure(text=f"{idx + 1} / {total}")
+                ))
+            else:
+                self.root.after(0, lambda: progress_label.configure(
+                    text=t("status.gif_composing", lang)))
+
         def generate():
             try:
-                fig_gif = Figure(figsize=(8, 6), dpi=GIF_DPI)
-                ax_gif = fig_gif.add_axes([0.05, 0.08, 0.65, 0.87])
-                ax_info_gif = fig_gif.add_axes([0.73, 0.08, 0.25, 0.87])
-
-                label_delta_gif = t("info.label.delta", lang)
-                label_alpha_gif = t("info.label.alpha", lang)
-                label_s_gif = t("info.label.s", lang)
-                label_h_gif = t("info.label.h", lang)
-                label_s0_gif = t("info.label.s0", lang)
-                title_anim_gif = t("plot.title.animation", lang)
-
-                frame_images = []
-
-                for i in range(N):
-                    angle_rad = -i * DEG2RAD if sn == 1 else i * DEG2RAD
-                    x_rot, y_rot = compute_rotated_cam(x_cam, y_cam, angle_rad)
-
-                    ax_gif.clear()
-                    ax_gif.plot(x_rot, y_rot, 'r-', linewidth=2)
-                    if show_base:
-                        ax_gif.plot(x_base, y_base, 'm-', linewidth=1)
-                    if show_offset:
-                        ax_gif.plot(x_offset, y_offset, 'c-', linewidth=1)
-
-                    frame_data = compute_anim_frame_data(s, ds_ddelta, s_0, e, r_0, sn, pz, i, alpha_all)
-                    fx = frame_data['follower_x']
-                    cy = frame_data['contact_y']
-                    alpha_i = frame_data['alpha_i']
-                    nx_i, ny_i = frame_data['nx'], frame_data['ny']
-                    tx_i, ty_i = frame_data['tx'], frame_data['ty']
-                    tip_w = r_0 * TIP_WIDTH_RATIO
-                    tip_h = r_0 * TIP_HEIGHT_RATIO
-                    ax_gif.plot([fx, fx], [cy + tip_h, cy + r_0 * ROD_LENGTH_RATIO], 'k-', linewidth=3)
-                    ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w], [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
-                    if show_limits:
-                        ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
-                        ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0 + h, s_0 + h], 'm--', linewidth=1)
-                    if show_tangent_gif:
-                        ax_gif.plot([fx - r_0 * tx_i, fx + r_0 * tx_i], [cy - r_0 * ty_i, cy + r_0 * ty_i], 'm-', linewidth=1)
-                    if show_normal_gif:
-                        ax_gif.plot([fx + r_0 * nx_i, fx - r_0 * nx_i], [cy + r_0 * ny_i, cy - r_0 * ny_i], 'm-', linewidth=1)
-                    if show_boundaries_gif:
-                        for j_b in range(len(pb) - 1):
-                            idx_b = int(pb[j_b + 1])
-                            if idx_b < N:
-                                ax_gif.plot([0, x_rot[idx_b]], [0, y_rot[idx_b]], 'k-', linewidth=0.8)
-                    if show_arc_gif:
-                        arc_r = r_0 * ARC_RADIUS_RATIO
-                        x_arc, y_arc = compute_pressure_angle_arc(fx, cy, nx_i, ny_i, alpha_i, arc_r)
-                        ax_gif.plot(x_arc, y_arc, 'k-', linewidth=1)
-                        ax_gif.plot([fx, fx], [cy - r_0 * 2, cy + r_0 * 5], 'k--', linewidth=0.8)
-                    draw_fixed_support(ax_gif, r_0)
-                    ax_gif.set_xlim(xlim)
-                    ax_gif.set_ylim(ylim)
-                    ax_gif.set_aspect('equal')
-                    ax_gif.set_title(f'{title_anim_gif}  {i:3d}°/360°', fontsize=11)
-
-                    ax_info_gif.clear()
-                    ax_info_gif.set_xticks([])
-                    ax_info_gif.set_yticks([])
-                    ax_info_gif.set_frame_on(False)
-                    info_items = [
-                        (0.95, rf'{label_delta_gif}: {i:3d}°/360°'),
-                        (0.85, rf'{label_alpha_gif}: {alpha_i:.1f}°'),
-                        (0.75, rf'{label_s_gif}: {frame_data["s_i"]:.2f} mm'),
-                        (0.65, rf'{label_h_gif}: {h:.1f} mm'),
-                        (0.55, rf'{label_s0_gif}: {s_0:.2f} mm'),
-                    ]
-                    for y_pos, text in info_items:
-                        ax_info_gif.text(0.05, y_pos, text, transform=ax_info_gif.transAxes,
-                                         fontsize=10, ha='left', va='top', color=THEME['info_text'])
-
-                    buf = BytesIO()
-                    fig_gif.savefig(buf, format='png', dpi=GIF_DPI)
-                    buf.seek(0)
-                    img = PILImage.open(buf).copy()
-                    buf.close()
-                    frame_images.append(img)
-
-                    self.root.after(0, lambda idx=i: (
-                        progress_bar.configure(value=idx + 1),
-                        progress_label.configure(text=f"{idx + 1} / {N}")
-                    ))
-
-                plt.close(fig_gif)
-                self.root.after(0, lambda: progress_label.configure(text=t("status.gif_composing", lang)))
-                if frame_images:
-                    frame_images[0].save(filepath, save_all=True, append_images=frame_images[1:],
-                                         duration=GIF_DURATION_MS, loop=0, optimize=True)
-                saved_list.append(os.path.basename(filepath))
+                generate_gif_frames(
+                    thread_data, filepath, saved_list, folder,
+                    show_base=show_base, show_offset=show_offset,
+                    show_tangent=show_tangent_gif, show_normal=show_normal_gif,
+                    show_limits=show_limits, show_boundaries=show_boundaries_gif,
+                    show_arc=show_arc_gif, lang=lang,
+                    xlim=xlim, ylim=ylim,
+                    progress_callback=progress_callback,
+                )
             except Exception as exc:
                 gif_result['error'] = str(exc)
             finally:
@@ -1769,26 +1092,7 @@ class CamSimulator:
 
     def _on_clear_params(self):
         """清除参数并恢复默认值"""
-        defaults = {
-            self.entry_delta_0: str(DEFAULT_PARAMS['delta_0']),
-            self.entry_delta_01: str(DEFAULT_PARAMS['delta_01']),
-            self.entry_delta_ret: str(DEFAULT_PARAMS['delta_ret']),
-            self.entry_delta_02: str(DEFAULT_PARAMS['delta_02']),
-            self.entry_h: str(DEFAULT_PARAMS['h']),
-            self.entry_omega: str(DEFAULT_PARAMS['omega']),
-            self.entry_r0: str(DEFAULT_PARAMS['r_0']),
-            self.entry_e: str(DEFAULT_PARAMS['e']),
-            self.entry_rr: str(DEFAULT_PARAMS['r_r']),
-            self.entry_n_points: str(DEFAULT_PARAMS['n_points']),
-            self.entry_alpha_threshold: str(DEFAULT_PARAMS['alpha_threshold']),
-        }
-        for entry, val in defaults.items():
-            entry.delete(0, tk.END)
-            entry.insert(0, val)
-        self.popup_tc.current(0)
-        self.popup_hc.current(0)
-        self.popup_sn.current(0)
-        self.popup_pz.current(0)
+        self.sidebar.clear_params()
         self.status_var.set("")
         self.alpha_var.set("")
 
@@ -1796,41 +1100,14 @@ class CamSimulator:
         """清除图像"""
         self._stop_animation()
         for ax in [self.ax_s, self.ax_v, self.ax_a,
-                   self.ax_alpha, self.ax_profile, self.ax_rho,
+                   self.ax_p, self.ax_alpha, self.ax_rho,
                    self.ax_anim, self.ax_info]:
             ax.clear()
         self.canvas.draw()
 
     def _on_random(self):
         """随机凸轮参数"""
-        params = generate_random_params()
-        for entry in [self.entry_delta_0, self.entry_delta_01,
-                      self.entry_delta_ret, self.entry_delta_02,
-                      self.entry_h, self.entry_r0, self.entry_e,
-                      self.entry_omega]:
-            entry.delete(0, tk.END)
-
-        self.entry_delta_0.insert(0, str(params['delta_0']))
-        self.entry_delta_01.insert(0, str(params['delta_01']))
-        self.entry_delta_ret.insert(0, str(params['delta_ret']))
-        self.entry_delta_02.insert(0, str(params['delta_02']))
-        self.entry_h.insert(0, str(params['h']))
-        self.entry_r0.insert(0, str(params['r_0']))
-        self.entry_e.insert(0, str(params['e']))
-        self.entry_omega.insert(0, str(params['omega']))
-
-        self.popup_tc.current(params['tc_law'] - 1)
-        self.popup_hc.current(params['hc_law'] - 1)
-        self.popup_sn.current(0 if params['sn'] == 1 else 1)
-        self.popup_pz.current(0 if params['pz'] == 1 else 1)
-
-        # 新参数保持默认值
-        self.entry_rr.delete(0, tk.END)
-        self.entry_rr.insert(0, str(DEFAULT_PARAMS['r_r']))
-        self.entry_n_points.delete(0, tk.END)
-        self.entry_n_points.insert(0, str(DEFAULT_PARAMS['n_points']))
-        self.entry_alpha_threshold.delete(0, tk.END)
-        self.entry_alpha_threshold.insert(0, str(DEFAULT_PARAMS['alpha_threshold']))
+        self.sidebar.set_random_params()
 
     # ===================================================================
     # 参数预设系统（P6-4）
@@ -1840,23 +1117,7 @@ class CamSimulator:
         """保存当前参数为 JSON 预设文件"""
         import json
         try:
-            preset = {
-                'delta_0': self.entry_delta_0.get(),
-                'delta_01': self.entry_delta_01.get(),
-                'delta_ret': self.entry_delta_ret.get(),
-                'delta_02': self.entry_delta_02.get(),
-                'h': self.entry_h.get(),
-                'omega': self.entry_omega.get(),
-                'r_0': self.entry_r0.get(),
-                'e': self.entry_e.get(),
-                'r_r': self.entry_rr.get(),
-                'n_points': self.entry_n_points.get(),
-                'alpha_threshold': self.entry_alpha_threshold.get(),
-                'tc_law': self.popup_tc.current(),
-                'hc_law': self.popup_hc.current(),
-                'sn': self.popup_sn.current(),
-                'pz': self.popup_pz.current(),
-            }
+            preset = self.sidebar.get_preset_data()
             filepath = filedialog.asksaveasfilename(
                 title=t("export.preset_dialog.save_title", self.lang),
                 defaultextension=".json",
@@ -1883,34 +1144,7 @@ class CamSimulator:
             with open(filepath, 'r', encoding='utf-8') as f:
                 preset = json.load(f)
 
-            entry_map = {
-                'delta_0': self.entry_delta_0,
-                'delta_01': self.entry_delta_01,
-                'delta_ret': self.entry_delta_ret,
-                'delta_02': self.entry_delta_02,
-                'h': self.entry_h,
-                'omega': self.entry_omega,
-                'r_0': self.entry_r0,
-                'e': self.entry_e,
-                'r_r': self.entry_rr,
-                'n_points': self.entry_n_points,
-                'alpha_threshold': self.entry_alpha_threshold,
-            }
-            for key, entry in entry_map.items():
-                if key in preset:
-                    entry.delete(0, tk.END)
-                    entry.insert(0, str(preset[key]))
-
-            combo_map = {
-                'tc_law': self.popup_tc,
-                'hc_law': self.popup_hc,
-                'sn': self.popup_sn,
-                'pz': self.popup_pz,
-            }
-            for key, combo in combo_map.items():
-                if key in preset:
-                    idx = int(preset[key])
-                    combo.current(idx)
+            self.sidebar.load_preset_data(preset)
 
             self.status_var.set(t("status.preset_loaded", self.lang, file=os.path.basename(filepath)))
         except Exception as exc:

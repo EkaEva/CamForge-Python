@@ -47,30 +47,40 @@ THEME = {
 }
 
 THEME_DARK = {
-    'sidebar_bg':       '#1e293b',
-    'sidebar_border':   '#334155',
-    'toolbar_bg':       '#0f172a',
-    'status_bg':        '#0f172a',
-    'status_fg':        '#f87171',
+    'sidebar_bg':       '#2d3748',
+    'sidebar_border':   '#4a5568',
+    'toolbar_bg':       '#2d3748',
+    'status_bg':        '#2d3748',
+    'status_fg':        '#fc8181',
     'info_text':        '#e2e8f0',
     'support_fill':     '#94a3b8',
-    'group_fg':         '#94a3b8',
-    'separator':        '#334155',
+    'group_fg':         '#a0aec0',
+    'separator':        '#4a5568',
     'btn_start':        '#10b981',
     'btn_start_active': '#059669',
     'btn_pause':        '#f59e0b',
     'btn_pause_active': '#d97706',
-    'btn_clear':        '#64748b',
-    'btn_clear_active': '#475569',
-    'btn_clear2':       '#94a3b8',
-    'btn_clear2_active':'#64748b',
+    'btn_clear':        '#718096',
+    'btn_clear_active': '#4a5569',
+    'btn_clear2':       '#a0aec0',
+    'btn_clear2_active':'#718096',
     'btn_random':       '#8b5cf6',
     'btn_random_active':'#7c3aed',
     'btn_download':     '#3b82f6',
     'btn_download_active':'#2563eb',
     'btn_fg':           'white',
-    'logo_fg':          '#60a5fa',
+    'logo_fg':          '#63b3ed',
 }
+
+# ---------------------------------------------------------------------------
+# 参数类型常量
+# ---------------------------------------------------------------------------
+ANGLE_PARAMS = {'delta_0', 'delta_01', 'delta_ret', 'delta_02'}
+FLOAT_PARAMS = {'h', 'r_0', 'e', 'omega', 'r_r', 'alpha_threshold'}
+INT_PARAMS = {'n_points'}
+COMBO_PARAMS = {'tc_law', 'hc_law', 'sn', 'pz'}
+CHECK_PARAMS = {'show_base', 'show_offset', 'show_tangent', 'show_normal',
+                'show_limits', 'show_boundaries', 'show_arc'}
 
 # ---------------------------------------------------------------------------
 # 默认参数值

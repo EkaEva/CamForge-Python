@@ -362,38 +362,38 @@ def compute_roller_profile(
     if r_r == 0:
         return x_theory.copy(), y_theory.copy()
 
-    n = len(x_theory)
-    x_actual = np.empty(n)
-    y_actual = np.empty(n)
+    # 中心差分求切线方向（向量化，周期边界 via np.roll）
+    dx = np.roll(x_theory, -1) - np.roll(x_theory, 1)
+    dy = np.roll(y_theory, -1) - np.roll(y_theory, 1)
+    len_t = np.hypot(dx, dy)
 
-    for i in range(n):
-        # 中心差分求切线方向
-        i_prev = (i - 1) % n
-        i_next = (i + 1) % n
-        dx = x_theory[i_next] - x_theory[i_prev]
-        dy = y_theory[i_next] - y_theory[i_prev]
-        len_t = np.hypot(dx, dy)
-        if len_t < 1e-12:
-            x_actual[i] = x_theory[i]
-            y_actual[i] = y_theory[i]
-            continue
-        tx = dx / len_t
-        ty = dy / len_t
-        # 内法线方向（指向凸轮中心）
-        # 对于 sn=1 (顺时针)，内法线 = 切线顺时针旋转90度
-        # 对于 sn=-1 (逆时针)，内法线 = 切线逆时针旋转90度
-        if sn == 1:
-            nx = ty
-            ny = -tx
-        else:
-            nx = -ty
-            ny = tx
-        # 选择指向凸轮中心(0,0)的法线方向
-        dot = (0 - x_theory[i]) * nx + (0 - y_theory[i]) * ny
-        if dot < 0:
-            nx, ny = -nx, -ny
-        x_actual[i] = x_theory[i] + r_r * nx
-        y_actual[i] = y_theory[i] + r_r * ny
+    # 切线方向（单位向量），处理近零长度
+    safe_len = np.where(len_t > 1e-12, len_t, 1.0)
+    tx = dx / safe_len
+    ty = dy / safe_len
+    degenerate = len_t < 1e-12
+    tx = np.where(degenerate, 0.0, tx)
+    ty = np.where(degenerate, 0.0, ty)
+
+    # 内法线方向（指向凸轮中心）
+    # 对于 sn=1 (顺时针)，内法线 = 切线顺时针旋转90度
+    # 对于 sn=-1 (逆时针)，内法线 = 切线逆时针旋转90度
+    if sn == 1:
+        nx = ty
+        ny = -tx
+    else:
+        nx = -ty
+        ny = tx
+
+    # 选择指向凸轮中心(0,0)的法线方向
+    dot = -x_theory * nx + -y_theory * ny
+    flip = dot < 0
+    nx = np.where(flip, -nx, nx)
+    ny = np.where(flip, -ny, ny)
+
+    # 退化点回退到理论廓形坐标
+    x_actual = np.where(degenerate, x_theory, x_theory + r_r * nx)
+    y_actual = np.where(degenerate, y_theory, y_theory + r_r * ny)
 
     return x_actual, y_actual
 
@@ -423,19 +423,16 @@ def compute_curvature_radius(
     if n < 3:
         raise ValueError(f"Need at least 3 points, got {n}")
 
-    # 中心差分求一阶和二阶导数
-    dx = np.empty(n)
-    dy = np.empty(n)
-    ddx = np.empty(n)
-    ddy = np.empty(n)
+    # 中心差分求一阶和二阶导数（向量化，周期边界 via np.roll）
+    x_prev = np.roll(x, 1)
+    x_next = np.roll(x, -1)
+    y_prev = np.roll(y, 1)
+    y_next = np.roll(y, -1)
 
-    for i in range(n):
-        i_prev = (i - 1) % n
-        i_next = (i + 1) % n
-        dx[i] = (x[i_next] - x[i_prev]) / 2.0
-        dy[i] = (y[i_next] - y[i_prev]) / 2.0
-        ddx[i] = x[i_next] - 2 * x[i] + x[i_prev]
-        ddy[i] = y[i_next] - 2 * y[i] + y[i_prev]
+    dx = (x_next - x_prev) / 2.0
+    dy = (y_next - y_prev) / 2.0
+    ddx = x_next - 2 * x + x_prev
+    ddy = y_next - 2 * y + y_prev
 
     # 曲率 κ = (x'y'' - y'x'') / (x'^2 + y'^2)^(3/2)
     cross = dx * ddy - dy * ddx
