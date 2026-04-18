@@ -681,23 +681,12 @@ class CamSimulator:
             self.fig.set_size_inches(new_w, new_h, forward=False)
             self.canvas.draw_idle()
 
-    def _clear_twinx_axes(self, parent_ax):
-        """清除 twinx 创建的次轴"""
-        # twinx 创建的轴共享相同的 position，但不是主轴的子对象
-        # 需要从 figure 的 axes 列表中找到并删除
-        to_remove = []
-        for ax in self.fig.axes:
-            if ax != parent_ax and ax.get_subplotspec() is None:
-                # 检查是否共享相同的 bbox
-                try:
-                    if hasattr(ax, 'get_position') and hasattr(parent_ax, 'get_position'):
-                        pos1 = ax.get_position()
-                        pos2 = parent_ax.get_position()
-                        # 如果位置相近，认为是 twinx 创建的
-                        if abs(pos1.x0 - pos2.x0) < 0.01 and abs(pos1.y0 - pos2.y0) < 0.01:
-                            to_remove.append(ax)
-                except Exception:
-                    pass
+    def _clear_twinx_axes(self):
+        """清除所有 twinx 创建的次轴"""
+        # 保存主轴引用
+        main_axes = {self.ax_motion, self.ax_geom, self.ax_anim, self.ax_info}
+        # 删除所有不在主轴列表中的轴
+        to_remove = [ax for ax in self.fig.axes if ax not in main_axes]
         for ax in to_remove:
             self.fig.delaxes(ax)
 
@@ -705,11 +694,11 @@ class CamSimulator:
         """绘制静态图表"""
         data = self.sim_data
 
-        # 清除所有静态图轴（包括 twinx 创建的次轴）
+        # 清除所有 twinx 次轴
+        self._clear_twinx_axes()
+
+        # 清除主轴
         for ax in [self.ax_motion, self.ax_geom]:
-            # 先清除 twinx 次轴
-            self._clear_twinx_axes(ax)
-            # 清除主轴
             ax.clear()
 
         # 绘制三 Y 轴推杆运动线图
@@ -1162,9 +1151,10 @@ class CamSimulator:
     def _on_clear_plots(self):
         """清除图像"""
         self._stop_animation()
-        # 清除静态图轴（包括 twinx 次轴）
+        # 清除所有 twinx 次轴
+        self._clear_twinx_axes()
+        # 清除主轴
         for ax in [self.ax_motion, self.ax_geom]:
-            self._clear_twinx_axes(ax)
             ax.clear()
         # 清除动画轴
         self.ax_anim.clear()
