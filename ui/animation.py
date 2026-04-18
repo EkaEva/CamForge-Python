@@ -109,7 +109,6 @@ def render_frame_artists(artists, data, i, *,
     tip_w = r_0 * TIP_WIDTH_RATIO
     tip_h = r_0 * TIP_HEIGHT_RATIO
     rod_top = cy + r_0 * ROD_LENGTH_RATIO
-    artists['rod'].set_data([follower_x, follower_x], [cy + tip_h, rod_top])
 
     # 推杆尖端：根据滚子半径显示不同形状
     if r_r > 0:
@@ -118,57 +117,24 @@ def render_frame_artists(artists, data, i, *,
         roller_x = follower_x + r_r * np.cos(theta)
         roller_y = cy + r_r * np.sin(theta)
         artists['roller'].set_data(roller_x, roller_y)
+
+        # 滚子圆心实心小圆
+        artists['roller_center'].set_data([follower_x], [cy])
+
+        # 从圆心向上的推杆线
+        artists['rod'].set_data([follower_x, follower_x], [cy, rod_top])
+
         # 隐藏三角形尖端
         artists['tip'].set_data([], [])
-
-        # 绘制导轨（左右两个带剖面线的矩形）
-        # 导轨尺寸
-        guide_height = r_0 * 0.15
-        guide_width = r_0 * 0.08
-        gap = r_r * 2.2  # 导轨间隙，略大于滚子直径
-        guide_y = cy + r_r + guide_height  # 导轨底部位置
-
-        # 左导轨轮廓
-        left_x = follower_x - gap / 2 - guide_width
-        left_outline_x = [left_x, left_x + guide_width, left_x + guide_width, left_x, left_x]
-        left_outline_y = [guide_y, guide_y, guide_y + guide_height, guide_y + guide_height, guide_y]
-        artists['guide_left'].set_data(left_outline_x, left_outline_y)
-
-        # 右导轨轮廓
-        right_x = follower_x + gap / 2
-        right_outline_x = [right_x, right_x + guide_width, right_x + guide_width, right_x, right_x]
-        right_outline_y = [guide_y, guide_y, guide_y + guide_height, guide_y + guide_height, guide_y]
-        artists['guide_right'].set_data(right_outline_x, right_outline_y)
-
-        # 导轨剖面线（简化为几条斜线）
-        n_hatch = 3
-        hatch_spacing = guide_width / (n_hatch + 1)
-        left_hatch_x = []
-        left_hatch_y = []
-        right_hatch_x = []
-        right_hatch_y = []
-        for i in range(1, n_hatch + 1):
-            # 左导轨剖面线
-            lx1 = left_x + i * hatch_spacing
-            left_hatch_x.extend([lx1, lx1 + guide_height * 0.3, np.nan])
-            left_hatch_y.extend([guide_y + guide_height, guide_y, np.nan])
-            # 右导轨剖面线
-            rx1 = right_x + i * hatch_spacing
-            right_hatch_x.extend([rx1, rx1 + guide_height * 0.3, np.nan])
-            right_hatch_y.extend([guide_y + guide_height, guide_y, np.nan])
-        artists['guide_hatch_left'].set_data(left_hatch_x, left_hatch_y)
-        artists['guide_hatch_right'].set_data(right_hatch_x, right_hatch_y)
     else:
         # 三角形尖端
         artists['tip'].set_data([follower_x - tip_w, follower_x, follower_x + tip_w, follower_x - tip_w],
                                 [cy + tip_h, cy, cy + tip_h, cy + tip_h])
-        # 隐藏滚子圆形
+        # 推杆杆身
+        artists['rod'].set_data([follower_x, follower_x], [cy + tip_h, rod_top])
+        # 隐藏滚子圆形和圆心
         artists['roller'].set_data([], [])
-        # 隐藏导轨
-        artists['guide_left'].set_data([], [])
-        artists['guide_right'].set_data([], [])
-        artists['guide_hatch_left'].set_data([], [])
-        artists['guide_hatch_right'].set_data([], [])
+        artists['roller_center'].set_data([], [])
 
     # 推杆上下限线
     if show_limits:
@@ -342,9 +308,7 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         tx_i, ty_i = frame_data['tx'], frame_data['ty']
         tip_w = r_0 * TIP_WIDTH_RATIO
         tip_h = r_0 * TIP_HEIGHT_RATIO
-
-        # 推杆杆身
-        ax_gif.plot([fx, fx], [cy + tip_h, cy + r_0 * ROD_LENGTH_RATIO], 'k-', linewidth=3)
+        rod_top = cy + r_0 * ROD_LENGTH_RATIO
 
         # 推杆尖端：根据滚子半径显示不同形状
         if r_r > 0:
@@ -353,36 +317,14 @@ def generate_gif_frames(data, filepath, saved_list, folder,
             roller_x = fx + r_r * np.cos(theta)
             roller_y = cy + r_r * np.sin(theta)
             ax_gif.plot(roller_x, roller_y, 'k-', linewidth=1.5)
-
-            # 导轨
-            guide_height = r_0 * 0.15
-            guide_width = r_0 * 0.08
-            gap = r_r * 2.2
-            guide_y = cy + r_r + guide_height
-
-            # 左导轨
-            left_x = fx - gap / 2 - guide_width
-            left_outline_x = [left_x, left_x + guide_width, left_x + guide_width, left_x, left_x]
-            left_outline_y = [guide_y, guide_y, guide_y + guide_height, guide_y + guide_height, guide_y]
-            ax_gif.plot(left_outline_x, left_outline_y, 'k-', linewidth=1.5)
-
-            # 右导轨
-            right_x = fx + gap / 2
-            right_outline_x = [right_x, right_x + guide_width, right_x + guide_width, right_x, right_x]
-            right_outline_y = [guide_y, guide_y, guide_y + guide_height, guide_y + guide_height, guide_y]
-            ax_gif.plot(right_outline_x, right_outline_y, 'k-', linewidth=1.5)
-
-            # 导轨剖面线
-            n_hatch = 3
-            hatch_spacing = guide_width / (n_hatch + 1)
-            for j in range(1, n_hatch + 1):
-                lx1 = left_x + j * hatch_spacing
-                ax_gif.plot([lx1, lx1 + guide_height * 0.3], [guide_y + guide_height, guide_y], 'k-', linewidth=0.5)
-                rx1 = right_x + j * hatch_spacing
-                ax_gif.plot([rx1, rx1 + guide_height * 0.3], [guide_y + guide_height, guide_y], 'k-', linewidth=0.5)
+            # 滚子圆心实心小圆
+            ax_gif.plot(fx, cy, 'ko', markersize=4)
+            # 从圆心向上的推杆线
+            ax_gif.plot([fx, fx], [cy, rod_top], 'k-', linewidth=3)
         else:
             # 三角形尖端
             ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w], [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
+            ax_gif.plot([fx, fx], [cy + tip_h, rod_top], 'k-', linewidth=3)
 
         if show_limits:
             ax_gif.plot([-r_0 * LIMIT_LINE_RATIO, r_0 * LIMIT_LINE_RATIO], [s_0, s_0], 'c-.', linewidth=1)
