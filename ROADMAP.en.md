@@ -181,6 +181,15 @@ Goal: Modernize UI layout, improve performance and maintainability.
 - [x] **P9-7** GIF generation extraction: `generate_gif_frames` independent function with progress callback
 - [x] **P9-8** Windows standalone executable: PyInstaller packaging with icon, 70 MB single file
 
+### Phase 10 — v0.3 Simplified Layout (v0.3) ✅ Complete
+
+Goal: Simplify layout, merge related charts.
+
+- [x] **P10-1** v0.3.0: Triple Y-axis motion curves (displacement/velocity/acceleration combined)
+- [x] **P10-2** v0.3.1: Dual Y-axis geometry constraints (pressure angle/curvature radius combined)
+- [x] **P10-3** Remove static profile plot (profile still shown in animation)
+- [x] **P10-4** Simplify layout to 2x2 grid: static charts on top, dynamic on bottom
+
 ---
 
 ## III. Issue Statistics

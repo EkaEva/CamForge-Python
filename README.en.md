@@ -35,20 +35,20 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 
 ### Interface Layout
 
-**v0.2 New Layout**:
+**v0.3.1 New Layout**:
 
 ```
 ┌────────────┬────────────────────────────────────────────────────────────┐
 │            │  [Start] [Pause] [Clear] [Random] [Download] ... Speed     │
 │  Language  ├────────────────────────────────────────────────────────────┤
-│  ────────  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐             │
-│  Motion    │  │  Disp. │ │  Vel.  │ │  Acc.  │ │ Profile│  Row 1      │
-│  Params    │  └────────┘ └────────┘ └────────┘ └────────┘             │
-│  Rise angle│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐             │
-│  Far dwell │  │Pressure│ │Curvatur│ │Animation│ │  Info  │  Row 2      │
-│  Return ang│  └────────┘ └────────┘ └────────┘ └────────┘             │
-│  Near dwell│                                                         │
-│  Stroke/   │                                                         │
+│  ────────  │  ┌─────────────────────┐ ┌─────────────────────┐           │
+│  Motion    │  │  Follower Motion    │  │ Geometry Constraints│  Row 1    │
+│  Params    │  │  (Triple Y: s/v/a)  │  │  (Dual Y: α/ρ)      │           │
+│  Rise angle│  └─────────────────────┘ └─────────────────────┘           │
+│  Far dwell │  ┌─────────────────────┐ ┌─────────────────────┐           │
+│  Return ang│  │    Cam Animation    │  │     Info Panel     │  Row 2    │
+│  Near dwell│  │   (Profile+Follower)│  │  (Real-time Data)  │           │
+│  Stroke/   │  └─────────────────────┘ └─────────────────────┘           │
 │  Base circ │                                                         │
 │  Offset/ω  │                                                         │
 │  Motion law│                                                         │
@@ -68,9 +68,9 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 ```
 
 **Layout Features**:
-- **2-row 4-column grid**: 8 chart panels evenly distributed, fully utilizing widescreen space
-- **Row 1**: Displacement curve | Velocity curve | Acceleration curve | Cam profile
-- **Row 2**: Pressure angle curve | Curvature radius curve | Animation | Real-time info panel
+- **2-row 2-column grid**: Clean layout with top-bottom split
+- **Row 1**: Follower motion curves (Triple Y-axis: displacement/velocity/acceleration) | Geometry constraints (Dual Y-axis: pressure angle/curvature radius)
+- **Row 2**: Cam animation | Real-time info panel
 - **Adaptive Scaling**: Automatically adjusts chart sizes when window changes, no clipping or white space
 
 ### Motion Laws Overview
