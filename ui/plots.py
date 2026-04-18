@@ -58,8 +58,8 @@ def draw_motion_curves(ax, data, lang, show_law_names=False):
     ax_a.tick_params(axis='y', labelcolor=color_a)
     ax_a.set_ylim(-a_max, a_max)
 
-    # 调整右侧 Y 轴位置，避免重叠（减小偏移量）
-    ax_a.spines['right'].set_position(('outward', 45))
+    # 调整右侧 Y 轴位置，避免重叠
+    ax_a.spines['right'].set_position(('outward', 60))
 
     # 标题
     if show_law_names:

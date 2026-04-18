@@ -430,8 +430,8 @@ class CamSimulator:
         # 右侧：动画（主区域）| 信息面板（嵌入动画左上角）
         gs = GridSpec(2, 2, figure=self.fig,
                       left=0.055, right=0.98, top=0.94, bottom=0.07,
-                      wspace=0.38, hspace=0.28,
-                      width_ratios=[1, 1.2],
+                      wspace=0.32, hspace=0.28,
+                      width_ratios=[1, 1.0],
                       height_ratios=[1, 1])
 
         # 左侧静态图区域（第0列）

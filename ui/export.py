@@ -123,7 +123,7 @@ class ExportManager:
         # CSV 数据表导出
         if toggles.get('csv'):
             try:
-                filename_csv = "camforge_data.csv"
+                filename_csv = t("export.filename.csv", lang) + ".csv"
                 filepath_csv = os.path.join(folder, filename_csv)
                 delta_deg = data['delta_deg']
                 s_arr = data['s']
@@ -136,16 +136,27 @@ class ExportManager:
                 rho_arr = data.get('rho', np.full_like(alpha_arr, np.nan))
                 with open(filepath_csv, 'w', newline='', encoding='utf-8-sig') as f:
                     writer = csv_mod.writer(f)
-                    writer.writerow(['delta_deg', 's_mm', 'v_mm_s', 'a_mm_s2',
-                                     'x_mm', 'y_mm', 'R_mm', 'alpha_deg', 'rho_mm'])
+                    # 使用 i18n 表头
+                    header = [
+                        t("excel.col.delta", lang),
+                        t("excel.col.radius", lang),
+                        t("excel.col.displacement", lang),
+                        t("excel.col.velocity", lang),
+                        t("excel.col.acceleration", lang),
+                        t("excel.col.curvature", lang),
+                        t("excel.col.pressure_angle", lang),
+                    ]
+                    writer.writerow(header)
                     for i in range(len(delta_deg)):
                         rho_val = round(rho_arr[i], 4) if np.isfinite(rho_arr[i]) else ''
                         writer.writerow([
-                            round(delta_deg[i], 2), round(s_arr[i], 4),
-                            round(v_arr[i], 4), round(a_arr[i], 4),
-                            round(x_arr[i], 4), round(y_arr[i], 4),
-                            round(R_arr[i], 4), round(alpha_arr[i], 4),
+                            round(delta_deg[i], 2),
+                            round(R_arr[i], 4),
+                            round(s_arr[i], 4),
+                            round(v_arr[i], 4),
+                            round(a_arr[i], 4),
                             rho_val,
+                            round(alpha_arr[i], 4),
                         ])
                 saved.append(filename_csv)
             except Exception as exc:

@@ -427,6 +427,9 @@ TRANSLATIONS = {
     "export.filename.curvature": {
         "zh": "曲率半径曲线", "en": "curvature_radius",
     },
+    "export.filename.csv": {
+        "zh": "凸轮数据", "en": "cam_data",
+    },
 
     # ---- Excel Column Headers (plain text, no LaTeX) ----
     "excel.col.delta": {
