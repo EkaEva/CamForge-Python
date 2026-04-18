@@ -6,6 +6,7 @@
 
 import numpy as np
 import os
+from scipy.interpolate import splprep, splev
 
 from cam_mechanics import (
     compute_rotated_cam, compute_anim_frame_data,
@@ -18,6 +19,34 @@ from ui.constants import (
 )
 from ui.drawing import draw_fixed_support
 from i18n import t
+
+
+def smooth_closed_curve(x, y, n_points=360):
+    """
+    使用周期样条插值平滑闭合曲线。
+
+    Parameters
+    ----------
+    x, y : ndarray
+        原始曲线坐标。
+    n_points : int
+        插值后的点数。
+
+    Returns
+    -------
+    x_smooth, y_smooth : ndarray
+        平滑后的曲线坐标。
+    """
+    if len(x) < 4:
+        return x, y
+    try:
+        # 周期样条插值（per=1 表示闭合曲线）
+        tck, u = splprep([x, y], s=0, per=True)
+        u_new = np.linspace(0, 1, n_points, endpoint=False)
+        x_smooth, y_smooth = splev(u_new, tck)
+        return np.array(x_smooth), np.array(y_smooth)
+    except Exception:
+        return x, y
 
 
 def render_frame_artists(artists, data, i, *,
@@ -64,16 +93,29 @@ def render_frame_artists(artists, data, i, *,
     angle_rad = -angle_deg * DEG2RAD if sn == 1 else angle_deg * DEG2RAD
     x_rot, y_rot = compute_rotated_cam(data['x'], data['y'], angle_rad)
 
+    # 当离散点数较少时，对轮廓进行样条插值平滑
+    smooth_display = n_points < 180
+    if smooth_display:
+        x_rot_smooth, y_rot_smooth = smooth_closed_curve(x_rot, y_rot)
+    else:
+        x_rot_smooth, y_rot_smooth = x_rot, y_rot
+
     # 根据滚子半径决定显示哪个廓形
     if r_r > 0:
         # 显示实际廓形（红色实线）
         x_actual_rot, y_actual_rot = compute_rotated_cam(data['x_actual'], data['y_actual'], angle_rad)
-        artists['cam'].set_data(x_actual_rot, y_actual_rot)
+        if smooth_display:
+            x_actual_smooth, y_actual_smooth = smooth_closed_curve(x_actual_rot, y_actual_rot)
+            x_rot_smooth, y_rot_smooth = smooth_closed_curve(x_rot, y_rot)
+        else:
+            x_actual_smooth, y_actual_smooth = x_actual_rot, y_actual_rot
+            x_rot_smooth, y_rot_smooth = x_rot, y_rot
+        artists['cam'].set_data(x_actual_smooth, y_actual_smooth)
         # 显示理论廓形（蓝色双点划线）
-        artists['theory'].set_data(x_rot, y_rot)
+        artists['theory'].set_data(x_rot_smooth, y_rot_smooth)
     else:
         # 显示理论廓形（红色实线）
-        artists['cam'].set_data(x_rot, y_rot)
+        artists['cam'].set_data(x_rot_smooth, y_rot_smooth)
         artists['theory'].set_data([], [])
 
     # 基圆/偏距圆
@@ -283,6 +325,9 @@ def generate_gif_frames(data, filepath, saved_list, folder,
 
     frame_images = []
 
+    # 当离散点数较少时，对轮廓进行样条插值平滑
+    smooth_display = n_points < 180
+
     for i in range(N):
         # 角度需要根据 n_points 缩放
         angle_deg = i * 360.0 / n_points
@@ -295,10 +340,20 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         if r_r > 0 and x_actual is not None:
             # 显示实际廓形（红色实线）和理论廓形（蓝色点线）
             x_actual_rot, y_actual_rot = compute_rotated_cam(x_actual, y_actual, angle_rad)
-            ax_gif.plot(x_actual_rot, y_actual_rot, 'r-', linewidth=2)
-            ax_gif.plot(x_rot, y_rot, 'b:', linewidth=1.5)
+            if smooth_display:
+                x_rot_s, y_rot_s = smooth_closed_curve(x_rot, y_rot)
+                x_actual_s, y_actual_s = smooth_closed_curve(x_actual_rot, y_actual_rot)
+            else:
+                x_rot_s, y_rot_s = x_rot, y_rot
+                x_actual_s, y_actual_s = x_actual_rot, y_actual_rot
+            ax_gif.plot(x_actual_s, y_actual_s, 'r-', linewidth=2)
+            ax_gif.plot(x_rot_s, y_rot_s, 'b:', linewidth=1.5)
         else:
-            ax_gif.plot(x_rot, y_rot, 'r-', linewidth=2)
+            if smooth_display:
+                x_rot_s, y_rot_s = smooth_closed_curve(x_rot, y_rot)
+            else:
+                x_rot_s, y_rot_s = x_rot, y_rot
+            ax_gif.plot(x_rot_s, y_rot_s, 'r-', linewidth=2)
 
         if show_base:
             ax_gif.plot(x_base, y_base, 'm-', linewidth=1)

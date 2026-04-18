@@ -1,11 +1,40 @@
 """CamForge 静态图表绘制"""
 
 import numpy as np
+from scipy.interpolate import splprep, splev
 
 from i18n import t
 
 from .constants import THEME, MAX_PRESSURE_ANGLE
 from .drawing import draw_fixed_support
+
+
+def smooth_closed_curve(x, y, n_points=360):
+    """
+    使用周期样条插值平滑闭合曲线。
+
+    Parameters
+    ----------
+    x, y : ndarray
+        原始曲线坐标。
+    n_points : int
+        插值后的点数。
+
+    Returns
+    -------
+    x_smooth, y_smooth : ndarray
+        平滑后的曲线坐标。
+    """
+    if len(x) < 4:
+        return x, y
+    try:
+        # 周期样条插值（per=1 表示闭合曲线）
+        tck, u = splprep([x, y], s=0, per=True)
+        u_new = np.linspace(0, 1, n_points, endpoint=False)
+        x_smooth, y_smooth = splev(u_new, tck)
+        return np.array(x_smooth), np.array(y_smooth)
+    except Exception:
+        return x, y
 
 
 def draw_motion_curves(ax, data, lang, show_law_names=False):
@@ -220,14 +249,27 @@ def draw_profile_plot(ax, data, lang):
     r_0, Rmax = data['r_0'], data['Rmax']
     pb = data['phase_bounds']
     n = len(x)
-    ax.plot(x, y, 'r-', linewidth=2, label=t("plot.legend.profile", lang))
+    n_points = data.get('n_points', n)
+
+    # 当离散点数较少时，对轮廓进行样条插值平滑
+    smooth_display = n_points < 180
+    if smooth_display:
+        x_smooth, y_smooth = smooth_closed_curve(x, y)
+    else:
+        x_smooth, y_smooth = x, y
+
+    ax.plot(x_smooth, y_smooth, 'r-', linewidth=2, label=t("plot.legend.profile", lang))
     ax.plot(data['x_base'], data['y_base'],
             'm-', linewidth=1, label=t("plot.legend.base_circle", lang))
     ax.plot(data['x_offset'], data['y_offset'],
             'c-', linewidth=1, label=t("plot.legend.offset_circle", lang))
     # 滚子实际廓形
     if data.get('r_r', 0) > 0 and 'x_actual' in data:
-        ax.plot(data['x_actual'], data['y_actual'],
+        if smooth_display:
+            x_actual_s, y_actual_s = smooth_closed_curve(data['x_actual'], data['y_actual'])
+        else:
+            x_actual_s, y_actual_s = data['x_actual'], data['y_actual']
+        ax.plot(x_actual_s, y_actual_s,
                 'b-', linewidth=1.5, label=t("plot.legend.roller_profile", lang))
     # 最小曲率半径标注
     if 'rho' in data and 'min_rho_idx' in data:
