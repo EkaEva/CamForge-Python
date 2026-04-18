@@ -764,13 +764,13 @@ class CamSimulator:
         line_offset, = ax.plot([], [], 'c-', linewidth=1)
         line_tangent, = ax.plot([], [], 'm-', linewidth=1)
         line_normal, = ax.plot([], [], 'm-', linewidth=1)
-        line_rod, = ax.plot([], [], 'k-', linewidth=2, solid_capstyle='butt')
+        line_rod, = ax.plot([], [], 'k-', linewidth=1.5, solid_capstyle='butt')
         # 推杆尖端（三角形）
         line_tip, = ax.plot([], [], 'k-', linewidth=2)
-        # 滚子圆形（仅当 r_r > 0 时显示，线宽最粗）
-        line_roller, = ax.plot([], [], 'k-', linewidth=7)
-        # 滚子圆心实心小圆（直径中等）
-        line_roller_center, = ax.plot([], [], 'ko', markersize=3)
+        # 滚子圆形（仅当 r_r > 0 时显示，与凸轮轮廓线宽一致）
+        line_roller, = ax.plot([], [], 'k-', linewidth=2)
+        # 滚子圆心实心小圆
+        line_roller_center, = ax.plot([], [], 'ko', markersize=2)
         line_center, = ax.plot([], [], 'k--', linewidth=0.8)
         line_lower, = ax.plot([], [], 'c-.', linewidth=1)
         line_upper, = ax.plot([], [], 'm--', linewidth=1)

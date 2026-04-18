@@ -312,15 +312,15 @@ def generate_gif_frames(data, filepath, saved_list, folder,
 
         # 推杆尖端：根据滚子半径显示不同形状
         if r_r > 0:
-            # 滚子圆形（线宽最粗）
+            # 滚子圆形（与凸轮轮廓线宽一致）
             theta = np.linspace(0, 2 * np.pi, 36)
             roller_x = fx + r_r * np.cos(theta)
             roller_y = cy + r_r * np.sin(theta)
-            ax_gif.plot(roller_x, roller_y, 'k-', linewidth=7)
-            # 滚子圆心实心小圆（直径中等）
-            ax_gif.plot(fx, cy, 'ko', markersize=3)
-            # 从圆心向上的推杆线（线宽最细）
-            ax_gif.plot([fx, fx], [cy, rod_top], 'k-', linewidth=2)
+            ax_gif.plot(roller_x, roller_y, 'k-', linewidth=2)
+            # 滚子圆心实心小圆
+            ax_gif.plot(fx, cy, 'ko', markersize=2)
+            # 从圆心向上的推杆线
+            ax_gif.plot([fx, fx], [cy, rod_top], 'k-', linewidth=1.5)
         else:
             # 三角形尖端
             ax_gif.plot([fx - tip_w, fx, fx + tip_w, fx - tip_w], [cy + tip_h, cy, cy + tip_h, cy + tip_h], 'k-', linewidth=2)
