@@ -1130,6 +1130,9 @@ class CamSimulator:
                 'sn': data['sn'],
                 'pz': data['pz'],
                 'phase_bounds': list(data['phase_bounds']),
+                'r_r': data['r_r'],
+                'x_actual': data['x_actual'].copy() if data['x_actual'] is not None else None,
+                'y_actual': data['y_actual'].copy() if data['y_actual'] is not None else None,
             }
 
         xlim = self.ax_anim.get_xlim()
