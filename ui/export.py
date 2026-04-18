@@ -113,7 +113,7 @@ class ExportManager:
                 ax_geom_svg = fig_svg.add_subplot(gs_svg[0, 1])
                 draw_funcs['motion_curves'](ax_motion_svg, data, show_law_names=True)
                 draw_funcs['geometry_constraints'](ax_geom_svg, data)
-                filename_svg = "camforge_all.svg"
+                filename_svg = t("export.filename.svg", lang) + ".svg"
                 fig_svg.savefig(os.path.join(folder, filename_svg), format='svg', bbox_inches='tight')
                 plt.close(fig_svg)
                 saved.append(filename_svg)

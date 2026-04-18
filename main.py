@@ -285,15 +285,15 @@ class CamSimulator:
         self.btn_random.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.random", self.btn_random, font_size=10)
 
-        self.btn_download = tk.Button(toolbar, text=t("toolbar.btn.download", self.lang),
-                                      command=self._on_download,
-                                      bg=THEME['btn_download'], fg=THEME['btn_fg'],
-                                      activebackground=THEME['btn_download_active'],
-                                      relief=tk.FLAT, bd=0,
-                                      font=(self._tk_font_family, 10), width=10, height=1,
-                                      cursor='hand2')
-        self.btn_download.pack(side=tk.LEFT, padx=6)
-        self._reg("toolbar.btn.download", self.btn_download, font_size=10)
+        self.btn_load_preset = tk.Button(toolbar, text=t("toolbar.btn.load_preset", self.lang),
+                                         command=self._on_load_preset,
+                                         bg=THEME['btn_clear2'], fg=THEME['btn_fg'],
+                                         activebackground=THEME['btn_clear2_active'],
+                                         relief=tk.FLAT, bd=0,
+                                         font=(self._tk_font_family, 10), width=10, height=1,
+                                         cursor='hand2')
+        self.btn_load_preset.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.load_preset", self.btn_load_preset, font_size=10)
 
         self.btn_save_preset = tk.Button(toolbar, text=t("toolbar.btn.save_preset", self.lang),
                                          command=self._on_save_preset,
@@ -305,15 +305,15 @@ class CamSimulator:
         self.btn_save_preset.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.save_preset", self.btn_save_preset, font_size=10)
 
-        self.btn_load_preset = tk.Button(toolbar, text=t("toolbar.btn.load_preset", self.lang),
-                                         command=self._on_load_preset,
-                                         bg=THEME['btn_clear2'], fg=THEME['btn_fg'],
-                                         activebackground=THEME['btn_clear2_active'],
-                                         relief=tk.FLAT, bd=0,
-                                         font=(self._tk_font_family, 10), width=10, height=1,
-                                         cursor='hand2')
-        self.btn_load_preset.pack(side=tk.LEFT, padx=6)
-        self._reg("toolbar.btn.load_preset", self.btn_load_preset, font_size=10)
+        self.btn_download = tk.Button(toolbar, text=t("toolbar.btn.download", self.lang),
+                                      command=self._on_download,
+                                      bg=THEME['btn_download'], fg=THEME['btn_fg'],
+                                      activebackground=THEME['btn_download_active'],
+                                      relief=tk.FLAT, bd=0,
+                                      font=(self._tk_font_family, 10), width=10, height=1,
+                                      cursor='hand2')
+        self.btn_download.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.download", self.btn_download, font_size=10)
 
         # 下载勾选项 — 两行四列排列
         dl_cb_kw = {'font': (self._tk_font_family, 9), 'bg': THEME['toolbar_bg'], 'anchor': 'w'}
@@ -398,7 +398,7 @@ class CamSimulator:
         status_frame = tk.Frame(main_area, bg=THEME['toolbar_bg'])
         status_frame.pack(fill=tk.X, padx=12, pady=(2, 0))
 
-        # 第一行：状态消息 | 压力角
+        # 第一行：状态消息
         status_row1 = tk.Frame(status_frame, bg=THEME['toolbar_bg'])
         status_row1.pack(fill=tk.X)
 
@@ -407,19 +407,19 @@ class CamSimulator:
                                      font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
         self.status_label.pack(side=tk.LEFT)
 
-        self.alpha_var = tk.StringVar()
-        self.alpha_label = tk.Label(status_row1, textvariable=self.alpha_var,
-                                    font=(self._tk_font_family, 11, 'bold'), anchor='w', bg=THEME['toolbar_bg'])
-        self.alpha_label.pack(side=tk.LEFT, padx=16)
-
-        # 第二行：行程 | 初始位移
+        # 第二行：压力角 | 行程 | 初始位移
         status_row2 = tk.Frame(status_frame, bg=THEME['toolbar_bg'])
         status_row2.pack(fill=tk.X)
+
+        self.alpha_var = tk.StringVar()
+        self.alpha_label = tk.Label(status_row2, textvariable=self.alpha_var,
+                                    font=(self._tk_font_family, 10, 'bold'), anchor='w', bg=THEME['toolbar_bg'])
+        self.alpha_label.pack(side=tk.LEFT, padx=(0, 16))
 
         self.stroke_var = tk.StringVar()
         self.stroke_label = tk.Label(status_row2, textvariable=self.stroke_var,
                                      font=(self._tk_font_family, 10), anchor='w', bg=THEME['toolbar_bg'])
-        self.stroke_label.pack(side=tk.LEFT, padx=(0, 16))
+        self.stroke_label.pack(side=tk.LEFT, padx=16)
 
         self.s0_var = tk.StringVar()
         self.s0_label = tk.Label(status_row2, textvariable=self.s0_var,
@@ -866,7 +866,8 @@ class CamSimulator:
             self.animating = False
             self.btn_pause.config(text=t("toolbar.btn.replay", self.lang))
             self._pause_state = "replay"
-            self.alpha_var.set(t("status.max_alpha", self.lang, val=data['max_alpha']))
+            label_alpha = t("status.label.max_alpha", self.lang)
+            self.alpha_var.set(f'{label_alpha}: {data["max_alpha"]:.2f}°')
             h, s_0 = update_info_panel(self._info_labels, 360, data['max_alpha'], 0.0,
                               data['h'], data['s_0'], self.lang)
             # 更新状态栏的行程和初始位移（使用纯文本标签）
@@ -1223,7 +1224,7 @@ class CamSimulator:
         """保存预设到指定文件夹"""
         try:
             preset = self.sidebar.get_preset_data()
-            filename = "camforge_preset.json"
+            filename = t("export.filename.preset", self.lang) + ".json"
             filepath = os.path.join(folder, filename)
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(preset, f, indent=2, ensure_ascii=False)

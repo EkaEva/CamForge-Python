@@ -297,6 +297,9 @@ TRANSLATIONS = {
     "status.label.s0": {
         "zh": "初始位移 s₀", "en": "Initial Disp. s₀",
     },
+    "status.label.max_alpha": {
+        "zh": "最大压力角", "en": "Max Pressure Angle",
+    },
 
     # ---- Status Messages ----
     "status.incomplete_params": {
@@ -437,6 +440,12 @@ TRANSLATIONS = {
     },
     "export.filename.csv": {
         "zh": "凸轮数据", "en": "cam_data",
+    },
+    "export.filename.svg": {
+        "zh": "凸轮综合图", "en": "cam_all",
+    },
+    "export.filename.preset": {
+        "zh": "凸轮预设", "en": "cam_preset",
     },
 
     # ---- Excel Column Headers (plain text, no LaTeX) ----
