@@ -5,7 +5,7 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - 2026-04-18
+## [0.2.0] - 2026-04-18
 
 ### Added
 - Modern 2-row 4-column grid layout for widescreen optimization
@@ -31,8 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Axis assignments updated: `ax_profile` → `ax_p`, new positions for all charts
 - Technical architecture refactored: `CamSimulator` delegates to manager classes
 - `ui/` package reorganized: `animation.py`, `constants.py`, `drawing.py`, `export.py`, `i18n_manager.py`, `params.py`, `plots.py`, `sidebar.py`, `theme.py`
-- README.md and README.en.md updated with v2.0 layout diagram and architecture
-- ROADMAP.md and ROADMAP.en.md updated with Phase 9 (v2.0)
+- README.md and README.en.md updated with v0.2 layout diagram and architecture
+- ROADMAP.md and ROADMAP.en.md updated with Phase 9 (v0.2)
 
 ### Improved
 - Animation rendering performance with pure function extraction
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Layout clipping on right and bottom edges (manual aspect ratio calculation)
 - Bottom row x-axis label clipping (GridSpec bottom margin adjusted to 0.08)
 
-## [1.0.0] - 2026-04-17
+## [0.1.0] - 2026-04-17
 
 ### Added
 - Complete GUI application with tkinter + matplotlib
@@ -100,7 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extracted rendering constants and theme dictionaries
 - All user-visible strings go through i18n system
 
-## [0.1.0] - 2025-04-01
+## [0.0.1] - 2025-04-01
 
 ### Added
 - Initial release: basic cam mechanism simulation with tkinter GUI

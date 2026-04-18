@@ -35,7 +35,7 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 
 ### Interface Layout
 
-**v2.0 New Layout**:
+**v0.2 New Layout**:
 
 ```
 ┌────────────┬────────────────────────────────────────────────────────────┐
@@ -241,7 +241,7 @@ CamForge/
 └── .gitignore                 # Git ignore rules
 ```
 
-### Design Principles (v2.0)
+### Design Principles (v0.2)
 
 - **Composition Pattern**: CamSimulator uses composition to delegate managers, clear responsibilities, easy to maintain
 - **Computation and Presentation Separation**: `cam_mechanics.py` is a pure math library, no GUI framework dependency

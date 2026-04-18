@@ -168,7 +168,7 @@ Goal: Reach releasable quality, support convenient installation and distribution
 - [x] **P8-6** Add upper bounds to `requirements.txt` to prevent breaking upgrades (e.g., numpy 2.x)
 - [x] **P8-7** Maintain changelog (CHANGELOG.md)
 
-### Phase 9 — v2.0 Modern UI and Performance (v2.0) ✅ Complete
+### Phase 9 — v0.2 Modern UI and Performance (v0.2) ✅ Complete
 
 Goal: Modernize UI layout, improve performance and maintainability.
 
