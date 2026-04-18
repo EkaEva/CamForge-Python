@@ -416,12 +416,11 @@ class CamSimulator:
 
         # v0.3.2 新布局：左右两部分
         # 左侧：推杆运动线图（上）| 几何约束指标图（下）
-        # 右侧：动画（主区域）| 信息面板（嵌入动画右侧）
-        # 使用 2x2 GridSpec，信息面板作为动画的 inset
+        # 右侧：动画（主区域）| 信息面板（嵌入动画左上角）
         gs = GridSpec(2, 2, figure=self.fig,
                       left=0.055, right=0.98, top=0.94, bottom=0.07,
-                      wspace=0.22, hspace=0.28,
-                      width_ratios=[1, 1.35],
+                      wspace=0.28, hspace=0.28,
+                      width_ratios=[1, 1.3],
                       height_ratios=[1, 1])
 
         # 左侧静态图区域（第0列）
@@ -431,9 +430,9 @@ class CamSimulator:
         # 右侧动态区域（第1列）
         self.ax_anim = self.fig.add_subplot(gs[:, 1])     # 动画（跨两行）
 
-        # 信息面板作为动画的 inset，位于动画右侧
+        # 信息面板作为动画的 inset，位于动画左上角，分两列显示
         # [left, bottom, width, height] in axes coordinates (0-1)
-        self.ax_info = self.ax_anim.inset_axes([0.82, 0.1, 0.17, 0.8])
+        self.ax_info = self.ax_anim.inset_axes([0.02, 0.55, 0.35, 0.42])
         self.ax_info.set_xticks([])
         self.ax_info.set_yticks([])
         self.ax_info.set_frame_on(False)
@@ -753,25 +752,37 @@ class CamSimulator:
         }
 
     def _init_info_panel(self):
-        """初始化信息面板（右下板块，垂直排列）"""
+        """初始化信息面板（动画左上角，两列布局）"""
         ax = self.ax_info
         ax.clear()
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_frame_on(False)
 
-        info_items = [
+        # 两列布局：左列 3 项，右列 2 项
+        left_items = [
             ('delta', t("info.label.delta", self.lang)),
             ('alpha', t("info.label.alpha", self.lang)),
             ('s',     t("info.label.s", self.lang)),
+        ]
+        right_items = [
             ('h',     t("info.label.h", self.lang)),
             ('s0',    t("info.label.s0", self.lang)),
         ]
         self._info_labels = {}
-        for idx, (key, name) in enumerate(info_items):
-            y_pos = 0.90 - idx * 0.15
-            lbl = ax.text(0.1, y_pos, f'{name}: --', transform=ax.transAxes,
-                          fontsize=10, ha='left', va='top', color=THEME['info_text'])
+
+        # 左列
+        for idx, (key, name) in enumerate(left_items):
+            y_pos = 0.88 - idx * 0.30
+            lbl = ax.text(0.08, y_pos, f'{name}: --', transform=ax.transAxes,
+                          fontsize=9, ha='left', va='top', color=THEME['info_text'])
+            self._info_labels[key] = lbl
+
+        # 右列
+        for idx, (key, name) in enumerate(right_items):
+            y_pos = 0.88 - idx * 0.30
+            lbl = ax.text(0.55, y_pos, f'{name}: --', transform=ax.transAxes,
+                          fontsize=9, ha='left', va='top', color=THEME['info_text'])
             self._info_labels[key] = lbl
 
     def _start_animation(self):
