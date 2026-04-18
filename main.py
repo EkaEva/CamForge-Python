@@ -551,12 +551,34 @@ class CamSimulator:
         if alpha_threshold <= 0:
             alpha_threshold = MAX_PRESSURE_ANGLE
 
-        # 滚子半径
+        # 滚子半径预校验
         r_r = model.r_r
-        r_r_warning = None
         if r_r < 0:
-            r_r_warning = t("status.warning_r_r_negative", self.lang, val=r_r)
-            r_r = 0
+            self.status_var.set(t("status.warning_r_r_negative", self.lang, val=r_r))
+            return
+
+        # 先计算运动和廓形，用于校验滚子半径
+        try:
+            delta_deg, s, v, a, ds_ddelta, phase_bounds = compute_full_motion(
+                model.delta_0, model.delta_01,
+                model.delta_ret, model.delta_02,
+                model.h, model.r_0, model.e,
+                model.omega, model.tc_law, model.hc_law
+            )
+            x, y, s_0 = compute_cam_profile(s, model.r_0, model.e, model.sn, model.pz)
+            rho = compute_curvature_radius(x, y)
+        except ValueError as exc:
+            self.status_var.set(str(exc))
+            return
+
+        # 滚子半径最大值校验（必须小于最小曲率半径）
+        if r_r > 0:
+            rho_finite = rho[np.isfinite(rho)]
+            if len(rho_finite) > 0:
+                min_rho = np.min(rho_finite)
+                if r_r >= min_rho:
+                    self.status_var.set(t("status.warning_r_r_exceed", self.lang, r_r=r_r, min_rho=min_rho))
+                    return
 
         # 计算运动
         try:
@@ -598,8 +620,6 @@ class CamSimulator:
 
         # 警告累积显示
         warnings = []
-        if r_r_warning:
-            warnings.append(r_r_warning)
         if max_alpha > alpha_threshold:
             warnings.append(t("status.warning_max_alpha", self.lang, val=max_alpha, threshold=alpha_threshold))
         if model.h > model.r_0:

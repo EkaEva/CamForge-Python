@@ -363,6 +363,10 @@ TRANSLATIONS = {
         "zh": "警告：滚子半径 {val:.1f} mm 为负值，已自动设为 0",
         "en": "Warning: Roller radius {val:.1f} mm is negative, automatically set to 0",
     },
+    "status.warning_r_r_exceed": {
+        "zh": "错误：滚子半径 {r_r:.1f} mm 超过最小曲率半径 {min_rho:.2f} mm，无法生成实际廓形",
+        "en": "Error: Roller radius {r_r:.1f} mm exceeds min curvature radius {min_rho:.2f} mm, cannot generate actual profile",
+    },
     "status.input_invalid": {
         "zh": "输入无效: {error}", "en": "Invalid input: {error}",
     },
