@@ -35,7 +35,7 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 
 ### Interface Layout
 
-**v0.4.0 New Layout**:
+**v0.4.1 New Layout**:
 
 ```
 ┌────────────┬──────────────────────────────────────────────────────────────┐

@@ -209,6 +209,20 @@ Goal: Optimize layout spacing, improve internationalization support.
 - [x] **P12-5** CSV/SVG/preset filename i18n (Chinese filenames in Chinese mode)
 - [x] **P12-6** Plain text labels for status bar (avoid LaTeX symbol display issues)
 
+### Phase 13 — v0.4.1 Bug Fixes and Optimizations ✅ Complete
+
+Goal: Fix n_points related bugs, optimize display quality.
+
+- [x] **P13-1** Fix `compute_full_motion` index scaling: `i = angle_deg * (n_points / 360)`
+- [x] **P13-2** Fix animation frame angle scaling: cam rotation, normal/tangent calculations
+- [x] **P13-3** `n_points` now passed as function parameter, no global variable modification
+- [x] **P13-4** GIF export fixes: equal aspect ratio, roller data passing
+- [x] **P13-5** Curvature radius interference warning uses absolute value comparison
+- [x] **P13-6** Roller visualization line width matches cam profile (linewidth=2)
+- [x] **P13-7** Download option "廓形" changed to "廓形图" (Profile → Profile Plot)
+- [x] **P13-8** Speed slider label and slider horizontally aligned
+- [x] **P13-9** Spline interpolation for smooth display when n_points < 180
+
 ---
 
 ## III. Issue Statistics

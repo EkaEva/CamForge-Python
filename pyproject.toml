@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "camforge"
-version = "0.3.2"
+version = "0.4.1"
 description = "Cam mechanism kinematics simulator with GUI"
 readme = "README.md"
 license = {text = "MIT"}
@@ -26,6 +26,7 @@ classifiers = [
 dependencies = [
     "numpy>=1.24,<3",
     "matplotlib>=3.7,<4",
+    "scipy>=1.10,<2",
 ]
 
 [project.optional-dependencies]

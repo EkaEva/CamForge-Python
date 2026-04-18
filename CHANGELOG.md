@@ -5,6 +5,27 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-04-18
+
+### Added
+- Spline interpolation for smooth cam profile display when `n_points < 180`
+- `smooth_closed_curve()` function using scipy `splprep`/`splev` for periodic curves
+- `n_points` parameter to `compute_full_motion()` and `compute_anim_frame_data()` functions
+
+### Changed
+- Roller follower visualization: line width now matches cam profile (linewidth=2)
+- Download checkbox label changed from "廓形" to "廓形图" (Profile → Profile Plot)
+- Speed slider label and slider are now horizontally aligned
+- `n_points` is now passed as function parameter instead of modifying global variable
+
+### Fixed
+- Phase boundary indices now correctly scaled by `n_points/360`
+- Animation frame angles now correctly scaled by `n_points/360`
+- GIF export aspect ratio: circles no longer appear as ellipses
+- GIF export now correctly shows roller follower (was missing `r_r`, `x_actual`, `y_actual` data)
+- Curvature radius interference warning now uses absolute value (was comparing negative values)
+- Info panel angle display correctly shows actual angle, not frame index
+
 ## [0.4.0] - 2026-04-18
 
 ### Added
