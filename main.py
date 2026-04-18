@@ -625,12 +625,12 @@ class CamSimulator:
             warnings.append(t("status.warning_max_alpha", self.lang, val=max_alpha, threshold=alpha_threshold))
         if model.h > model.r_0:
             warnings.append(t("status.warning_h_gt_r0", self.lang, h=model.h, r0=model.r_0))
-        # 曲率半径干涉警告
+        # 曲率半径干涉警告（比较绝对值）
         rho_finite = rho[np.isfinite(rho)]
         if len(rho_finite) > 0 and r_r > 0:
-            min_rho = np.min(rho_finite)
-            if min_rho < r_r:
-                warnings.append(t("status.warning_min_curvature", self.lang, val=min_rho, r_r=r_r))
+            min_rho_abs = np.min(np.abs(rho_finite))
+            if min_rho_abs < r_r:
+                warnings.append(t("status.warning_min_curvature", self.lang, val=min_rho_abs, r_r=r_r))
         if warnings:
             self.status_var.set(" | ".join(warnings))
 
