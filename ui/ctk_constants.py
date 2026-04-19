@@ -185,8 +185,26 @@ SWITCH_STYLE = {
 # ============================================================================
 
 OPTION_MENU_STYLE = {
-    'corner_radius': CORNER_RADIUS,
+    'corner_radius': SMALL_CORNER_RADIUS,
     'dynamic_resizing': False,
+    'width': 140,
+    'height': ENTRY_HEIGHT,
+}
+
+# 下拉菜单按钮样式（未展开时）
+OPTION_MENU_BUTTON_STYLE = {
+    'fg_color': COLORS_LIGHT['card_bg'],
+    'button_color': COLORS_LIGHT['accent'],
+    'button_hover_color': COLORS_LIGHT['accent_hover'],
+    'text_color': COLORS_LIGHT['text_primary'],
+    'hover': True,
+}
+
+# 下拉菜单列表样式（展开时的选项列表）
+OPTION_MENU_DROPDOWN_STYLE = {
+    'fg_color': COLORS_LIGHT['card_bg'],
+    'hover_color': '#e5f1ff',
+    'text_color': COLORS_LIGHT['text_primary'],
 }
 
 # ============================================================================

@@ -16,6 +16,7 @@ from ui.ctk_constants import (
     COLORS_LIGHT, COLORS_DARK,
     FONT_SIZE_SECTION, FONT_SIZE_LABEL,
     ENTRY_STYLE, SWITCH_STYLE, OPTION_MENU_STYLE,
+    OPTION_MENU_BUTTON_STYLE, OPTION_MENU_DROPDOWN_STYLE,
     create_ctk_font, get_colors,
 )
 
@@ -298,12 +299,18 @@ class ComboRow(ctk.CTkFrame):
         )
         self.label.pack(side='left', fill='x', expand=True)
 
-        # 下拉菜单（右侧）
+        # 下拉菜单（右侧）- 使用统一样式
         combo_style = OPTION_MENU_STYLE.copy()
+        combo_style.update(OPTION_MENU_BUTTON_STYLE)
         self.combo = ctk.CTkOptionMenu(
             self,
             values=values,
             command=command,
+            font=create_ctk_font(size=FONT_SIZE_LABEL),
+            dropdown_font=create_ctk_font(size=FONT_SIZE_LABEL),
+            dropdown_fg_color=OPTION_MENU_DROPDOWN_STYLE['fg_color'],
+            dropdown_hover_color=OPTION_MENU_DROPDOWN_STYLE['hover_color'],
+            dropdown_text_color=OPTION_MENU_DROPDOWN_STYLE['text_color'],
             **combo_style
         )
         if values and 0 <= default_index < len(values):
