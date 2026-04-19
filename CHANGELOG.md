@@ -5,6 +5,17 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-04-19
+
+### Changed
+- Download options default to all checked (including DXF)
+- Updated README documentation for v0.6.x CustomTkinter UI
+
+### Removed
+- Deleted redundant files: main_tkinter_backup.py, CamForge-v0.4.2.spec, make_icon.py
+- Removed old UI modules: ui/sidebar.py, ui/theme.py (replaced by ctk_*.py)
+- Cleaned up old build directories
+
 ## [0.6.2] - 2026-04-19
 
 ### Changed

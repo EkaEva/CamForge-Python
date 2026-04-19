@@ -46,7 +46,6 @@ a = Analysis(
         # 仅排除确定不需要的模块（pyparsing 需要 unittest/html，openpyxl 需要 email/http）
         'tkinter.test',
         'xmlrpc',
-        'pydoc',
         'pip',
         'wheel',
         # 排除一些可能导致递归问题的模块

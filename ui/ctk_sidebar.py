@@ -183,7 +183,7 @@ class CTkSidebar:
             ('dl_geom', 'toolbar.cb.dl_geom', True),
             ('dl_anim', 'toolbar.cb.dl_anim', True),
             ('dl_svg', 'toolbar.cb.dl_svg', True),
-            ('dl_dxf', 'toolbar.cb.dl_dxf', False),
+            ('dl_dxf', 'toolbar.cb.dl_dxf', True),
         ]
 
         for i, (name, key, default) in enumerate(items):
