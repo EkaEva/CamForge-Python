@@ -8,7 +8,7 @@ import os
 import platform
 import threading
 import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog
 
 import customtkinter as ctk
 import matplotlib
@@ -726,18 +726,33 @@ class CamSimulator(ctk.CTk):
         xlim = self.ax_anim.get_xlim()
         ylim = self.ax_anim.get_ylim()
 
-        progress_win = tk.Toplevel(self)
+        # CustomTkinter 进度弹窗
+        progress_win = ctk.CTkToplevel(self)
         progress_win.title(t("export.gif_dialog.title", lang))
-        progress_win.geometry("320x100")
+        progress_win.geometry("320x120")
         progress_win.resizable(False, False)
         progress_win.transient(self)
         progress_win.grab_set()
-        tk.Label(progress_win, text=t("export.gif_dialog.message", lang),
-                 font=(self._tk_font_family, 10)).pack(pady=(12, 4))
+
+        from ui.ctk_constants import create_ctk_font, FONT_SIZE_LABEL
+
+        msg_label = ctk.CTkLabel(
+            progress_win,
+            text=t("export.gif_dialog.message", lang),
+            font=create_ctk_font(size=FONT_SIZE_LABEL),
+        )
+        msg_label.pack(pady=(15, 8))
+
         N = len(thread_data['s'])
-        progress_bar = ttk.Progressbar(progress_win, length=280, mode='determinate', maximum=N)
+        progress_bar = ctk.CTkProgressBar(progress_win, width=280, mode='determinate')
+        progress_bar.configure(maximum=N)
         progress_bar.pack(pady=4)
-        progress_label = tk.Label(progress_win, text="0 / 360", font=(self._tk_font_family, 9))
+
+        progress_label = ctk.CTkLabel(
+            progress_win,
+            text="0 / 360",
+            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+        )
         progress_label.pack()
 
         gif_result = {'error': None}
@@ -885,9 +900,7 @@ class CamSimulator(ctk.CTk):
         ax.set_yticks([])
         ax.set_facecolor((1.0, 1.0, 1.0, 0.8))
         for spine in ax.spines.values():
-            spine.set_visible(True)
-            spine.set_color('gray')
-            spine.set_linewidth(0.5)
+            spine.set_visible(False)  # 无边框
 
         items = [
             ('delta', t("info.label.delta", self.lang)),

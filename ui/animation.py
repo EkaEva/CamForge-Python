@@ -412,9 +412,7 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         ax_info_gif.set_yticks([])
         ax_info_gif.set_facecolor((1.0, 1.0, 1.0, 0.8))
         for spine in ax_info_gif.spines.values():
-            spine.set_visible(True)
-            spine.set_color('gray')
-            spine.set_linewidth(0.5)
+            spine.set_visible(False)  # 无边框
 
         info_items = [
             (0.78, rf'{label_delta_gif}: {int(angle_deg):3d}°/360°'),
