@@ -343,7 +343,7 @@
 
 > **版本目标**：使用 CustomTkinter 全面重构 UI，实现现代化 Apple/iOS 风格界面
 
-### Phase 16 — v0.6.0 CustomTkinter 全面迁移 🔄 进行中
+### Phase 16 — v0.6.0 CustomTkinter 全面迁移 ✅ 已完成
 
 #### 16.1 重构目标
 
@@ -374,49 +374,49 @@
 
 #### 16.3 详细开发计划
 
-##### Sprint 1：基础设施搭建
+##### Sprint 1：基础设施搭建 ✅ 已完成
 
-- [ ] **P16-1** 添加 `customtkinter` 依赖到 `pyproject.toml`
-- [ ] **P16-2** 创建 `ui/ctk_constants.py`：定义 UI 常量（padding、圆角、颜色）
-- [ ] **P16-3** 创建 `ui/ctk_components.py`：封装可复用组件（Card、SwitchRow、EntryRow）
+- [x] **P16-1** 添加 `customtkinter` 依赖到 `pyproject.toml`
+- [x] **P16-2** 创建 `ui/ctk_constants.py`：定义 UI 常量（padding、圆角、颜色）
+- [x] **P16-3** 创建 `ui/ctk_components.py`：封装可复用组件（Card、SwitchRow、EntryRow）
 
-##### Sprint 2：侧边栏重构
+##### Sprint 2：侧边栏重构 ✅ 已完成
 
-- [ ] **P16-4** 创建 `ui/ctk_sidebar.py`：使用 `CTkScrollableFrame` 重构侧边栏
-- [ ] **P16-5** 实现 `CardGroup` 组件：圆角卡片包裹相关参数
-- [ ] **P16-6** 实现 `SwitchRow` 组件：标签 + 拨动开关的行布局
-- [ ] **P16-7** 实现 `EntryRow` 组件：标签 + 输入框的行布局
-- [ ] **P16-8** 迁移快速预设、语言、主题选择器
+- [x] **P16-4** 创建 `ui/ctk_sidebar.py`：使用 `CTkScrollableFrame` 重构侧边栏
+- [x] **P16-5** 实现 `CardGroup` 组件：圆角卡片包裹相关参数
+- [x] **P16-6** 实现 `SwitchRow` 组件：标签 + 拨动开关的行布局
+- [x] **P16-7** 实现 `EntryRow` 组件：标签 + 输入框的行布局
+- [x] **P16-8** 迁移快速预设、语言、主题选择器
 
-##### Sprint 3：工具栏重构
+##### Sprint 3：工具栏重构 ✅ 已完成
 
-- [ ] **P16-9** 创建 `ui/ctk_toolbar.py`：使用 `CTkButton` 重构工具栏
-- [ ] **P16-10** 实现圆角按钮样式（填充/轮廓两种风格）
-- [ ] **P16-11** 迁移下载勾选项为 `CTkCheckBox`
-- [ ] **P16-12** 迁移速度滑块和帧进度条为 `CTkSlider`
+- [x] **P16-9** 创建 `ui/ctk_toolbar.py`：使用 `CTkButton` 重构工具栏
+- [x] **P16-10** 实现圆角按钮样式（填充/轮廓两种风格）
+- [x] **P16-11** 迁移下载勾选项为 `CTkCheckBox`
+- [x] **P16-12** 迁移速度滑块和帧进度条为 `CTkSlider`
 
-##### Sprint 4：主窗口重构
+##### Sprint 4：主窗口重构 ✅ 已完成
 
-- [ ] **P16-13** 修改 `main.py`：`CamSimulator` 继承 `ctk.CTk`
-- [ ] **P16-14** 更新布局使用 `grid()` 配合权重分配
-- [ ] **P16-15** 集成新的侧边栏和工具栏组件
-- [ ] **P16-16** 保持 Matplotlib 图表区域不变
+- [x] **P16-13** 修改 `main.py`：`CamSimulator` 继承 `ctk.CTk`
+- [x] **P16-14** 更新布局使用 `grid()` 配合权重分配
+- [x] **P16-15** 集成新的侧边栏和工具栏组件
+- [x] **P16-16** 保持 Matplotlib 图表区域不变
 
-##### Sprint 5：主题与国际化适配
+##### Sprint 5：主题与国际化适配 ✅ 已完成
 
-- [ ] **P16-17** 更新 `ui/theme.py`：使用 `ctk.set_appearance_mode()` 管理主题
-- [ ] **P16-18** 更新 `ui/i18n_manager.py`：适配 CustomTkinter 字体
-- [ ] **P16-19** 实现 System/Light/Dark 三种模式切换
-- [ ] **P16-20** Matplotlib 图表颜色随主题动态调整
+- [x] **P16-17** 更新 `ui/theme.py`：使用 `ctk.set_appearance_mode()` 管理主题
+- [x] **P16-18** 更新 `ui/i18n_manager.py`：适配 CustomTkinter 字体
+- [x] **P16-19** 实现 System/Light/Dark 三种模式切换
+- [x] **P16-20** Matplotlib 图表颜色随主题动态调整
 
-##### Sprint 6：测试与发布
+##### Sprint 6：测试与发布 ✅ 已完成
 
-- [ ] **P16-21** 功能测试：所有按钮、输入框、开关正常工作
-- [ ] **P16-22** 主题切换测试：浅色/深色/系统模式正常
-- [ ] **P16-23** 更新 `pyproject.toml` 版本号为 0.6.0
-- [ ] **P16-24** 更新 `CHANGELOG.md` 添加 v0.6.0 条目
-- [ ] **P16-25** 更新 `README.md` 截图和说明
-- [ ] **P16-26** PyInstaller 打包测试
+- [x] **P16-21** 功能测试：所有按钮、输入框、开关正常工作
+- [x] **P16-22** 主题切换测试：浅色/深色/系统模式正常
+- [x] **P16-23** 更新 `pyproject.toml` 版本号为 0.6.0
+- [x] **P16-24** 更新 `CHANGELOG.md` 添加 v0.6.0 条目
+- [x] **P16-25** 更新 `README.md` 截图和说明
+- [x] **P16-26** PyInstaller 打包测试
 
 #### 16.4 UI 设计规范
 

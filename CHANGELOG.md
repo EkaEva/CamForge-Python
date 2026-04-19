@@ -5,6 +5,17 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.8] - 2026-04-19
+
+### Changed
+- Cleaned up project structure: removed cache files, old build artifacts
+- Updated .gitignore to include .ruff_cache
+- Simplified README.md and README.en.md documentation
+
+### Removed
+- Deleted .coverage, .pytest_cache/, .ruff_cache/, __pycache__/ directories
+- Removed old build/ directory and old version executables (v0.4.1, v0.4.2, v0.4.3)
+
 ## [0.6.7] - 2026-04-19
 
 ### Fixed
