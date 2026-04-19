@@ -55,6 +55,9 @@ from ui.i18n_manager import I18nManager
 from ui.theme import ThemeManager
 from ui.export import ExportManager
 from ui.sidebar import SidebarBuilder
+from ui.config import ConfigManager
+from ui.dxf_export import export_cam_profile_to_dxf, export_both_profiles_to_dxf
+from ui.shortcut import ShortcutManager, setup_animation_shortcuts
 
 
 class CamSimulator:
@@ -62,6 +65,10 @@ class CamSimulator:
 
     def __init__(self):
         self.root = tk.Tk()
+
+        # 配置管理器（最先初始化）
+        self.config_mgr = ConfigManager()
+
         self.root.title(f"{t('app.title', DEFAULT_LANG)} v{__version__}")
         self.root.config(bg=THEME['toolbar_bg'])
 
@@ -69,6 +76,7 @@ class CamSimulator:
         self.i18n_mgr = I18nManager(DEFAULT_LANG)
         self.theme_mgr = ThemeManager()
         self.sidebar = None  # 在 _build_gui 中创建
+        self.shortcut_mgr = None  # 在 _build_gui 后创建
 
         # 兼容属性（供旧代码引用）
         self.lang = self.i18n_mgr.lang
@@ -109,11 +117,117 @@ class CamSimulator:
 
         self._build_gui()
 
+        # 设置快捷键管理器
+        self._setup_shortcuts()
+
+        # 加载保存的配置
+        self._load_saved_config()
+
         # 注册所有控件到主题管理器（P5: 缓存替代递归遍历）
         self.theme_mgr.register_children(self.root)
 
         # 延迟刷新侧边栏，确保初始内容正确显示
         self.root.after(50, self._refresh_sidebar)
+
+    def _setup_shortcuts(self):
+        """设置键盘快捷键"""
+        self.shortcut_mgr = setup_animation_shortcuts(
+            self.root,
+            on_start=self._on_start,
+            on_pause=self._on_pause,
+            on_random=self._on_random,
+            on_prev_frame=self._on_prev_frame,
+            on_next_frame=self._on_next_frame,
+            on_first_frame=self._on_first_frame,
+            on_last_frame=self._on_last_frame,
+            on_stop=self._stop_animation,
+        )
+
+    def _load_saved_config(self):
+        """加载保存的配置（参数、导出选项、UI设置）"""
+        # 加载上次使用的参数
+        last_params = self.config_mgr.get_last_params()
+        if last_params:
+            self.sidebar.load_preset_data(last_params)
+
+        # 加载导出选项
+        export_opts = self.config_mgr.get_export_options()
+        self.dl_motion.set(export_opts.get('dl_motion', True))
+        self.dl_profile.set(export_opts.get('dl_profile', True))
+        self.dl_csv.set(export_opts.get('dl_csv', True))
+        self.dl_excel.set(export_opts.get('dl_excel', True))
+        self.dl_geom.set(export_opts.get('dl_geom', True))
+        self.dl_anim.set(export_opts.get('dl_anim', True))
+        self.dl_svg.set(export_opts.get('dl_svg', True))
+        self.dl_preset.set(export_opts.get('dl_preset', True))
+        self.dl_dxf.set(export_opts.get('dl_dxf', False))
+        self.dl_preset.set(export_opts.get('dl_preset', True))
+
+        # 加载 UI 设置
+        ui_settings = self.config_mgr.get_ui_settings()
+        self.speed_var.set(ui_settings.get('speed', 3))
+        if ui_settings.get('dark_mode', False):
+            self.sidebar.combos['theme'].current(1)
+            self._on_theme_change()
+
+    def _save_current_config(self):
+        """保存当前配置"""
+        # 保存参数
+        params = self.sidebar.get_preset_data()
+        self.config_mgr.set_last_params(params)
+
+        # 保存导出选项
+        export_opts = {
+            'dl_motion': self.dl_motion.get(),
+            'dl_profile': self.dl_profile.get(),
+            'dl_csv': self.dl_csv.get(),
+            'dl_excel': self.dl_excel.get(),
+            'dl_geom': self.dl_geom.get(),
+            'dl_anim': self.dl_anim.get(),
+            'dl_svg': self.dl_svg.get(),
+            'dl_preset': self.dl_preset.get(),
+            'dl_dxf': self.dl_dxf.get(),
+        }
+        self.config_mgr.set_export_options(export_opts)
+
+        # 保存 UI 设置
+        ui_settings = {
+            'language': self.lang,
+            'dark_mode': self._dark_mode,
+            'speed': self.speed_var.get(),
+        }
+        self.config_mgr.set_ui_settings(ui_settings)
+
+    def _on_prev_frame(self):
+        """上一帧"""
+        if self.sim_data is not None and not self.animating:
+            n = len(self.sim_data['s'])
+            self.current_frame = max(0, self.current_frame - 1)
+            self.frame_var.set(self.current_frame)
+            self._draw_single_frame(self.current_frame)
+
+    def _on_next_frame(self):
+        """下一帧"""
+        if self.sim_data is not None and not self.animating:
+            n = len(self.sim_data['s'])
+            self.current_frame = min(n - 1, self.current_frame + 1)
+            self.frame_var.set(self.current_frame)
+            self._draw_single_frame(self.current_frame)
+
+    def _on_first_frame(self):
+        """第一帧"""
+        if self.sim_data is not None and not self.animating:
+            self.current_frame = 0
+            self.frame_var.set(0)
+            self._draw_single_frame(0)
+
+    def _on_last_frame(self):
+        """最后一帧"""
+        if self.sim_data is not None and not self.animating:
+            n = len(self.sim_data['s'])
+            self.current_frame = n - 1
+            self.frame_var.set(n - 1)
+            self._draw_single_frame(n - 1)
 
     # ===================================================================
     # i18n helpers（委托给 I18nManager）
@@ -357,6 +471,11 @@ class CamSimulator:
         cb_dl_svg = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_svg", self.lang), variable=self.dl_svg, **dl_cb_kw)
         cb_dl_svg.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_svg", cb_dl_svg, font_size=9)
+
+        self.dl_dxf = tk.BooleanVar(value=False)
+        cb_dl_dxf = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_dxf", self.lang), variable=self.dl_dxf, **dl_cb_kw)
+        cb_dl_dxf.pack(side=tk.LEFT, padx=2)
+        self._reg("toolbar.cb.dl_dxf", cb_dl_dxf, font_size=9)
 
         self.dl_preset = tk.BooleanVar(value=True)
         cb_dl_preset = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_preset", self.lang), variable=self.dl_preset, **dl_cb_kw)
@@ -1031,7 +1150,8 @@ class CamSimulator:
         """下载勾选的图片"""
         if not any([self.dl_motion.get(), self.dl_geom.get(),
                      self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get(),
-                     self.dl_svg.get(), self.dl_csv.get(), self.dl_preset.get()]):
+                     self.dl_svg.get(), self.dl_csv.get(), self.dl_preset.get(),
+                     self.dl_dxf.get()]):
             self.status_var.set(t("status.no_download_selection", self.lang))
             return
 
@@ -1085,6 +1205,10 @@ class CamSimulator:
         # 预设保存
         if self.dl_preset.get():
             self._save_preset_to_folder(folder, saved, errors)
+
+        # DXF 导出
+        if self.dl_dxf.get():
+            self._export_dxf(folder, saved, errors)
 
         if saved:
             self.status_var.set(t("status.saved", self.lang, files=', '.join(saved), folder=folder))
@@ -1273,9 +1397,44 @@ class CamSimulator:
         except Exception as exc:
             errors.append(f"preset: {exc}")
 
+    def _export_dxf(self, folder: str, saved_list: list, errors: list) -> None:
+        """导出 DXF 文件
+
+        Args:
+            folder: 输出目录
+            saved_list: 已保存文件列表
+            errors: 错误列表
+        """
+        try:
+            data = self.sim_data
+            if data is None:
+                return
+
+            filename = t("export.filename.dxf", self.lang) + ".dxf"
+            filepath = os.path.join(folder, filename)
+
+            x = data['x']
+            y = data['y']
+            x_actual = data.get('x_actual')
+            y_actual = data.get('y_actual')
+            r_r = data.get('r_r', 0)
+
+            if r_r > 0 and x_actual is not None and y_actual is not None:
+                # 同时导出理论廓形和实际廓形
+                export_both_profiles_to_dxf(x, y, x_actual, y_actual, filepath)
+            else:
+                # 只导出理论廓形
+                export_cam_profile_to_dxf(x, y, filepath)
+
+            saved_list.append(filename)
+        except Exception as exc:
+            errors.append(f"dxf: {exc}")
+
     def _on_close(self):
         """窗口关闭处理"""
         self._stop_animation()
+        # 保存当前配置
+        self._save_current_config()
         self.root.destroy()
 
     def run(self):

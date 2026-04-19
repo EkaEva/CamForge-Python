@@ -173,6 +173,9 @@ TRANSLATIONS = {
     "toolbar.cb.dl_preset": {
         "zh": "预设", "en": "Preset",
     },
+    "toolbar.cb.dl_dxf": {
+        "zh": "DXF", "en": "DXF",
+    },
     "toolbar.cb.dl_s": {
         "zh": "位移", "en": "Displ.",
     },
@@ -457,6 +460,9 @@ TRANSLATIONS = {
     },
     "export.filename.preset": {
         "zh": "凸轮预设", "en": "cam_preset",
+    },
+    "export.filename.dxf": {
+        "zh": "凸轮廓形", "en": "cam_profile",
     },
 
     # ---- Excel Column Headers (plain text, no LaTeX) ----

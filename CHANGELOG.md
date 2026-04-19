@@ -5,6 +5,28 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-19
+
+### Added
+- Configuration persistence: parameters, export options, and UI settings are saved on exit and restored on startup
+- Keyboard shortcuts for animation control:
+  - `Space`: Pause/Resume animation
+  - `Left/Right arrows`: Previous/Next frame (when paused)
+  - `Home/End`: First/Last frame
+  - `Escape`: Stop animation
+  - `R`: Random parameters
+- DXF export: cam profile can be exported to DXF format for CAD software import
+  - Supports both theoretical and actual (roller) profiles
+  - Uses LWPOLYLINE entity for efficient file size
+- ConfigManager class (`ui/config.py`): manages user preferences in `~/.camforge/config.json`
+- ShortcutManager class (`ui/shortcut.py`): manages keyboard shortcuts
+- DXF export module (`ui/dxf_export.py`): exports cam profiles to DXF format
+
+### Changed
+- Export checkbox layout now includes DXF option
+- Application now loads saved configuration on startup
+- Application now saves configuration on exit
+
 ## [0.4.3] - 2026-04-19
 
 ### Added
