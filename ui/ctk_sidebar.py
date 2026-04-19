@@ -165,56 +165,46 @@ class CTkSidebar:
         self._cards.append(card)
 
     def _build_download_card(self, lang: str):
-        """构建下载选项卡片"""
+        """构建下载选项卡片 - 四行两列布局"""
         import tkinter as tk
         card = CardGroup(self.frame, title=t("sidebar.group.download", lang))
-
-        # 第一行：运动线图、廓形、CSV、Excel
-        row1_frame = tk.Frame(card, bg='white')
-        row1_frame.pack(fill='x', padx=10, pady=(6, 2))
 
         self.download_checkboxes = {}
 
         import customtkinter as ctk
         from ui.ctk_constants import create_ctk_font, FONT_SIZE_LABEL
 
-        for name, key in [
-            ('dl_motion', 'toolbar.cb.dl_motion'),
-            ('dl_profile', 'toolbar.cb.dl_profile'),
-            ('dl_csv', 'toolbar.cb.dl_csv'),
-            ('dl_excel', 'toolbar.cb.dl_excel'),
-        ]:
-            self.download_checkboxes[name] = tk.BooleanVar(value=True)
-            cb = ctk.CTkCheckBox(
-                row1_frame,
-                text=t(key, lang),
-                variable=self.download_checkboxes[name],
-                font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-                checkbox_width=16,
-                checkbox_height=16,
-            )
-            cb.pack(side='left', padx=2)
-
-        # 第二行：几何约束、动画、SVG、DXF
-        row2_frame = tk.Frame(card, bg='white')
-        row2_frame.pack(fill='x', padx=10, pady=2)
-
-        for name, key, default in [
+        # 四行两列布局
+        items = [
+            ('dl_motion', 'toolbar.cb.dl_motion', True),
+            ('dl_profile', 'toolbar.cb.dl_profile', True),
+            ('dl_csv', 'toolbar.cb.dl_csv', True),
+            ('dl_excel', 'toolbar.cb.dl_excel', True),
             ('dl_geom', 'toolbar.cb.dl_geom', True),
             ('dl_anim', 'toolbar.cb.dl_anim', True),
             ('dl_svg', 'toolbar.cb.dl_svg', True),
             ('dl_dxf', 'toolbar.cb.dl_dxf', False),
-        ]:
+        ]
+
+        for i, (name, key, default) in enumerate(items):
+            row = i // 2  # 0, 1, 2, 3
+            col = i % 2   # 0, 1
+
+            if col == 0:
+                # 创建新行
+                row_frame = tk.Frame(card, bg='white')
+                row_frame.pack(fill='x', padx=10, pady=(6 if row == 0 else 2, 2))
+
             self.download_checkboxes[name] = tk.BooleanVar(value=default)
             cb = ctk.CTkCheckBox(
-                row2_frame,
+                row_frame,
                 text=t(key, lang),
                 variable=self.download_checkboxes[name],
                 font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
                 checkbox_width=16,
                 checkbox_height=16,
             )
-            cb.pack(side='left', padx=2)
+            cb.pack(side='left', padx=(0, 10))
 
         card.pack_with_title()
         self._cards.append(card)

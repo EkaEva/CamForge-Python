@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "camforge"
-version = "0.6.1"
+version = "0.6.2"
 description = "Cam mechanism kinematics simulator with GUI"
 readme = "README.md"
 license = {text = "MIT"}
