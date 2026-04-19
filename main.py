@@ -160,7 +160,6 @@ class CamSimulator:
         self.dl_anim.set(export_opts.get('dl_anim', True))
         self.dl_svg.set(export_opts.get('dl_svg', True))
         self.dl_dxf.set(export_opts.get('dl_dxf', False))
-        self.dl_preset.set(export_opts.get('dl_preset', True))
 
         # 加载 UI 设置
         ui_settings = self.config_mgr.get_ui_settings()
