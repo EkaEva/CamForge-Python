@@ -8,7 +8,7 @@ import os
 import platform
 import threading
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 
 import customtkinter as ctk
 import matplotlib
@@ -681,14 +681,100 @@ class CamSimulator(ctk.CTk):
             errors.append(f"dxf: {exc}")
 
     def _export_gif(self, filepath, folder, saved_list):
-        """导出 GIF"""
+        """在后台线程中导出GIF动画"""
         if PILImage is None:
             self.status_bar.set_status(t("status.gif_failed", self.lang, error="Pillow not installed"), 'danger')
             return
 
-        # 简化版 GIF 导出
-        self.status_bar.set_status(t("status.gif_exporting", self.lang))
-        # 完整实现在原 main.py 中
+        lang = self.lang
+        show_base = self.sidebar.switches['show_base_circle'].get()
+        show_offset = self.sidebar.switches['show_offset_circle'].get()
+        show_limits = self.sidebar.switches['show_limits'].get()
+        show_tangent_gif = self.sidebar.switches['show_tangent'].get()
+        show_normal_gif = self.sidebar.switches['show_normal'].get()
+        show_arc_gif = self.sidebar.switches['show_arc'].get()
+        show_boundaries_gif = self.sidebar.switches['show_boundaries'].get()
+
+        with self._sim_data_lock:
+            data = self.sim_data
+            if data is None:
+                return
+            # 复制数据以确保线程安全
+            thread_data = {
+                's': data['s'].copy(),
+                'ds_ddelta': data['ds_ddelta'].copy(),
+                'alpha_all': data['alpha_all'].copy(),
+                'x': data['x'].copy(),
+                'y': data['y'].copy(),
+                'x_base': data['x_base'].copy(),
+                'y_base': data['y_base'].copy(),
+                'x_offset': data['x_offset'].copy(),
+                'y_offset': data['y_offset'].copy(),
+                's_0': data['s_0'],
+                'e': data['e'],
+                'r_0': data['r_0'],
+                'h': data['h'],
+                'sn': data['sn'],
+                'pz': data['pz'],
+                'phase_bounds': list(data['phase_bounds']),
+                'r_r': data['r_r'],
+                'x_actual': data['x_actual'].copy() if data['x_actual'] is not None else None,
+                'y_actual': data['y_actual'].copy() if data['y_actual'] is not None else None,
+            }
+
+        xlim = self.ax_anim.get_xlim()
+        ylim = self.ax_anim.get_ylim()
+
+        progress_win = tk.Toplevel(self)
+        progress_win.title(t("export.gif_dialog.title", lang))
+        progress_win.geometry("320x100")
+        progress_win.resizable(False, False)
+        progress_win.transient(self)
+        progress_win.grab_set()
+        tk.Label(progress_win, text=t("export.gif_dialog.message", lang),
+                 font=(self._tk_font_family, 10)).pack(pady=(12, 4))
+        N = len(thread_data['s'])
+        progress_bar = ttk.Progressbar(progress_win, length=280, mode='determinate', maximum=N)
+        progress_bar.pack(pady=4)
+        progress_label = tk.Label(progress_win, text="0 / 360", font=(self._tk_font_family, 9))
+        progress_label.pack()
+
+        gif_result = {'error': None}
+
+        def progress_callback(idx, total, phase_text):
+            if phase_text is None:
+                self.after(0, lambda: (
+                    progress_bar.configure(value=idx + 1),
+                    progress_label.configure(text=f"{idx + 1} / {total}")
+                ))
+            else:
+                self.after(0, lambda: progress_label.configure(
+                    text=t("status.gif_composing", lang)))
+
+        def generate():
+            try:
+                generate_gif_frames(
+                    thread_data, filepath, saved_list, folder,
+                    show_base=show_base, show_offset=show_offset,
+                    show_tangent=show_tangent_gif, show_normal=show_normal_gif,
+                    show_limits=show_limits, show_boundaries=show_boundaries_gif,
+                    show_arc=show_arc_gif, lang=lang,
+                    xlim=xlim, ylim=ylim,
+                    progress_callback=progress_callback,
+                )
+            except Exception as exc:
+                gif_result['error'] = str(exc)
+            finally:
+                def _on_done():
+                    progress_win.destroy()
+                    if gif_result['error']:
+                        self.status_bar.set_status(t("status.gif_failed", lang, error=gif_result['error']), 'danger')
+                    else:
+                        self.status_bar.set_status(t("status.saved", lang, files=', '.join(saved_list), folder=folder), 'success')
+                self.after(0, _on_done)
+
+        thread = threading.Thread(target=generate, daemon=True)
+        thread.start()
 
     # ===================================================================
     # 静态图表
