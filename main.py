@@ -192,12 +192,10 @@ class CamSimulator(ctk.CTk):
         self.sidebar = CTkSidebar(self.sidebar_frame, self.i18n_mgr)
         self.sidebar.build(self.lang,
                           arc_command=self._on_arc_toggle,
-                          grid_command=self._on_grid_toggle)
-
-        # 绑定事件
-        self.sidebar.combos['lang'].combo.bind('<<ComboboxSelected>>', self._on_language_change)
-        self.sidebar.combos['theme'].combo.bind('<<ComboboxSelected>>', self._on_theme_change)
-        self.sidebar.combos['quick_preset'].combo.bind('<<ComboboxSelected>>', self._on_quick_preset_select)
+                          grid_command=self._on_grid_toggle,
+                          lang_command=self._on_language_change,
+                          theme_command=self._on_theme_change,
+                          preset_command=self._on_quick_preset_select)
 
         # 右侧主区域
         self.main_frame = ctk.CTkFrame(self, corner_radius=0, fg_color=COLORS_LIGHT['main_bg'])
@@ -276,7 +274,10 @@ class CamSimulator(ctk.CTk):
 
         self.sidebar.build(self.lang,
                           arc_command=self._on_arc_toggle,
-                          grid_command=self._on_grid_toggle)
+                          grid_command=self._on_grid_toggle,
+                          lang_command=self._on_language_change,
+                          theme_command=self._on_theme_change,
+                          preset_command=self._on_quick_preset_select)
         self.sidebar.combos['lang'].set_index(idx)
         self.toolbar.build(
             self.lang,

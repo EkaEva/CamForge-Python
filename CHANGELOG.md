@@ -5,6 +5,12 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-04-19
+
+### Fixed
+- GIF export info panel now matches demo: embedded in top-left corner with 3 items
+- Language/theme/quick preset dropdowns now work correctly using command callback
+
 ## [0.6.3] - 2026-04-19
 
 ### Changed

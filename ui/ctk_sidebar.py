@@ -66,7 +66,10 @@ class CTkSidebar:
         self._cards: list = []
 
     def build(self, lang: str, arc_command: Optional[Callable] = None,
-              grid_command: Optional[Callable] = None):
+              grid_command: Optional[Callable] = None,
+              lang_command: Optional[Callable] = None,
+              theme_command: Optional[Callable] = None,
+              preset_command: Optional[Callable] = None):
         """构建侧边栏 UI
 
         Parameters
@@ -77,6 +80,12 @@ class CTkSidebar:
             压力角弧线开关回调
         grid_command : callable, optional
             网格线开关回调
+        lang_command : callable, optional
+            语言切换回调
+        theme_command : callable, optional
+            主题切换回调
+        preset_command : callable, optional
+            快速预设切换回调
         """
         # 清除现有内容
         for widget in self.frame.winfo_children():
@@ -90,7 +99,7 @@ class CTkSidebar:
         self._create_logo()
 
         # 卡片 1：常用设置
-        self._build_general_card(lang)
+        self._build_general_card(lang, lang_command, theme_command, preset_command)
 
         # 卡片 2：下载选项
         self._build_download_card(lang)
@@ -118,7 +127,7 @@ class CTkSidebar:
         )
         logo_label.pack(fill='x', padx=UI_PADDING, pady=(20, 20), anchor='w')
 
-    def _build_general_card(self, lang: str):
+    def _build_general_card(self, lang: str, lang_command=None, theme_command=None, preset_command=None):
         """构建通用设置卡片"""
         card = CardGroup(self.frame, title=t("sidebar.group.common", lang))
 
@@ -128,6 +137,7 @@ class CTkSidebar:
             card, t("sidebar.group.language", lang),
             values=lang_values,
             default_index=SUPPORTED_LANGS.index(DEFAULT_LANG),
+            command=lang_command,
         )
         lang_row.pack_in_card()
         self.combos['lang'] = lang_row
@@ -141,6 +151,7 @@ class CTkSidebar:
             card, t("sidebar.group.theme", lang),
             values=theme_values,
             default_index=0,
+            command=theme_command,
         )
         theme_row.pack_in_card()
         self.combos['theme'] = theme_row
@@ -157,6 +168,7 @@ class CTkSidebar:
             card, t("sidebar.group.quick_preset", lang),
             values=preset_values,
             default_index=0,
+            command=preset_command,
         )
         preset_row.pack_in_card()
         self.combos['quick_preset'] = preset_row

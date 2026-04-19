@@ -313,14 +313,11 @@ def generate_gif_frames(data, filepath, saved_list, folder,
     N = len(s)
 
     fig_gif = Figure(figsize=(8, 6), dpi=GIF_DPI)
-    ax_gif = fig_gif.add_axes([0.05, 0.08, 0.65, 0.87])
-    ax_info_gif = fig_gif.add_axes([0.73, 0.08, 0.25, 0.87])
+    ax_gif = fig_gif.add_axes([0.05, 0.08, 0.90, 0.87])
 
     label_delta_gif = t("info.label.delta", lang)
     label_alpha_gif = t("info.label.alpha", lang)
     label_s_gif = t("info.label.s", lang)
-    label_h_gif = t("info.label.h", lang)
-    label_s0_gif = t("info.label.s0", lang)
     title_anim_gif = t("plot.title.animation", lang)
 
     frame_images = []
@@ -409,20 +406,24 @@ def generate_gif_frames(data, filepath, saved_list, folder,
         ax_gif.set_aspect('equal', adjustable='box')
         ax_gif.set_title(f'{title_anim_gif}  {int(angle_deg):3d}°/360°', fontsize=11)
 
-        ax_info_gif.clear()
+        # 信息面板：嵌入在动画图左上角，与演示动画一致
+        ax_info_gif = ax_gif.inset_axes([0.01, 0.78, 0.28, 0.20])
         ax_info_gif.set_xticks([])
         ax_info_gif.set_yticks([])
-        ax_info_gif.set_frame_on(False)
+        ax_info_gif.set_facecolor((1.0, 1.0, 1.0, 0.8))
+        for spine in ax_info_gif.spines.values():
+            spine.set_visible(True)
+            spine.set_color('gray')
+            spine.set_linewidth(0.5)
+
         info_items = [
-            (0.95, rf'{label_delta_gif}: {int(angle_deg):3d}°/360°'),
-            (0.85, rf'{label_alpha_gif}: {alpha_i:.1f}°'),
-            (0.75, rf'{label_s_gif}: {frame_data["s_i"]:.2f} mm'),
-            (0.65, rf'{label_h_gif}: {h:.1f} mm'),
-            (0.55, rf'{label_s0_gif}: {s_0:.2f} mm'),
+            (0.78, rf'{label_delta_gif}: {int(angle_deg):3d}°/360°'),
+            (0.56, rf'{label_alpha_gif}: {alpha_i:.1f}°'),
+            (0.34, rf'{label_s_gif}: {frame_data["s_i"]:.2f} mm'),
         ]
         for y_pos, text in info_items:
-            ax_info_gif.text(0.05, y_pos, text, transform=ax_info_gif.transAxes,
-                             fontsize=10, ha='left', va='top', color='#222')
+            ax_info_gif.text(0.10, y_pos, text, transform=ax_info_gif.transAxes,
+                             fontsize=8, ha='left', va='top', color='black')
 
         buf = BytesIO()
         fig_gif.savefig(buf, format='png', dpi=GIF_DPI)
