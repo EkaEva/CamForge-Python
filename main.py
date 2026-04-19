@@ -646,14 +646,15 @@ class CamSimulator(ctk.CTk):
         if self.sidebar.download_checkboxes['dl_dxf'].get():
             self._export_dxf(folder, saved, errors)
 
-        # GIF 导出是异步的，状态栏在回调中设置
+        # 非 GIF 导出成功后立即显示提示
+        if saved:
+            self.status_bar.set_status(t("status.saved", self.lang, files=', '.join(saved), folder=folder), 'success')
+
+        # GIF 导出是异步的，完成后会追加到状态栏
         if self.sidebar.download_checkboxes['dl_anim'].get():
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
             filepath = os.path.join(folder, filename_anim)
             self._export_gif(filepath, folder, saved)
-        elif saved:
-            # 非 GIF 导出，直接设置状态栏
-            self.status_bar.set_status(t("status.saved", self.lang, files=', '.join(saved), folder=folder), 'success')
 
     def _export_dxf(self, folder, saved_list, errors):
         """导出 DXF"""
@@ -785,8 +786,10 @@ class CamSimulator(ctk.CTk):
                     progress_win.destroy()
                     if gif_result['error']:
                         self.status_bar.set_status(t("status.gif_failed", lang, error=gif_result['error']), 'danger')
-                    else:
-                        self.status_bar.set_status(t("status.saved", lang, files=', '.join(saved_list), folder=folder), 'success')
+                    elif saved_list:
+                        # 追加 GIF 到已保存列表
+                        all_saved = saved_list
+                        self.status_bar.set_status(t("status.saved", lang, files=', '.join(all_saved), folder=folder), 'success')
                 self.after(0, _on_done)
 
         thread = threading.Thread(target=generate, daemon=True)
