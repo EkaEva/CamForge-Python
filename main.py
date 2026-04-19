@@ -339,6 +339,8 @@ class CamSimulator:
         # 绑定语言/主题切换事件
         self.sidebar.combos['lang'].bind('<<ComboboxSelected>>', self._on_language_change)
         self.sidebar.combos['theme'].bind('<<ComboboxSelected>>', self._on_theme_change)
+        # 绑定快速预设选择事件
+        self.sidebar.combos['quick_preset'].bind('<<ComboboxSelected>>', self._on_quick_preset_select)
 
         toolbar, status_bar = self._build_toolbar(main_area)
         self._build_figure(main_area)
@@ -363,25 +365,16 @@ class CamSimulator:
         self.btn_pause.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.pause", self.btn_pause, font_size=10)
 
-        self.btn_clear_params = tk.Button(toolbar, text=t("toolbar.btn.clear_params", self.lang),
-                                          command=self._on_clear_params,
-                                          bg=THEME['btn_clear'], fg=THEME['btn_fg'],
-                                          activebackground=THEME['btn_clear_active'],
-                                          relief=tk.FLAT, bd=0,
-                                          font=(self._tk_font_family, 10), width=10, height=1,
-                                          cursor='hand2')
-        self.btn_clear_params.pack(side=tk.LEFT, padx=6)
-        self._reg("toolbar.btn.clear_params", self.btn_clear_params, font_size=10)
-
-        self.btn_clear_plots = tk.Button(toolbar, text=t("toolbar.btn.clear_plots", self.lang),
-                                         command=self._on_clear_plots,
-                                         bg=THEME['btn_clear2'], fg=THEME['btn_fg'],
-                                         activebackground=THEME['btn_clear2_active'],
-                                         relief=tk.FLAT, bd=0,
-                                         font=(self._tk_font_family, 10), width=10, height=1,
-                                         cursor='hand2')
-        self.btn_clear_plots.pack(side=tk.LEFT, padx=6)
-        self._reg("toolbar.btn.clear_plots", self.btn_clear_plots, font_size=10)
+        # 清除按钮（合并清除参数和清除图像）
+        self.btn_clear = tk.Button(toolbar, text=t("toolbar.btn.clear", self.lang),
+                                   command=self._on_clear,
+                                   bg=THEME['btn_clear'], fg=THEME['btn_fg'],
+                                   activebackground=THEME['btn_clear_active'],
+                                   relief=tk.FLAT, bd=0,
+                                   font=(self._tk_font_family, 10), width=10, height=1,
+                                   cursor='hand2')
+        self.btn_clear.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.clear", self.btn_clear, font_size=10)
 
         self.btn_random = tk.Button(toolbar, text=t("toolbar.btn.random", self.lang),
                                     command=self._on_random,
@@ -412,21 +405,6 @@ class CamSimulator:
                                          cursor='hand2')
         self.btn_save_preset.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.save_preset", self.btn_save_preset, font_size=10)
-
-        # 快速预设下拉菜单
-        quick_preset_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
-        quick_preset_frame.pack(side=tk.LEFT, padx=6)
-        lbl_quick = tk.Label(quick_preset_frame, text=t("toolbar.label.quick_preset", self.lang),
-                             font=(self._tk_font_family, 9), bg=THEME['toolbar_bg'])
-        lbl_quick.pack(side=tk.LEFT, padx=(0, 2))
-        self._reg("toolbar.label.quick_preset", lbl_quick, font_size=9)
-        self.quick_preset_var = tk.StringVar()
-        self.quick_preset_combo = ttk.Combobox(quick_preset_frame, textvariable=self.quick_preset_var,
-                                                state='readonly', width=12,
-                                                font=(self._tk_font_family, 9))
-        self.quick_preset_combo.pack(side=tk.LEFT)
-        self.quick_preset_combo.bind('<<ComboboxSelected>>', self._on_quick_preset_select)
-        self._update_quick_preset_list()
 
         # 批量导出按钮
         self.btn_export_all = tk.Button(toolbar, text=t("toolbar.btn.export_all", self.lang),
@@ -1380,21 +1358,15 @@ class CamSimulator:
         thread = threading.Thread(target=generate, daemon=True)
         thread.start()
 
-    def _on_clear_params(self):
-        """清除参数并恢复默认值"""
+    def _on_clear(self):
+        """清除参数和图像"""
+        # 清除参数
         self.sidebar.clear_params()
-        self.status_var.set("")
-        self.alpha_var.set("")
-
-    def _on_clear_plots(self):
-        """清除图像"""
+        # 清除图像
         self._stop_animation()
-        # 清除所有 twinx 次轴
         self._clear_twinx_axes()
-        # 清除主轴
         for ax in [self.ax_motion, self.ax_geom]:
             ax.clear()
-        # 清除动画轴
         self.ax_anim.clear()
         self.canvas.draw()
         # 清除状态栏
@@ -1448,73 +1420,56 @@ class CamSimulator:
         except Exception as exc:
             self.status_var.set(t("status.preset_load_failed", self.lang, error=str(exc)))
 
-    def _update_quick_preset_list(self):
-        """更新快速预设下拉列表"""
-        # 内置预设
-        built_in_presets = [
-            t("toolbar.quick_preset.default", self.lang),
-            t("toolbar.quick_preset.small_cam", self.lang),
-            t("toolbar.quick_preset.large_cam", self.lang),
-            t("toolbar.quick_preset.high_speed", self.lang),
-            t("toolbar.quick_preset.roller", self.lang),
-        ]
-        # 用户保存的预设
-        user_presets = [p['name'] for p in self.config_mgr.get_quick_presets()]
-        all_presets = built_in_presets + user_presets
-        self.quick_preset_combo['values'] = all_presets
-
     def _on_quick_preset_select(self, event=None):
         """快速预设选择事件"""
-        selected = self.quick_preset_var.get()
-        if not selected:
+        idx = self.sidebar.combos['quick_preset'].current()
+        if idx < 0:
             return
 
         # 内置预设数据
-        built_in_presets = {
-            t("toolbar.quick_preset.default", self.lang): {
+        built_in_presets = [
+            # 默认
+            {
                 'delta_0': 120, 'delta_01': 60, 'delta_ret': 90, 'delta_02': 90,
                 'h': 30, 'r_0': 40, 'e': 5, 'omega': 10,
                 'tc_law': 4, 'hc_law': 4, 'sn': 1, 'pz': 1,
                 'r_r': 0, 'n_points': 360, 'alpha_threshold': 30,
             },
-            t("toolbar.quick_preset.small_cam", self.lang): {
+            # 小型凸轮
+            {
                 'delta_0': 90, 'delta_01': 45, 'delta_ret': 90, 'delta_02': 135,
                 'h': 15, 'r_0': 25, 'e': 3, 'omega': 15,
                 'tc_law': 5, 'hc_law': 5, 'sn': 1, 'pz': 1,
                 'r_r': 0, 'n_points': 360, 'alpha_threshold': 35,
             },
-            t("toolbar.quick_preset.large_cam", self.lang): {
+            # 大型凸轮
+            {
                 'delta_0': 150, 'delta_01': 30, 'delta_ret': 120, 'delta_02': 60,
                 'h': 50, 'r_0': 80, 'e': 10, 'omega': 5,
                 'tc_law': 4, 'hc_law': 4, 'sn': 1, 'pz': 1,
                 'r_r': 0, 'n_points': 360, 'alpha_threshold': 25,
             },
-            t("toolbar.quick_preset.high_speed", self.lang): {
+            # 高速凸轮
+            {
                 'delta_0': 120, 'delta_01': 60, 'delta_ret': 120, 'delta_02': 60,
                 'h': 25, 'r_0': 50, 'e': 8, 'omega': 50,
                 'tc_law': 6, 'hc_law': 6, 'sn': 1, 'pz': 1,
                 'r_r': 0, 'n_points': 720, 'alpha_threshold': 25,
             },
-            t("toolbar.quick_preset.roller", self.lang): {
+            # 滚子从动件
+            {
                 'delta_0': 135, 'delta_01': 45, 'delta_ret': 90, 'delta_02': 90,
                 'h': 35, 'r_0': 45, 'e': 6, 'omega': 12,
                 'tc_law': 4, 'hc_law': 4, 'sn': 1, 'pz': 1,
                 'r_r': 10, 'n_points': 360, 'alpha_threshold': 30,
             },
-        }
+        ]
 
-        if selected in built_in_presets:
-            preset_data = built_in_presets[selected]
+        if idx < len(built_in_presets):
+            preset_data = built_in_presets[idx]
             self.sidebar.load_preset_data(preset_data)
-            self.status_var.set(t("status.preset_loaded", self.lang, file=selected))
-        else:
-            # 用户预设
-            user_presets = self.config_mgr.get_quick_presets()
-            for p in user_presets:
-                if p['name'] == selected:
-                    self.sidebar.load_preset_data(p['params'])
-                    self.status_var.set(t("status.preset_loaded", self.lang, file=selected))
-                    break
+            preset_name = self.sidebar.combos['quick_preset'].get()
+            self.status_var.set(t("status.preset_loaded", self.lang, file=preset_name))
 
     def _export_dxf(self, folder: str, saved_list: list, errors: list) -> None:
         """导出 DXF 文件

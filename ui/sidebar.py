@@ -120,6 +120,19 @@ class SidebarBuilder:
         self.combos['theme'].current(0)
         self.combos['theme'].pack(fill=tk.X, padx=16, pady=(0, 8))
 
+        # ---- 快速预设组 ----
+        self._sidebar_group(self.frame, t("sidebar.group.quick_preset", lang), i18n_key="sidebar.group.quick_preset")
+        quick_preset_values = [
+            t("toolbar.quick_preset.default", lang),
+            t("toolbar.quick_preset.small_cam", lang),
+            t("toolbar.quick_preset.large_cam", lang),
+            t("toolbar.quick_preset.high_speed", lang),
+            t("toolbar.quick_preset.roller", lang),
+        ]
+        self.combos['quick_preset'] = ttk.Combobox(self.frame, values=quick_preset_values, state='readonly', width=14)
+        self.combos['quick_preset'].current(0)
+        self.combos['quick_preset'].pack(fill=tk.X, padx=16, pady=(0, 8))
+
         # ---- 运动参数组 ----
         self._sidebar_group(self.frame, t("sidebar.group.motion", lang), i18n_key="sidebar.group.motion")
 

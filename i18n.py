@@ -51,6 +51,9 @@ TRANSLATIONS = {
     "sidebar.group.theme": {
         "zh": "主题", "en": "Theme",
     },
+    "sidebar.group.quick_preset": {
+        "zh": "快速预设", "en": "Quick Preset",
+    },
 
     # ---- Sidebar Labels ----
     "sidebar.label.delta_0": {
@@ -178,6 +181,9 @@ TRANSLATIONS = {
     },
     "toolbar.btn.clear_plots": {
         "zh": "清除图像", "en": "Clear Plots",
+    },
+    "toolbar.btn.clear": {
+        "zh": "清除", "en": "Clear",
     },
     "toolbar.btn.random": {
         "zh": "随机凸轮", "en": "Random Cam",
