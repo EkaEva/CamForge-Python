@@ -9,6 +9,7 @@
 import customtkinter as ctk
 import tkinter as tk
 import webbrowser
+import os
 from typing import Callable, Optional, Dict
 
 from ui.ctk_constants import (
@@ -17,6 +18,13 @@ from ui.ctk_constants import (
     BUTTON_HEIGHT, create_ctk_font, get_colors, get_button_style,
 )
 from i18n import t
+
+# 尝试加载 PIL 用于 GitHub 图标
+try:
+    from PIL import Image as PILImage
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 
 class CTkToolbar:
@@ -261,21 +269,57 @@ class CTkToolbar:
         btn_help.pack(side='left', padx=6)
         self.buttons['help'] = btn_help
 
-        # GitHub 按钮（深色填充）
-        btn_github = ctk.CTkButton(
-            btn_frame,
-            text=t("toolbar.btn.github", self.lang),
-            command=on_github,
-            fg_color='#24292e',
-            hover_color='#1a1e22',
-            text_color='white',
-            font=create_ctk_font(size=FONT_SIZE_BUTTON),
-            corner_radius=CORNER_RADIUS,
-            height=BUTTON_HEIGHT,
-            width=70,
-        )
+        # GitHub 按钮（图标）
+        github_icon = self._load_github_icon()
+        if github_icon:
+            btn_github = ctk.CTkButton(
+                btn_frame,
+                text="",
+                image=github_icon,
+                command=on_github,
+                fg_color='transparent',
+                hover_color='#e0e0e0',
+                corner_radius=CORNER_RADIUS,
+                height=BUTTON_HEIGHT,
+                width=40,
+            )
+        else:
+            # 回退到文字按钮
+            btn_github = ctk.CTkButton(
+                btn_frame,
+                text=t("toolbar.btn.github", self.lang),
+                command=on_github,
+                fg_color='#24292e',
+                hover_color='#1a1e22',
+                text_color='white',
+                font=create_ctk_font(size=FONT_SIZE_BUTTON),
+                corner_radius=CORNER_RADIUS,
+                height=BUTTON_HEIGHT,
+                width=70,
+            )
         btn_github.pack(side='left', padx=6)
         self.buttons['github'] = btn_github
+
+    def _load_github_icon(self):
+        """加载 GitHub 图标"""
+        if not PIL_AVAILABLE:
+            return None
+        try:
+            # 尝试多个可能的路径
+            possible_paths = [
+                os.path.join(os.path.dirname(__file__), '..', 'github.png'),
+                os.path.join(os.path.dirname(__file__), 'github.png'),
+                'github.png',
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    img = PILImage.open(path)
+                    # 调整大小以适应按钮
+                    img = img.resize((24, 24), PILImage.Resampling.LANCZOS)
+                    return ctk.CTkImage(light_image=img, dark_image=img, size=(24, 24))
+        except Exception:
+            pass
+        return None
 
     def _build_right_controls(self, on_frame_seek):
         """构建右侧控件（速度滑块、帧进度条）"""
