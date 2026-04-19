@@ -643,18 +643,17 @@ class CamSimulator(ctk.CTk):
         if self.sidebar.download_checkboxes['dl_excel'].get():
             export_mgr._export_excel(folder, saved, data, self.lang, errors)
 
+        if self.sidebar.download_checkboxes['dl_dxf'].get():
+            self._export_dxf(folder, saved, errors)
+
+        # GIF 导出是异步的，状态栏在回调中设置
         if self.sidebar.download_checkboxes['dl_anim'].get():
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
             filepath = os.path.join(folder, filename_anim)
             self._export_gif(filepath, folder, saved)
-
-        if self.sidebar.download_checkboxes['dl_dxf'].get():
-            self._export_dxf(folder, saved, errors)
-
-        if saved:
+        elif saved:
+            # 非 GIF 导出，直接设置状态栏
             self.status_bar.set_status(t("status.saved", self.lang, files=', '.join(saved), folder=folder), 'success')
-        elif self.sidebar.download_checkboxes['dl_anim'].get():
-            self.status_bar.set_status(t("status.gif_exporting", self.lang))
 
     def _export_dxf(self, folder, saved_list, errors):
         """导出 DXF"""
@@ -744,8 +743,8 @@ class CamSimulator(ctk.CTk):
         msg_label.pack(pady=(15, 8))
 
         N = len(thread_data['s'])
-        progress_bar = ctk.CTkProgressBar(progress_win, width=280, mode='determinate')
-        progress_bar.configure(maximum=N)
+        progress_bar = ctk.CTkProgressBar(progress_win, width=280)
+        progress_bar.set(0)
         progress_bar.pack(pady=4)
 
         progress_label = ctk.CTkLabel(
@@ -759,9 +758,10 @@ class CamSimulator(ctk.CTk):
 
         def progress_callback(idx, total, phase_text):
             if phase_text is None:
-                self.after(0, lambda: (
-                    progress_bar.configure(value=idx + 1),
-                    progress_label.configure(text=f"{idx + 1} / {total}")
+                progress_val = (idx + 1) / total
+                self.after(0, lambda v=progress_val, i=idx, t=total: (
+                    progress_bar.set(v),
+                    progress_label.configure(text=f"{i + 1} / {t}")
                 ))
             else:
                 self.after(0, lambda: progress_label.configure(
