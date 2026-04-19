@@ -7,6 +7,12 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Callable
 
+try:
+    import customtkinter as ctk
+    CTkEntry = ctk.CTkEntry
+except ImportError:
+    CTkEntry = None
+
 
 class ShortcutManager:
     """键盘快捷键管理器"""
@@ -33,9 +39,16 @@ class ShortcutManager:
 
         def handler(event):
             # 当 Entry 或 Combobox 聚焦时，屏蔽单字母快捷键
-            if isinstance(self.root.focus_get(), (tk.Entry, ttk.Combobox)):
-                if key in ('<space>', '<r>', '<R>', '<s>', '<S>', '<p>', '<P>'):
-                    return
+            focus_widget = self.root.focus_get()
+            if focus_widget is not None:
+                # 检查是否是输入类控件
+                is_entry = isinstance(focus_widget, tk.Entry)
+                is_ctk_entry = CTkEntry is not None and isinstance(focus_widget, CTkEntry)
+                is_combobox = isinstance(focus_widget, ttk.Combobox)
+
+                if is_entry or is_ctk_entry or is_combobox:
+                    if key in ('<space>', '<r>', '<R>', '<s>', '<S>', '<p>', '<P>'):
+                        return
             callback()
             return 'break'  # 阻止事件继续传播
 

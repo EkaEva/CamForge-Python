@@ -120,9 +120,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON, weight='bold'),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=100,
+            width=70,
         )
-        btn_start.pack(side='left', padx=(0, 8))
+        btn_start.pack(side='left', padx=(0, 6))
         self.buttons['start'] = btn_start
 
         # 暂停按钮（橙色）
@@ -136,9 +136,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=80,
+            width=60,
         )
-        btn_pause.pack(side='left', padx=8)
+        btn_pause.pack(side='left', padx=6)
         self.buttons['pause'] = btn_pause
 
         # 清除按钮（灰色轮廓）
@@ -153,9 +153,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=80,
+            width=60,
         )
-        btn_clear.pack(side='left', padx=8)
+        btn_clear.pack(side='left', padx=6)
         self.buttons['clear'] = btn_clear
 
         # 随机按钮（紫色）
@@ -169,9 +169,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=100,
+            width=60,
         )
-        btn_random.pack(side='left', padx=8)
+        btn_random.pack(side='left', padx=6)
         self.buttons['random'] = btn_random
 
         # 加载预设按钮（灰色）
@@ -185,9 +185,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=100,
+            width=70,
         )
-        btn_load.pack(side='left', padx=8)
+        btn_load.pack(side='left', padx=6)
         self.buttons['load_preset'] = btn_load
 
         # 保存预设按钮
@@ -201,9 +201,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=100,
+            width=70,
         )
-        btn_save.pack(side='left', padx=8)
+        btn_save.pack(side='left', padx=6)
         self.buttons['save_preset'] = btn_save
 
         # 全部导出按钮
@@ -217,9 +217,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=100,
+            width=70,
         )
-        btn_export_all.pack(side='left', padx=8)
+        btn_export_all.pack(side='left', padx=6)
         self.buttons['export_all'] = btn_export_all
 
         # 下载按钮（蓝色）
@@ -233,9 +233,9 @@ class CTkToolbar:
             font=create_ctk_font(size=FONT_SIZE_BUTTON, weight='bold'),
             corner_radius=CORNER_RADIUS,
             height=BUTTON_HEIGHT,
-            width=100,
+            width=70,
         )
-        btn_download.pack(side='left', padx=8)
+        btn_download.pack(side='left', padx=6)
         self.buttons['download'] = btn_download
 
     def _build_right_controls(self, on_frame_seek):
@@ -291,11 +291,11 @@ class CTkToolbar:
     def _build_download_options(self):
         """构建下载选项复选框"""
         dl_frame = ctk.CTkFrame(self.frame, fg_color='transparent')
-        dl_frame.pack(side='left', padx=20)
+        dl_frame.pack(side='left', padx=(20, 0), fill='y', anchor='center')
 
         # 第一行
         row1 = ctk.CTkFrame(dl_frame, fg_color='transparent')
-        row1.pack(side='top', fill='x')
+        row1.pack(side='top', fill='x', pady=(0, 2))
 
         # 运动线图
         self.checkboxes['dl_motion'] = tk.BooleanVar(value=True)
@@ -304,6 +304,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_motion", self.lang),
             variable=self.checkboxes['dl_motion'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_motion.pack(side='left', padx=4)
 
@@ -314,6 +316,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_profile", self.lang),
             variable=self.checkboxes['dl_profile'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_profile.pack(side='left', padx=4)
 
@@ -324,6 +328,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_csv", self.lang),
             variable=self.checkboxes['dl_csv'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_csv.pack(side='left', padx=4)
 
@@ -334,6 +340,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_excel", self.lang),
             variable=self.checkboxes['dl_excel'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_excel.pack(side='left', padx=4)
 
@@ -348,6 +356,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_geom", self.lang),
             variable=self.checkboxes['dl_geom'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_geom.pack(side='left', padx=4)
 
@@ -358,6 +368,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_anim", self.lang),
             variable=self.checkboxes['dl_anim'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_anim.pack(side='left', padx=4)
 
@@ -368,6 +380,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_svg", self.lang),
             variable=self.checkboxes['dl_svg'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_svg.pack(side='left', padx=4)
 
@@ -378,6 +392,8 @@ class CTkToolbar:
             text=t("toolbar.cb.dl_dxf", self.lang),
             variable=self.checkboxes['dl_dxf'],
             font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
+            checkbox_width=16,
+            checkbox_height=16,
         )
         cb_dxf.pack(side='left', padx=4)
 
@@ -490,8 +506,8 @@ class CTkStatusBar:
             'warning': colors['warning'],
             'danger': colors['danger'],
         }
+        self.status_var.set(text)
         self.status_label.configure(
-            text=text,
             text_color=text_colors.get(style, colors['text_primary'])
         )
 
