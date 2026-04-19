@@ -49,6 +49,13 @@ a = Analysis(
         'pydoc',
         'pip',
         'wheel',
+        # 排除一些可能导致递归问题的模块
+        'IPython',
+        'jupyter',
+        'notebook',
+        'sphinx',
+        'pytest',
+        'py.test',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

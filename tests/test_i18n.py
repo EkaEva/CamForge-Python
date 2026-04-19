@@ -14,12 +14,12 @@ class TestI18nHelpers:
 
     def test_get_motion_law_list_zh(self):
         lst = get_motion_law_list('zh')
-        assert len(lst) == 5
+        assert len(lst) == 6
         assert all(isinstance(s, str) for s in lst)
 
     def test_get_motion_law_list_en(self):
         lst = get_motion_law_list('en')
-        assert len(lst) == 5
+        assert len(lst) == 6
 
     def test_get_rotation_list(self):
         lst = get_rotation_list('zh')

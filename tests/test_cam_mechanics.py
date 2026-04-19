@@ -28,7 +28,7 @@ class TestComputeRise:
         delta_arr = np.linspace(0, delta_0, 100)
         return delta_arr, delta_0, h, omega
 
-    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5, 6])
     def test_rise_boundary_values(self, common_params, law):
         """推程始末位移应为 0 和 h"""
         delta_arr, delta_0, h, omega = common_params
@@ -36,14 +36,14 @@ class TestComputeRise:
         assert abs(s[0]) < 1e-10, f"推程起始位移应为0，实际为{s[0]}"
         assert abs(s[-1] - h) < 1e-6, f"推程终止位移应为{h}，实际为{s[-1]}"
 
-    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5, 6])
     def test_rise_monotonic(self, common_params, law):
         """推程位移应单调递增"""
         delta_arr, delta_0, h, omega = common_params
         s, _, _ = compute_rise(delta_arr, delta_0, h, omega, law)
         assert np.all(np.diff(s) >= -1e-10), f"推程规律{law}位移非单调递增"
 
-    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5, 6])
     def test_rise_non_negative(self, common_params, law):
         """推程位移应非负"""
         delta_arr, delta_0, h, omega = common_params
@@ -58,11 +58,34 @@ class TestComputeRise:
         expected_v = h * omega / delta_0
         assert np.allclose(v, expected_v, atol=1e-10), "等速运动速度应恒定"
 
+    def test_rise_septic_polynomial_boundary_conditions(self, common_params):
+        """七次多项式在边界处速度和加速度应为0"""
+        delta_arr, delta_0, h, omega = common_params
+        s, v, a = compute_rise(delta_arr, delta_0, h, omega, 6)
+        # 起点速度、加速度应为0
+        assert abs(v[0]) < 1e-10, f"七次多项式起点速度应为0，实际为{v[0]}"
+        assert abs(a[0]) < 1e-10, f"七次多项式起点加速度应为0，实际为{a[0]}"
+        # 终点速度、加速度应为0
+        assert abs(v[-1]) < 1e-10, f"七次多项式终点速度应为0，实际为{v[-1]}"
+        assert abs(a[-1]) < 1e-10, f"七次多项式终点加速度应为0，实际为{a[-1]}"
+
+    def test_rise_septic_vs_quintic_smoothness(self, common_params):
+        """七次多项式比五次多项式更平滑（加速度变化更小）"""
+        delta_arr, delta_0, h, omega = common_params
+        _, _, a5 = compute_rise(delta_arr, delta_0, h, omega, 5)
+        _, _, a6 = compute_rise(delta_arr, delta_0, h, omega, 6)
+        # 七次多项式加速度的导数（jerk）变化应更平滑
+        jerk5 = np.diff(a5)
+        jerk6 = np.diff(a6)
+        # 七次多项式的jerk峰值应更小
+        assert np.max(np.abs(jerk6)) < np.max(np.abs(jerk5)), \
+            "七次多项式应比五次多项式更平滑"
+
     def test_rise_unknown_law_raises(self, common_params):
         """未知运动规律应抛出异常"""
         delta_arr, delta_0, h, omega = common_params
-        with pytest.raises(ValueError, match="law must be 1-5"):
-            compute_rise(delta_arr, delta_0, h, omega, 6)
+        with pytest.raises(ValueError, match="law must be 1-6"):
+            compute_rise(delta_arr, delta_0, h, omega, 7)
 
     def test_rise_zero_delta_raises(self):
         """delta_0=0 应抛出 ValueError"""
@@ -88,7 +111,7 @@ class TestComputeReturn:
         delta_arr = np.linspace(0, delta_ret, 100)
         return delta_arr, delta_ret, h, omega
 
-    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5, 6])
     def test_return_boundary_values(self, common_params, law):
         """回程始末位移应为 h 和 0"""
         delta_arr, delta_ret, h, omega = common_params
@@ -96,7 +119,7 @@ class TestComputeReturn:
         assert abs(s[0] - h) < 1e-6, f"回程起始位移应为{h}，实际为{s[0]}"
         assert abs(s[-1]) < 1e-6, f"回程终止位移应为0，实际为{s[-1]}"
 
-    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5])
+    @pytest.mark.parametrize("law", [1, 2, 3, 4, 5, 6])
     def test_return_monotonic(self, common_params, law):
         """回程位移应单调递减"""
         delta_arr, delta_ret, h, omega = common_params
@@ -106,7 +129,7 @@ class TestComputeReturn:
     def test_return_unknown_law_raises(self, common_params):
         """未知运动规律应抛出异常"""
         delta_arr, delta_ret, h, omega = common_params
-        with pytest.raises(ValueError, match="law must be 1-5"):
+        with pytest.raises(ValueError, match="law must be 1-6"):
             compute_return(delta_arr, delta_ret, h, omega, 0)
 
     def test_return_zero_delta_raises(self):
@@ -195,9 +218,9 @@ class TestComputeFullMotion:
 
     def test_full_motion_invalid_law_raises(self):
         """非法运动规律编号应抛出 ValueError"""
-        with pytest.raises(ValueError, match="tc_law must be 1-5"):
-            compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 6, 1)
-        with pytest.raises(ValueError, match="hc_law must be 1-5"):
+        with pytest.raises(ValueError, match="tc_law must be 1-6"):
+            compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 7, 1)
+        with pytest.raises(ValueError, match="hc_law must be 1-6"):
             compute_full_motion(90, 60, 120, 90, 10, 40, 5, 1, 1, 0)
 
     def test_full_motion_angles_sum_not_360_raises(self):

@@ -505,6 +505,7 @@ TRANSLATIONS = {
     "law.3": {"zh": "简谐运动", "en": "Simple Harmonic"},
     "law.4": {"zh": "摆线运动", "en": "Cycloidal"},
     "law.5": {"zh": "五次多项式", "en": "Quintic Polynomial"},
+    "law.6": {"zh": "七次多项式", "en": "Septic Polynomial"},
 
     # ---- Motion Law Combobox Items (sidebar, with 规律 suffix for zh) ----
     "law.combo.1": {"zh": "等速运动规律", "en": "Uniform"},
@@ -512,6 +513,7 @@ TRANSLATIONS = {
     "law.combo.3": {"zh": "简谐运动规律", "en": "Simple Harmonic"},
     "law.combo.4": {"zh": "摆线运动规律", "en": "Cycloidal"},
     "law.combo.5": {"zh": "五次多项式运动规律", "en": "Quintic Polynomial"},
+    "law.combo.6": {"zh": "七次多项式运动规律", "en": "Septic Polynomial"},
 
     # ---- Direction Combobox Items ----
     "dir.cw": {"zh": "顺时针", "en": "Clockwise"},
@@ -538,7 +540,7 @@ def t(key: str, lang: str, **kwargs) -> str:
 
 def get_motion_law_list(lang: str) -> list:
     """获取运动规律下拉列表"""
-    return [t(f"law.combo.{i}", lang) for i in range(1, 6)]
+    return [t(f"law.combo.{i}", lang) for i in range(1, 7)]
 
 
 def get_rotation_list(lang: str) -> list:

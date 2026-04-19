@@ -83,7 +83,8 @@ CamForge 是一款基于 Python 的凸轮机构运动学仿真桌面应用，面
 | 2 | 等加速等减速 | $s = 2h\left(\dfrac{\delta}{\delta_0}\right)^2$（前半段） | 加速度恒定，行程中点有柔性冲击 |
 | 3 | 简谐运动 | $s = \dfrac{h}{2}\left(1 - \cos\dfrac{\pi\delta}{\delta_0}\right)$ | 无刚性冲击，行程始末有柔性冲击 |
 | 4 | 摆线运动 | $s = h\left(\dfrac{\delta}{\delta_0} - \dfrac{1}{2\pi}\sin\dfrac{2\pi\delta}{\delta_0}\right)$ | 无刚性冲击和柔性冲击，动力性能好 |
-| 5 | 五次多项式 | $s = h\left(10t^3 - 15t^4 + 6t^5\right)$ | 高阶平滑，综合性能最优 |
+| 5 | 五次多项式 | $s = h\left(10t^3 - 15t^4 + 6t^5\right)$ | 高阶平滑，综合性能优 |
+| 6 | 七次多项式 | $s = h\left(35t^4 - 84t^5 + 70t^6 - 20t^7\right)$ | 最高阶平滑，边界速度加速度均为零 |
 
 ### 动画特性
 

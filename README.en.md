@@ -86,7 +86,8 @@ CamForge is a Python-based desktop application for cam mechanism kinematic simul
 | 2 | Constant Acceleration-Deceleration | $s = 2h\left(\dfrac{\delta}{\delta_0}\right)^2$ (first half) | Constant acceleration; flexible impact at midpoint of stroke |
 | 3 | Simple Harmonic | $s = \dfrac{h}{2}\left(1 - \cos\dfrac{\pi\delta}{\delta_0}\right)$ | No rigid impact; flexible impact at start and end of stroke |
 | 4 | Cycloidal | $s = h\left(\dfrac{\delta}{\delta_0} - \dfrac{1}{2\pi}\sin\dfrac{2\pi\delta}{\delta_0}\right)$ | No rigid or flexible impact; excellent dynamic performance |
-| 5 | Fifth-Order Polynomial | $s = h\left(10t^3 - 15t^4 + 6t^5\right)$ | High-order smoothness; best overall performance |
+| 5 | Fifth-Order Polynomial | $s = h\left(10t^3 - 15t^4 + 6t^5\right)$ | High-order smoothness; excellent overall performance |
+| 6 | Seventh-Order Polynomial | $s = h\left(35t^4 - 84t^5 + 70t^6 - 20t^7\right)$ | Highest-order smoothness; zero velocity and acceleration at boundaries |
 
 ### Animation Features
 

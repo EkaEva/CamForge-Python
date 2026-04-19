@@ -235,6 +235,20 @@ Goal: Clean up redundant files and code, improve code quality.
 - [x] **P14-6** Reorganize imports in `main.py` (sorted, grouped)
 - [x] **P14-7** Update `.gitignore` to ignore auto-generated spec files
 
+### Phase 15 — v0.4.3 Seventh-Order Polynomial Motion Law ✅ Complete
+
+Goal: Add seventh-order polynomial motion law (4-5-6-7 polynomial).
+
+- [x] **P15-1** Add law=6 seventh-order polynomial calculation to `compute_rise()`
+- [x] **P15-2** Add law=6 seventh-order polynomial calculation to `compute_return()`
+- [x] **P15-3** Update motion law validation from (1,2,3,4,5) to (1,2,3,4,5,6)
+- [x] **P15-4** Update error messages from "law must be 1-5" to "law must be 1-6"
+- [x] **P15-5** Add i18n translations: `law.6`, `law.combo.6`
+- [x] **P15-6** Update `get_motion_law_list()` to return 6 options
+- [x] **P15-7** Add law=6 unit tests: boundary conditions, smoothness comparison
+- [x] **P15-8** Update README.md and README.en.md motion law tables
+- [x] **P15-9** Update CHANGELOG.md with v0.4.3 entry
+
 ---
 
 ## III. Issue Statistics

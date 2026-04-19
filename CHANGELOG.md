@@ -5,6 +5,20 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-04-19
+
+### Added
+- Seventh-order polynomial motion law (4-5-6-7 polynomial) as law=6
+  - Formula: $s = h(35t^4 - 84t^5 + 70t^6 - 20t^7)$
+  - Zero velocity and acceleration at both boundaries (smoother than quintic)
+- i18n translations for law 6: `law.6`, `law.combo.6`
+- Tests for law 6: boundary conditions, smoothness comparison with quintic
+
+### Changed
+- Motion law validation now accepts laws 1-6 (was 1-5)
+- Error messages updated from "law must be 1-5" to "law must be 1-6"
+- Motion law dropdown now shows 6 options
+
 ## [0.4.2] - 2026-04-19
 
 ### Changed

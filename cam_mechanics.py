@@ -5,7 +5,7 @@ CamForge - 凸轮机构运动学计算模块
 
 from __future__ import annotations
 
-__version__: str = "0.4.2"
+__version__: str = "0.4.3"
 
 import numpy as np
 from numpy.typing import NDArray
@@ -46,8 +46,8 @@ def compute_rise(
         raise ValueError(f"h must be >= 0, got {h}")
     if omega <= 0:
         raise ValueError(f"omega must be > 0, got {omega}")
-    if law not in (1, 2, 3, 4, 5):
-        raise ValueError(f"law must be 1-5, got {law}")
+    if law not in (1, 2, 3, 4, 5, 6):
+        raise ValueError(f"law must be 1-6, got {law}")
     if law == 1:  # 等速运动
         s = h * delta_arr / delta_0
         v = h * omega / delta_0 * np.ones_like(delta_arr)
@@ -85,13 +85,20 @@ def compute_rise(
         v = h * omega * (1 - np.cos(ratio)) / delta_0
         a = 2 * np.pi * h * omega ** 2 * np.sin(ratio) / delta_0 ** 2
 
-    elif law == 5:  # 五次多项式
+    elif law == 5:  # 五次多项式 (3-4-5)
         t = delta_arr / delta_0
         s = h * (10 * t ** 3 - 15 * t ** 4 + 6 * t ** 5)
         v = h * omega / delta_0 * (30 * t ** 2 - 60 * t ** 3 + 30 * t ** 4)
         a = h * omega ** 2 / delta_0 ** 2 * (60 * t - 180 * t ** 2 + 120 * t ** 3)
+
+    elif law == 6:  # 七次多项式 (4-5-6-7)
+        t = delta_arr / delta_0
+        s = h * (35 * t ** 4 - 84 * t ** 5 + 70 * t ** 6 - 20 * t ** 7)
+        v = h * omega / delta_0 * (140 * t ** 3 - 420 * t ** 4 + 420 * t ** 5 - 140 * t ** 6)
+        a = h * omega ** 2 / delta_0 ** 2 * (420 * t ** 2 - 1680 * t ** 3 + 2100 * t ** 4 - 840 * t ** 5)
+
     else:
-        raise ValueError(f"law must be 1-5, got {law}")
+        raise ValueError(f"law must be 1-6, got {law}")
 
     return s, v, a
 
@@ -128,8 +135,8 @@ def compute_return(
         raise ValueError(f"h must be >= 0, got {h}")
     if omega <= 0:
         raise ValueError(f"omega must be > 0, got {omega}")
-    if law not in (1, 2, 3, 4, 5):
-        raise ValueError(f"law must be 1-5, got {law}")
+    if law not in (1, 2, 3, 4, 5, 6):
+        raise ValueError(f"law must be 1-6, got {law}")
     if law == 1:  # 等速运动
         s = h * (1 - delta_arr / delta_ret)
         v = -h * omega / delta_ret * np.ones_like(delta_arr)
@@ -167,13 +174,20 @@ def compute_return(
         v = -h * omega * (1 - np.cos(ratio)) / delta_ret
         a = -2 * np.pi * h * omega ** 2 * np.sin(ratio) / delta_ret ** 2
 
-    elif law == 5:  # 五次多项式
+    elif law == 5:  # 五次多项式 (3-4-5)
         t = delta_arr / delta_ret
         s = h * (1 - (10 * t ** 3 - 15 * t ** 4 + 6 * t ** 5))
         v = -h * omega / delta_ret * (30 * t ** 2 - 60 * t ** 3 + 30 * t ** 4)
         a = -h * omega ** 2 / delta_ret ** 2 * (60 * t - 180 * t ** 2 + 120 * t ** 3)
+
+    elif law == 6:  # 七次多项式 (4-5-6-7)
+        t = delta_arr / delta_ret
+        s = h * (1 - (35 * t ** 4 - 84 * t ** 5 + 70 * t ** 6 - 20 * t ** 7))
+        v = -h * omega / delta_ret * (140 * t ** 3 - 420 * t ** 4 + 420 * t ** 5 - 140 * t ** 6)
+        a = -h * omega ** 2 / delta_ret ** 2 * (420 * t ** 2 - 1680 * t ** 3 + 2100 * t ** 4 - 840 * t ** 5)
+
     else:
-        raise ValueError(f"law must be 1-5, got {law}")
+        raise ValueError(f"law must be 1-6, got {law}")
 
     return s, v, a
 
@@ -229,10 +243,10 @@ def compute_full_motion(
         raise ValueError(f"e must be < r_0, got e={e}, r_0={r_0}")
     if omega <= 0:
         raise ValueError(f"omega must be > 0, got {omega}")
-    if tc_law not in (1, 2, 3, 4, 5):
-        raise ValueError(f"tc_law must be 1-5, got {tc_law}")
-    if hc_law not in (1, 2, 3, 4, 5):
-        raise ValueError(f"hc_law must be 1-5, got {hc_law}")
+    if tc_law not in (1, 2, 3, 4, 5, 6):
+        raise ValueError(f"tc_law must be 1-6, got {tc_law}")
+    if hc_law not in (1, 2, 3, 4, 5, 6):
+        raise ValueError(f"hc_law must be 1-6, got {hc_law}")
     if n_points < 36:
         raise ValueError(f"n_points must be >= 36, got {n_points}")
     n_total = n_points
