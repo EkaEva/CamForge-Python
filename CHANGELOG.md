@@ -5,6 +5,33 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-04-19
+
+### Added
+- CustomTkinter UI framework: complete migration from tkinter to CustomTkinter
+- Modern Apple/iOS style UI with rounded corners and proper spacing
+- Card-based layout: related parameters grouped in rounded cards with subtle background color difference
+- Toggle switches (CTkSwitch) replacing traditional checkboxes for display options
+- Native dark mode support via `ctk.set_appearance_mode("System")`
+- New UI modules:
+  - `ui/ctk_constants.py`: UI style constants (colors, padding, corner radius)
+  - `ui/ctk_components.py`: Reusable components (CardGroup, EntryRow, SwitchRow, ComboRow)
+  - `ui/ctk_sidebar.py`: Modern sidebar with card layout
+  - `ui/ctk_toolbar.py`: Modern toolbar with rounded buttons
+- `customtkinter>=5.2,<6` dependency
+
+### Changed
+- Main window now inherits from `ctk.CTk` instead of `tk.Tk`
+- Sidebar uses `CTkScrollableFrame` for better scrolling
+- All buttons use rounded corners (CORNER_RADIUS=10)
+- Input fields use consistent styling with right-aligned text
+- Theme switching now uses `ctk.set_appearance_mode()` API
+- Improved visual hierarchy with section headers and card grouping
+
+### Removed
+- Old tkinter-based sidebar (`ui/sidebar.py` replaced by `ui/ctk_sidebar.py`)
+- Manual theme color management (now handled by CustomTkinter)
+
 ## [0.5.2] - 2026-04-19
 
 ### Changed
