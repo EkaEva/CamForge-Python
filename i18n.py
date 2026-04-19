@@ -99,6 +99,41 @@ TRANSLATIONS = {
         "zh": "压力角阈值 (°)", "en": "Pressure Angle Threshold (°)",
     },
 
+    # ---- Tooltips ----
+    "tooltip.delta_0": {
+        "zh": "推程运动角，范围: 40°-180°", "en": "Rise angle, range: 40°-180°",
+    },
+    "tooltip.delta_01": {
+        "zh": "远休止角，范围: 0°-180°", "en": "Far dwell angle, range: 0°-180°",
+    },
+    "tooltip.delta_ret": {
+        "zh": "回程运动角，范围: 40°-180°", "en": "Return angle, range: 40°-180°",
+    },
+    "tooltip.delta_02": {
+        "zh": "近休止角，范围: 0°-180°", "en": "Near dwell angle, range: 0°-180°",
+    },
+    "tooltip.h": {
+        "zh": "推杆行程，范围: 5-100 mm", "en": "Follower stroke, range: 5-100 mm",
+    },
+    "tooltip.omega": {
+        "zh": "凸轮角速度，范围: 1-100 rad/s", "en": "Cam angular velocity, range: 1-100 rad/s",
+    },
+    "tooltip.r_0": {
+        "zh": "基圆半径，范围: 10-200 mm", "en": "Base circle radius, range: 10-200 mm",
+    },
+    "tooltip.e": {
+        "zh": "偏距，范围: 0-50 mm，需小于基圆半径", "en": "Offset, range: 0-50 mm, must be < base radius",
+    },
+    "tooltip.r_r": {
+        "zh": "滚子半径，0 表示尖底从动件", "en": "Roller radius, 0 for knife-edge follower",
+    },
+    "tooltip.alpha_threshold": {
+        "zh": "许用压力角，超过时显示警告", "en": "Allowable pressure angle, shows warning if exceeded",
+    },
+    "tooltip.n_points": {
+        "zh": "离散点数，范围: 36-3600，影响精度和性能", "en": "Discrete points, range: 36-3600, affects precision and performance",
+    },
+
     # ---- Sidebar Checkbuttons ----
     "sidebar.cb.tangent": {
         "zh": "切线", "en": "Tangent",
@@ -152,6 +187,27 @@ TRANSLATIONS = {
     },
     "toolbar.btn.save_preset": {
         "zh": "保存预设", "en": "Save Preset",
+    },
+    "toolbar.label.quick_preset": {
+        "zh": "快速预设:", "en": "Quick Preset:",
+    },
+    "toolbar.quick_preset.default": {
+        "zh": "默认", "en": "Default",
+    },
+    "toolbar.quick_preset.small_cam": {
+        "zh": "小型凸轮", "en": "Small Cam",
+    },
+    "toolbar.quick_preset.large_cam": {
+        "zh": "大型凸轮", "en": "Large Cam",
+    },
+    "toolbar.quick_preset.high_speed": {
+        "zh": "高速凸轮", "en": "High Speed",
+    },
+    "toolbar.quick_preset.roller": {
+        "zh": "滚子从动件", "en": "Roller Follower",
+    },
+    "toolbar.btn.export_all": {
+        "zh": "全部导出", "en": "Export All",
     },
     "toolbar.btn.load_preset": {
         "zh": "加载预设", "en": "Load Preset",

@@ -18,6 +18,33 @@ from ui.constants import (
 from ui.params import ParameterModel, generate_random_params
 
 
+class ToolTip:
+    """悬浮提示工具类"""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip = None
+        widget.bind('<Enter>', self.show)
+        widget.bind('<Leave>', self.hide)
+
+    def show(self, event=None):
+        x, y, _, _ = self.widget.bbox("insert") if hasattr(self.widget, 'bbox') else (0, 0, 0, 0)
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+        self.tooltip = tk.Toplevel(self.widget)
+        self.tooltip.wm_overrideredirect(True)
+        self.tooltip.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(self.tooltip, text=self.text, background="#ffffe0",
+                         relief="solid", borderwidth=1, font=("Microsoft YaHei", 9))
+        label.pack()
+
+    def hide(self, event=None):
+        if self.tooltip:
+            self.tooltip.destroy()
+            self.tooltip = None
+
+
 class SidebarBuilder:
     """构建和管理侧边栏参数面板。
 
@@ -98,41 +125,52 @@ class SidebarBuilder:
 
         self._add_entry(self.frame, 'delta_0', t("sidebar.label.delta_0", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.delta_0",
-                        default=str(DEFAULT_PARAMS['delta_0']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['delta_0']), conv_type=float,
+                        tooltip=t("tooltip.delta_0", lang))
         self._add_entry(self.frame, 'delta_01', t("sidebar.label.delta_01", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.delta_01",
-                        default=str(DEFAULT_PARAMS['delta_01']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['delta_01']), conv_type=float,
+                        tooltip=t("tooltip.delta_01", lang))
         self._add_entry(self.frame, 'delta_ret', t("sidebar.label.delta_ret", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.delta_ret",
-                        default=str(DEFAULT_PARAMS['delta_ret']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['delta_ret']), conv_type=float,
+                        tooltip=t("tooltip.delta_ret", lang))
         self._add_entry(self.frame, 'delta_02', t("sidebar.label.delta_02", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.delta_02",
-                        default=str(DEFAULT_PARAMS['delta_02']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['delta_02']), conv_type=float,
+                        tooltip=t("tooltip.delta_02", lang))
         self._add_entry(self.frame, 'h', t("sidebar.label.h", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.h",
-                        default=str(DEFAULT_PARAMS['h']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['h']), conv_type=float,
+                        tooltip=t("tooltip.h", lang))
         self._add_entry(self.frame, 'omega', t("sidebar.label.omega", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.omega",
-                        default=str(DEFAULT_PARAMS['omega']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['omega']), conv_type=float,
+                        tooltip=t("tooltip.omega", lang))
 
         # ---- 几何参数组 ----
         self._sidebar_group(self.frame, t("sidebar.group.geometry", lang), i18n_key="sidebar.group.geometry")
 
         self._add_entry(self.frame, 'r_0', t("sidebar.label.r_0", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.r_0",
-                        default=str(DEFAULT_PARAMS['r_0']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['r_0']), conv_type=float,
+                        tooltip=t("tooltip.r_0", lang))
         self._add_entry(self.frame, 'e', t("sidebar.label.e", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.e",
-                        default=str(DEFAULT_PARAMS['e']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['e']), conv_type=float,
+                        tooltip=t("tooltip.e", lang))
         self._add_entry(self.frame, 'r_r', t("sidebar.label.r_r", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.r_r",
-                        default=str(DEFAULT_PARAMS['r_r']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['r_r']), conv_type=float,
+                        tooltip=t("tooltip.r_r", lang))
         self._add_entry(self.frame, 'alpha_threshold', t("sidebar.label.alpha_threshold", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.alpha_threshold",
-                        default=str(DEFAULT_PARAMS['alpha_threshold']), conv_type=float)
+                        default=str(DEFAULT_PARAMS['alpha_threshold']), conv_type=float,
+                        tooltip=t("tooltip.alpha_threshold", lang))
         self._add_entry(self.frame, 'n_points', t("sidebar.label.n_points", lang),
                         lbl_kw, ent_kw, i18n_key="sidebar.label.n_points",
-                        default=str(DEFAULT_PARAMS['n_points']), conv_type=int)
+                        default=str(DEFAULT_PARAMS['n_points']), conv_type=int,
+                        tooltip=t("tooltip.n_points", lang))
 
         # ---- 运动规律组 ----
         self._sidebar_group(self.frame, t("sidebar.group.law", lang), i18n_key="sidebar.group.law")
@@ -204,7 +242,7 @@ class SidebarBuilder:
             self.i18n_mgr.register(i18n_key, lbl, font_size=10)
 
     def _add_entry(self, parent, name, label_text, lbl_kw, ent_kw,
-                   i18n_key=None, default='', conv_type=float):
+                   i18n_key=None, default='', conv_type=float, tooltip=None):
         """添加一个参数输入框。"""
         self._sidebar_item(parent, label_text, lbl_kw, i18n_key=i18n_key)
         entry = tk.Entry(parent, **ent_kw)
@@ -214,6 +252,9 @@ class SidebarBuilder:
         self.theme_mgr.register_widget(entry)
         if self._on_validate_entry and conv_type:
             entry.bind('<FocusOut>', lambda e, ent=entry, ct=conv_type: self._on_validate_entry(ent, ct))
+        # 添加 tooltip
+        if tooltip:
+            ToolTip(entry, tooltip)
 
     def _add_combo(self, parent, name, label_text, values, combo_kw,
                    i18n_key=None, default_idx=0):

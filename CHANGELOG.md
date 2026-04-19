@@ -5,6 +5,17 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-04-19
+
+### Added
+- Quick preset menu: toolbar dropdown with 5 built-in presets (Default, Small Cam, Large Cam, High Speed, Roller Follower)
+- Parameter tooltips: hover over input fields to see valid ranges
+- Export All button: one-click to export all formats (TIFF, SVG, CSV, Excel, DXF, GIF)
+- ToolTip class in `ui/sidebar.py` for hover hints
+
+### Changed
+- Refactored export logic into `_do_export()` method for code reuse
+
 ## [0.5.0] - 2026-04-19
 
 ### Added

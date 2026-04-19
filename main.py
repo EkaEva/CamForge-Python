@@ -414,6 +414,32 @@ class CamSimulator:
         self.btn_save_preset.pack(side=tk.LEFT, padx=6)
         self._reg("toolbar.btn.save_preset", self.btn_save_preset, font_size=10)
 
+        # 快速预设下拉菜单
+        quick_preset_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
+        quick_preset_frame.pack(side=tk.LEFT, padx=6)
+        lbl_quick = tk.Label(quick_preset_frame, text=t("toolbar.label.quick_preset", self.lang),
+                             font=(self._tk_font_family, 9), bg=THEME['toolbar_bg'])
+        lbl_quick.pack(side=tk.LEFT, padx=(0, 2))
+        self._reg("toolbar.label.quick_preset", lbl_quick, font_size=9)
+        self.quick_preset_var = tk.StringVar()
+        self.quick_preset_combo = ttk.Combobox(quick_preset_frame, textvariable=self.quick_preset_var,
+                                                state='readonly', width=12,
+                                                font=(self._tk_font_family, 9))
+        self.quick_preset_combo.pack(side=tk.LEFT)
+        self.quick_preset_combo.bind('<<ComboboxSelected>>', self._on_quick_preset_select)
+        self._update_quick_preset_list()
+
+        # 批量导出按钮
+        self.btn_export_all = tk.Button(toolbar, text=t("toolbar.btn.export_all", self.lang),
+                                        command=self._on_export_all,
+                                        bg=THEME['btn_random'], fg=THEME['btn_fg'],
+                                        activebackground=THEME['btn_random_active'],
+                                        relief=tk.FLAT, bd=0,
+                                        font=(self._tk_font_family, 10), width=10, height=1,
+                                        cursor='hand2')
+        self.btn_export_all.pack(side=tk.LEFT, padx=6)
+        self._reg("toolbar.btn.export_all", self.btn_export_all, font_size=10)
+
         self.btn_download = tk.Button(toolbar, text=t("toolbar.btn.download", self.lang),
                                       command=self._on_download,
                                       bg=THEME['btn_download'], fg=THEME['btn_fg'],
@@ -1139,15 +1165,8 @@ class CamSimulator:
             # 输入无效，高亮提示
             entry.config(bg='#fecaca')
 
-    def _on_download(self):
-        """下载勾选的图片"""
-        if not any([self.dl_motion.get(), self.dl_geom.get(),
-                     self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get(),
-                     self.dl_svg.get(), self.dl_csv.get(),
-                     self.dl_dxf.get()]):
-            self.status_var.set(t("status.no_download_selection", self.lang))
-            return
-
+    def _on_export_all(self):
+        """一键导出所有格式"""
         if self.sim_data is None:
             self.status_var.set(t("status.run_first", self.lang))
             return
@@ -1156,6 +1175,43 @@ class CamSimulator:
         if not folder:
             return
 
+        # 临时设置所有导出选项为 True
+        original_values = {
+            'motion': self.dl_motion.get(),
+            'geom': self.dl_geom.get(),
+            'profile': self.dl_profile.get(),
+            'anim': self.dl_anim.get(),
+            'excel': self.dl_excel.get(),
+            'svg': self.dl_svg.get(),
+            'csv': self.dl_csv.get(),
+            'dxf': self.dl_dxf.get(),
+        }
+
+        # 设置所有选项为 True
+        self.dl_motion.set(True)
+        self.dl_geom.set(True)
+        self.dl_profile.set(True)
+        self.dl_anim.set(True)
+        self.dl_excel.set(True)
+        self.dl_svg.set(True)
+        self.dl_csv.set(True)
+        self.dl_dxf.set(True)
+
+        # 执行导出
+        self._do_export(folder)
+
+        # 恢复原始选项
+        self.dl_motion.set(original_values['motion'])
+        self.dl_geom.set(original_values['geom'])
+        self.dl_profile.set(original_values['profile'])
+        self.dl_anim.set(original_values['anim'])
+        self.dl_excel.set(original_values['excel'])
+        self.dl_svg.set(original_values['svg'])
+        self.dl_csv.set(original_values['csv'])
+        self.dl_dxf.set(original_values['dxf'])
+
+    def _do_export(self, folder):
+        """执行导出操作（内部方法）"""
         data = self.sim_data
         saved = []
         errors = []
@@ -1209,6 +1265,25 @@ class CamSimulator:
                 self.status_var.set(t("error.openpyxl_missing", self.lang))
             elif err_msg:
                 self.status_var.set(t("status.export_failed", self.lang, error=err_msg))
+
+    def _on_download(self):
+        """下载勾选的图片"""
+        if not any([self.dl_motion.get(), self.dl_geom.get(),
+                     self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get(),
+                     self.dl_svg.get(), self.dl_csv.get(),
+                     self.dl_dxf.get()]):
+            self.status_var.set(t("status.no_download_selection", self.lang))
+            return
+
+        if self.sim_data is None:
+            self.status_var.set(t("status.run_first", self.lang))
+            return
+
+        folder = filedialog.askdirectory(title=t("export.folder_dialog.title", self.lang))
+        if not folder:
+            return
+
+        self._do_export(folder)
 
     def _export_gif(self, filepath, folder, saved_list):
         """在后台线程中导出GIF动画"""
@@ -1373,6 +1448,74 @@ class CamSimulator:
             self.status_var.set(t("status.preset_loaded", self.lang, file=os.path.basename(filepath)))
         except Exception as exc:
             self.status_var.set(t("status.preset_load_failed", self.lang, error=str(exc)))
+
+    def _update_quick_preset_list(self):
+        """更新快速预设下拉列表"""
+        # 内置预设
+        built_in_presets = [
+            t("toolbar.quick_preset.default", self.lang),
+            t("toolbar.quick_preset.small_cam", self.lang),
+            t("toolbar.quick_preset.large_cam", self.lang),
+            t("toolbar.quick_preset.high_speed", self.lang),
+            t("toolbar.quick_preset.roller", self.lang),
+        ]
+        # 用户保存的预设
+        user_presets = [p['name'] for p in self.config_mgr.get_quick_presets()]
+        all_presets = built_in_presets + user_presets
+        self.quick_preset_combo['values'] = all_presets
+
+    def _on_quick_preset_select(self, event=None):
+        """快速预设选择事件"""
+        selected = self.quick_preset_var.get()
+        if not selected:
+            return
+
+        # 内置预设数据
+        built_in_presets = {
+            t("toolbar.quick_preset.default", self.lang): {
+                'delta_0': 120, 'delta_01': 60, 'delta_ret': 90, 'delta_02': 90,
+                'h': 30, 'r_0': 40, 'e': 5, 'omega': 10,
+                'tc_law': 4, 'hc_law': 4, 'sn': 1, 'pz': 1,
+                'r_r': 0, 'n_points': 360, 'alpha_threshold': 30,
+            },
+            t("toolbar.quick_preset.small_cam", self.lang): {
+                'delta_0': 90, 'delta_01': 45, 'delta_ret': 90, 'delta_02': 135,
+                'h': 15, 'r_0': 25, 'e': 3, 'omega': 15,
+                'tc_law': 5, 'hc_law': 5, 'sn': 1, 'pz': 1,
+                'r_r': 0, 'n_points': 360, 'alpha_threshold': 35,
+            },
+            t("toolbar.quick_preset.large_cam", self.lang): {
+                'delta_0': 150, 'delta_01': 30, 'delta_ret': 120, 'delta_02': 60,
+                'h': 50, 'r_0': 80, 'e': 10, 'omega': 5,
+                'tc_law': 4, 'hc_law': 4, 'sn': 1, 'pz': 1,
+                'r_r': 0, 'n_points': 360, 'alpha_threshold': 25,
+            },
+            t("toolbar.quick_preset.high_speed", self.lang): {
+                'delta_0': 120, 'delta_01': 60, 'delta_ret': 120, 'delta_02': 60,
+                'h': 25, 'r_0': 50, 'e': 8, 'omega': 50,
+                'tc_law': 6, 'hc_law': 6, 'sn': 1, 'pz': 1,
+                'r_r': 0, 'n_points': 720, 'alpha_threshold': 25,
+            },
+            t("toolbar.quick_preset.roller", self.lang): {
+                'delta_0': 135, 'delta_01': 45, 'delta_ret': 90, 'delta_02': 90,
+                'h': 35, 'r_0': 45, 'e': 6, 'omega': 12,
+                'tc_law': 4, 'hc_law': 4, 'sn': 1, 'pz': 1,
+                'r_r': 10, 'n_points': 360, 'alpha_threshold': 30,
+            },
+        }
+
+        if selected in built_in_presets:
+            preset_data = built_in_presets[selected]
+            self.sidebar.load_preset_data(preset_data)
+            self.status_var.set(t("status.preset_loaded", self.lang, file=selected))
+        else:
+            # 用户预设
+            user_presets = self.config_mgr.get_quick_presets()
+            for p in user_presets:
+                if p['name'] == selected:
+                    self.sidebar.load_preset_data(p['params'])
+                    self.status_var.set(t("status.preset_loaded", self.lang, file=selected))
+                    break
 
     def _export_dxf(self, folder: str, saved_list: list, errors: list) -> None:
         """导出 DXF 文件
