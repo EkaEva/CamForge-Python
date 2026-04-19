@@ -194,7 +194,9 @@ Check the items to export, then click the **"Download"** button:
 | CSV | CSV | Angle, radius, displacement, velocity, acceleration, curvature, pressure angle |
 | Excel | XLSX | Same as CSV, 7 columns |
 | SVG | SVG | Vector graphics: motion curves + geometry constraints |
-| Preset | JSON | Current parameter configuration, can be loaded |
+| DXF | DXF | Cam profile CAD format, compatible with AutoCAD |
+
+> 💡 Use the **"Save Preset"** button to save current parameters as a JSON file for later loading.
 
 ### 7. Random Exploration
 

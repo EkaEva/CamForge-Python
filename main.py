@@ -159,7 +159,6 @@ class CamSimulator:
         self.dl_geom.set(export_opts.get('dl_geom', True))
         self.dl_anim.set(export_opts.get('dl_anim', True))
         self.dl_svg.set(export_opts.get('dl_svg', True))
-        self.dl_preset.set(export_opts.get('dl_preset', True))
         self.dl_dxf.set(export_opts.get('dl_dxf', False))
         self.dl_preset.set(export_opts.get('dl_preset', True))
 
@@ -185,7 +184,6 @@ class CamSimulator:
             'dl_geom': self.dl_geom.get(),
             'dl_anim': self.dl_anim.get(),
             'dl_svg': self.dl_svg.get(),
-            'dl_preset': self.dl_preset.get(),
             'dl_dxf': self.dl_dxf.get(),
         }
         self.config_mgr.set_export_options(export_opts)
@@ -476,11 +474,6 @@ class CamSimulator:
         cb_dl_dxf = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_dxf", self.lang), variable=self.dl_dxf, **dl_cb_kw)
         cb_dl_dxf.pack(side=tk.LEFT, padx=2)
         self._reg("toolbar.cb.dl_dxf", cb_dl_dxf, font_size=9)
-
-        self.dl_preset = tk.BooleanVar(value=True)
-        cb_dl_preset = tk.Checkbutton(dl_row2, text=t("toolbar.cb.dl_preset", self.lang), variable=self.dl_preset, **dl_cb_kw)
-        cb_dl_preset.pack(side=tk.LEFT, padx=2)
-        self._reg("toolbar.cb.dl_preset", cb_dl_preset, font_size=9)
 
         # 速度滑块（靠右，标签在左滑块在右）
         speed_frame = tk.Frame(toolbar, bg=THEME['toolbar_bg'])
@@ -1150,7 +1143,7 @@ class CamSimulator:
         """下载勾选的图片"""
         if not any([self.dl_motion.get(), self.dl_geom.get(),
                      self.dl_profile.get(), self.dl_anim.get(), self.dl_excel.get(),
-                     self.dl_svg.get(), self.dl_csv.get(), self.dl_preset.get(),
+                     self.dl_svg.get(), self.dl_csv.get(),
                      self.dl_dxf.get()]):
             self.status_var.set(t("status.no_download_selection", self.lang))
             return
@@ -1201,10 +1194,6 @@ class CamSimulator:
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
             filepath = os.path.join(folder, filename_anim)
             self._export_gif(filepath, folder, saved)
-
-        # 预设保存
-        if self.dl_preset.get():
-            self._save_preset_to_folder(folder, saved, errors)
 
         # DXF 导出
         if self.dl_dxf.get():
@@ -1384,18 +1373,6 @@ class CamSimulator:
             self.status_var.set(t("status.preset_loaded", self.lang, file=os.path.basename(filepath)))
         except Exception as exc:
             self.status_var.set(t("status.preset_load_failed", self.lang, error=str(exc)))
-
-    def _save_preset_to_folder(self, folder, saved_list, errors):
-        """保存预设到指定文件夹"""
-        try:
-            preset = self.sidebar.get_preset_data()
-            filename = t("export.filename.preset", self.lang) + ".json"
-            filepath = os.path.join(folder, filename)
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(preset, f, indent=2, ensure_ascii=False)
-            saved_list.append(filename)
-        except Exception as exc:
-            errors.append(f"preset: {exc}")
 
     def _export_dxf(self, folder: str, saved_list: list, errors: list) -> None:
         """导出 DXF 文件

@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Application now loads saved configuration on startup
 - Application now saves configuration on exit
 
+### Removed
+- Preset checkbox from download options (redundant with "Save Preset" button)
+
 ## [0.4.3] - 2026-04-19
 
 ### Added

@@ -22,7 +22,7 @@ class ConfigManager:
             'dl_geom': True,
             'dl_anim': True,
             'dl_svg': True,
-            'dl_preset': True,
+            'dl_dxf': False,
         },
         'ui': {
             'language': 'zh',
