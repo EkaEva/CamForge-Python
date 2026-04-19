@@ -41,3 +41,6 @@ build/
 *.build/
 *.onefile-build/
 
+# PyInstaller auto-generated spec files
+CamForge-v*.spec
+

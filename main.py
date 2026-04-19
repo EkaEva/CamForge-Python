@@ -3,20 +3,22 @@ CamForge - 尖顶凸轮仿真
 使用 tkinter + matplotlib 实现凸轮机构运动学仿真
 """
 
+import json
+import os
+import platform
+import sys
+import threading
 import tkinter as tk
-from tkinter import ttk
-import numpy as np
+from tkinter import filedialog, ttk
+
 import matplotlib
-matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.gridspec import GridSpec
-import matplotlib.pyplot as plt
-import os
-import threading
-import json
-from io import BytesIO
-from tkinter import filedialog
+
+matplotlib.use('TkAgg')
 
 try:
     import openpyxl
@@ -29,17 +31,13 @@ except ImportError:
     PILImage = None
 
 from cam_mechanics import (
-    compute_full_motion, compute_cam_profile, compute_pressure_angle,
-    compute_rotated_cam, compute_anim_frame_data,
-    compute_pressure_angle_arc, validate_params,
-    compute_roller_profile, compute_curvature_radius,
     DEG2RAD, __version__,
+    compute_cam_profile, compute_curvature_radius,
+    compute_full_motion, compute_pressure_angle,
+    compute_roller_profile, validate_params,
 )
 
-from i18n import t, SUPPORTED_LANGS, DEFAULT_LANG, FONT_MAP, detect_mpl_fonts
-
-import sys
-import platform
+from i18n import DEFAULT_LANG, FONT_MAP, SUPPORTED_LANGS, detect_mpl_fonts, t
 
 plt.rcParams['font.sans-serif'] = detect_mpl_fonts(DEFAULT_LANG)
 plt.rcParams['axes.unicode_minus'] = False

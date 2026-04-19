@@ -223,6 +223,18 @@ Goal: Fix n_points related bugs, optimize display quality.
 - [x] **P13-8** Speed slider label and slider horizontally aligned
 - [x] **P13-9** Spline interpolation for smooth display when n_points < 180
 
+### Phase 14 — v0.4.2 Code Cleanup ✅ Complete
+
+Goal: Clean up redundant files and code, improve code quality.
+
+- [x] **P14-1** Remove duplicate icon file `CamForge.ico` (keep `camforge.ico`)
+- [x] **P14-2** Remove auto-generated `CamForge-v0.4.1.spec`
+- [x] **P14-3** Remove unused imports in `main.py`: `BytesIO`, `compute_rotated_cam`, `compute_anim_frame_data`, `compute_pressure_angle_arc`
+- [x] **P14-4** Remove unused variables in `cam_mechanics.py`: `delta_01`, `delta_02`
+- [x] **P14-5** Fix line length issues in `i18n.py` (split long strings)
+- [x] **P14-6** Reorganize imports in `main.py` (sorted, grouped)
+- [x] **P14-7** Update `.gitignore` to ignore auto-generated spec files
+
 ---
 
 ## III. Issue Statistics

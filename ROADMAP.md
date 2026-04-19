@@ -223,6 +223,18 @@
 - [x] **P13-8** 速度滑块标签与滑块水平对齐
 - [x] **P13-9** 低离散点数时样条插值平滑显示（n_points < 180）
 
+### Phase 14 — v0.4.2 代码清理 ✅ 已完成
+
+目标：清理冗余文件和代码，提升代码质量。
+
+- [x] **P14-1** 删除重复图标文件 `CamForge.ico`（保留 `camforge.ico`）
+- [x] **P14-2** 删除自动生成的 `CamForge-v0.4.1.spec`
+- [x] **P14-3** 移除 `main.py` 未使用的导入：`BytesIO`, `compute_rotated_cam`, `compute_anim_frame_data`, `compute_pressure_angle_arc`
+- [x] **P14-4** 移除 `cam_mechanics.py` 未使用的变量：`delta_01`, `delta_02`
+- [x] **P14-5** 修复 `i18n.py` 行过长问题（拆分长字符串）
+- [x] **P14-6** 重组 `main.py` 导入语句（排序、分组）
+- [x] **P14-7** 更新 `.gitignore` 忽略自动生成的 spec 文件
+
 ---
 
 ## 三、问题统计

@@ -5,6 +5,21 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-04-19
+
+### Changed
+- Reorganize imports in `main.py` (sorted, remove unused)
+- Fix line length issues in `i18n.py` (split long strings)
+
+### Removed
+- Duplicate `CamForge.ico` (kept `camforge.ico`)
+- Auto-generated `CamForge-v0.4.1.spec` (use `CamForge.spec` instead)
+- Unused imports in `main.py`: `BytesIO`, `compute_rotated_cam`, `compute_anim_frame_data`, `compute_pressure_angle_arc`
+- Unused variables in `cam_mechanics.py`: `delta_01`, `delta_02`
+
+### Fixed
+- Add `CamForge-v*.spec` to `.gitignore` to prevent future auto-generated spec files from being committed
+
 ## [0.4.1] - 2026-04-18
 
 ### Added

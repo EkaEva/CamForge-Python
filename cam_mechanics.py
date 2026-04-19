@@ -5,7 +5,7 @@ CamForge - 凸轮机构运动学计算模块
 
 from __future__ import annotations
 
-__version__: str = "0.4.1"
+__version__: str = "0.4.2"
 
 import numpy as np
 from numpy.typing import NDArray
@@ -245,9 +245,7 @@ def compute_full_motion(
 
     # 各阶段角度范围（弧度）
     delta_0 = np.radians(delta_0_deg)
-    delta_01 = np.radians(delta_01_deg)
     delta_ret = np.radians(delta_ret_deg)
-    delta_02 = np.radians(delta_02_deg)
 
     # 阶段分界索引（带边界保护）
     # 索引需要根据 n_points 缩放：角度/360° * n_points
