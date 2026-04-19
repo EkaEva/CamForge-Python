@@ -133,7 +133,7 @@ class CamSimulator(ctk.CTk):
             self.sidebar.load_preset_data(last_params)
 
         export_opts = self.config_mgr.get_export_options()
-        for name, var in self.toolbar.checkboxes.items():
+        for name, var in self.sidebar.download_checkboxes.items():
             if name in export_opts:
                 var.set(export_opts[name])
 
@@ -160,7 +160,7 @@ class CamSimulator(ctk.CTk):
         params = self.sidebar.get_preset_data()
         self.config_mgr.set_last_params(params)
 
-        export_opts = {name: var.get() for name, var in self.toolbar.checkboxes.items()}
+        export_opts = {name: var.get() for name, var in self.sidebar.download_checkboxes.items()}
         self.config_mgr.set_export_options(export_opts)
 
         ui_settings = {
@@ -582,19 +582,19 @@ class CamSimulator(ctk.CTk):
             return
 
         # 临时设置所有选项为 True
-        original_values = {name: var.get() for name, var in self.toolbar.checkboxes.items()}
-        for var in self.toolbar.checkboxes.values():
+        original_values = {name: var.get() for name, var in self.sidebar.download_checkboxes.items()}
+        for var in self.sidebar.download_checkboxes.values():
             var.set(True)
 
         self._do_export(folder)
 
         # 恢复原始选项
-        for name, var in self.toolbar.checkboxes.items():
+        for name, var in self.sidebar.download_checkboxes.items():
             var.set(original_values.get(name, True))
 
     def _on_download(self):
         """下载"""
-        if not any(var.get() for var in self.toolbar.checkboxes.values()):
+        if not any(var.get() for var in self.sidebar.download_checkboxes.values()):
             self.status_bar.set_status(t("status.no_download_selection", self.lang), 'warning')
             return
 
@@ -616,11 +616,11 @@ class CamSimulator(ctk.CTk):
 
         export_mgr = ExportManager(self, self._sim_data_lock)
         toggles = {
-            'motion': self.toolbar.checkboxes['dl_motion'].get(),
-            'geom': self.toolbar.checkboxes['dl_geom'].get(),
-            'profile': self.toolbar.checkboxes['dl_profile'].get(),
-            'svg': self.toolbar.checkboxes['dl_svg'].get(),
-            'csv': self.toolbar.checkboxes['dl_csv'].get(),
+            'motion': self.sidebar.download_checkboxes['dl_motion'].get(),
+            'geom': self.sidebar.download_checkboxes['dl_geom'].get(),
+            'profile': self.sidebar.download_checkboxes['dl_profile'].get(),
+            'svg': self.sidebar.download_checkboxes['dl_svg'].get(),
+            'csv': self.sidebar.download_checkboxes['dl_csv'].get(),
             'anim': False,
             'excel': False,
         }
@@ -639,20 +639,20 @@ class CamSimulator(ctk.CTk):
             if result is not None:
                 saved, errors, folder = result
 
-        if self.toolbar.checkboxes['dl_excel'].get():
+        if self.sidebar.download_checkboxes['dl_excel'].get():
             export_mgr._export_excel(folder, saved, data, self.lang, errors)
 
-        if self.toolbar.checkboxes['dl_anim'].get():
+        if self.sidebar.download_checkboxes['dl_anim'].get():
             filename_anim = t("export.filename.animation", self.lang) + ".gif"
             filepath = os.path.join(folder, filename_anim)
             self._export_gif(filepath, folder, saved)
 
-        if self.toolbar.checkboxes['dl_dxf'].get():
+        if self.sidebar.download_checkboxes['dl_dxf'].get():
             self._export_dxf(folder, saved, errors)
 
         if saved:
             self.status_bar.set_status(t("status.saved", self.lang, files=', '.join(saved), folder=folder), 'success')
-        elif self.toolbar.checkboxes['dl_anim'].get():
+        elif self.sidebar.download_checkboxes['dl_anim'].get():
             self.status_bar.set_status(t("status.gif_exporting", self.lang))
 
     def _export_dxf(self, folder, saved_list, errors):

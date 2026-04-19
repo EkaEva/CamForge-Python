@@ -100,9 +100,6 @@ class CTkToolbar:
         # 右侧控件组
         self._build_right_controls(on_frame_seek)
 
-        # 下载选项
-        self._build_download_options()
-
     def _build_buttons(self, on_start, on_pause, on_clear, on_random,
                        on_load_preset, on_save_preset, on_export_all, on_download):
         """构建按钮组"""
@@ -287,115 +284,6 @@ class CTkToolbar:
             width=100,
         )
         self.speed_slider.pack(side='left')
-
-    def _build_download_options(self):
-        """构建下载选项复选框"""
-        dl_frame = ctk.CTkFrame(self.frame, fg_color='transparent')
-        dl_frame.pack(side='left', padx=(20, 0), fill='y', anchor='center')
-
-        # 第一行
-        row1 = ctk.CTkFrame(dl_frame, fg_color='transparent')
-        row1.pack(side='top', fill='x', pady=(0, 2))
-
-        # 运动线图
-        self.checkboxes['dl_motion'] = tk.BooleanVar(value=True)
-        cb_motion = ctk.CTkCheckBox(
-            row1,
-            text=t("toolbar.cb.dl_motion", self.lang),
-            variable=self.checkboxes['dl_motion'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_motion.pack(side='left', padx=4)
-
-        # 廓形
-        self.checkboxes['dl_profile'] = tk.BooleanVar(value=True)
-        cb_profile = ctk.CTkCheckBox(
-            row1,
-            text=t("toolbar.cb.dl_profile", self.lang),
-            variable=self.checkboxes['dl_profile'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_profile.pack(side='left', padx=4)
-
-        # CSV
-        self.checkboxes['dl_csv'] = tk.BooleanVar(value=True)
-        cb_csv = ctk.CTkCheckBox(
-            row1,
-            text=t("toolbar.cb.dl_csv", self.lang),
-            variable=self.checkboxes['dl_csv'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_csv.pack(side='left', padx=4)
-
-        # Excel
-        self.checkboxes['dl_excel'] = tk.BooleanVar(value=True)
-        cb_excel = ctk.CTkCheckBox(
-            row1,
-            text=t("toolbar.cb.dl_excel", self.lang),
-            variable=self.checkboxes['dl_excel'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_excel.pack(side='left', padx=4)
-
-        # 第二行
-        row2 = ctk.CTkFrame(dl_frame, fg_color='transparent')
-        row2.pack(side='top', fill='x')
-
-        # 几何约束
-        self.checkboxes['dl_geom'] = tk.BooleanVar(value=True)
-        cb_geom = ctk.CTkCheckBox(
-            row2,
-            text=t("toolbar.cb.dl_geom", self.lang),
-            variable=self.checkboxes['dl_geom'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_geom.pack(side='left', padx=4)
-
-        # 动画
-        self.checkboxes['dl_anim'] = tk.BooleanVar(value=True)
-        cb_anim = ctk.CTkCheckBox(
-            row2,
-            text=t("toolbar.cb.dl_anim", self.lang),
-            variable=self.checkboxes['dl_anim'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_anim.pack(side='left', padx=4)
-
-        # SVG
-        self.checkboxes['dl_svg'] = tk.BooleanVar(value=True)
-        cb_svg = ctk.CTkCheckBox(
-            row2,
-            text=t("toolbar.cb.dl_svg", self.lang),
-            variable=self.checkboxes['dl_svg'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_svg.pack(side='left', padx=4)
-
-        # DXF
-        self.checkboxes['dl_dxf'] = tk.BooleanVar(value=False)
-        cb_dxf = ctk.CTkCheckBox(
-            row2,
-            text=t("toolbar.cb.dl_dxf", self.lang),
-            variable=self.checkboxes['dl_dxf'],
-            font=create_ctk_font(size=FONT_SIZE_LABEL - 2),
-            checkbox_width=16,
-            checkbox_height=16,
-        )
-        cb_dxf.pack(side='left', padx=4)
 
     def update_pause_button(self, text: str):
         """更新暂停按钮文本"""

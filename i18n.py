@@ -33,6 +33,12 @@ TRANSLATIONS = {
     },
 
     # ---- Sidebar Groups ----
+    "sidebar.group.common": {
+        "zh": "常用设置", "en": "Common Settings",
+    },
+    "sidebar.group.download": {
+        "zh": "下载选项", "en": "Download Options",
+    },
     "sidebar.group.language": {
         "zh": "语言", "en": "Language",
     },
