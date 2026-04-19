@@ -61,7 +61,7 @@ from ui.shortcut import ShortcutManager, setup_animation_shortcuts
 # CustomTkinter 组件
 from ui.ctk_constants import COLORS_LIGHT, COLORS_DARK, UI_PADDING, SIDEBAR_WIDTH
 from ui.ctk_sidebar import CTkSidebar
-from ui.ctk_toolbar import CTkToolbar, CTkStatusBar
+from ui.ctk_toolbar import CTkToolbar, CTkStatusBar, show_help_dialog, open_github
 
 
 class CamSimulator(ctk.CTk):
@@ -222,6 +222,8 @@ class CamSimulator(ctk.CTk):
             on_export_all=self._on_export_all,
             on_download=self._on_download,
             on_frame_seek=self._on_frame_seek,
+            on_help=self._on_help,
+            on_github=self._on_github,
         )
 
     def _build_figure(self):
@@ -290,6 +292,8 @@ class CamSimulator(ctk.CTk):
             on_export_all=self._on_export_all,
             on_download=self._on_download,
             on_frame_seek=self._on_frame_seek,
+            on_help=self._on_help,
+            on_github=self._on_github,
         )
         self.status_bar.build(self.lang)
 
@@ -538,6 +542,14 @@ class CamSimulator(ctk.CTk):
     def _on_random(self):
         """随机参数"""
         self.sidebar.set_random_params()
+
+    def _on_help(self):
+        """显示帮助对话框"""
+        show_help_dialog(self, self.lang)
+
+    def _on_github(self):
+        """打开 GitHub 页面"""
+        open_github()
 
     def _on_load_preset(self):
         """加载预设"""

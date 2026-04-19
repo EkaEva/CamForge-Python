@@ -8,6 +8,7 @@
 
 import customtkinter as ctk
 import tkinter as tk
+import webbrowser
 from typing import Callable, Optional, Dict
 
 from ui.ctk_constants import (
@@ -59,7 +60,9 @@ class CTkToolbar:
               on_save_preset: Optional[Callable] = None,
               on_export_all: Optional[Callable] = None,
               on_download: Optional[Callable] = None,
-              on_frame_seek: Optional[Callable] = None):
+              on_frame_seek: Optional[Callable] = None,
+              on_help: Optional[Callable] = None,
+              on_github: Optional[Callable] = None):
         """构建工具栏 UI
 
         Parameters
@@ -84,6 +87,10 @@ class CTkToolbar:
             下载回调
         on_frame_seek : callable, optional
             帧跳转回调
+        on_help : callable, optional
+            帮助回调
+        on_github : callable, optional
+            GitHub 链接回调
         """
         self.lang = lang
 
@@ -95,13 +102,15 @@ class CTkToolbar:
 
         # 左侧按钮组
         self._build_buttons(on_start, on_pause, on_clear, on_random,
-                           on_load_preset, on_save_preset, on_export_all, on_download)
+                           on_load_preset, on_save_preset, on_export_all, on_download,
+                           on_help, on_github)
 
         # 右侧控件组
         self._build_right_controls(on_frame_seek)
 
     def _build_buttons(self, on_start, on_pause, on_clear, on_random,
-                       on_load_preset, on_save_preset, on_export_all, on_download):
+                       on_load_preset, on_save_preset, on_export_all, on_download,
+                       on_help, on_github):
         """构建按钮组"""
         btn_frame = ctk.CTkFrame(self.frame, fg_color='transparent')
         btn_frame.pack(side='left', fill='y')
@@ -235,6 +244,39 @@ class CTkToolbar:
         btn_download.pack(side='left', padx=6)
         self.buttons['download'] = btn_download
 
+        # 帮助按钮（灰色轮廓）
+        btn_help = ctk.CTkButton(
+            btn_frame,
+            text=t("toolbar.btn.help", self.lang),
+            command=on_help,
+            fg_color='transparent',
+            border_width=2,
+            text_color=COLORS_LIGHT['text_secondary'],
+            hover_color='#f0f0f0',
+            font=create_ctk_font(size=FONT_SIZE_BUTTON),
+            corner_radius=CORNER_RADIUS,
+            height=BUTTON_HEIGHT,
+            width=60,
+        )
+        btn_help.pack(side='left', padx=6)
+        self.buttons['help'] = btn_help
+
+        # GitHub 按钮（深色填充）
+        btn_github = ctk.CTkButton(
+            btn_frame,
+            text=t("toolbar.btn.github", self.lang),
+            command=on_github,
+            fg_color='#24292e',
+            hover_color='#1a1e22',
+            text_color='white',
+            font=create_ctk_font(size=FONT_SIZE_BUTTON),
+            corner_radius=CORNER_RADIUS,
+            height=BUTTON_HEIGHT,
+            width=70,
+        )
+        btn_github.pack(side='left', padx=6)
+        self.buttons['github'] = btn_github
+
     def _build_right_controls(self, on_frame_seek):
         """构建右侧控件（速度滑块、帧进度条）"""
         right_frame = ctk.CTkFrame(self.frame, fg_color='transparent')
@@ -305,6 +347,100 @@ class CTkToolbar:
     def is_checked(self, name: str) -> bool:
         """检查复选框是否选中"""
         return self.checkboxes.get(name, tk.BooleanVar(value=False)).get()
+
+
+def show_help_dialog(parent, lang: str):
+    """显示帮助对话框
+
+    Parameters
+    ----------
+    parent : widget
+        父窗口
+    lang : str
+        当前语言代码
+    """
+    dialog = ctk.CTkToplevel(parent)
+    dialog.title(t("help.title", lang))
+    dialog.geometry("420x480")
+    dialog.resizable(False, False)
+    dialog.transient(parent)
+    dialog.grab_set()
+
+    # 居中显示
+    dialog.update_idletasks()
+    x = parent.winfo_x() + (parent.winfo_width() - 420) // 2
+    y = parent.winfo_y() + (parent.winfo_height() - 480) // 2
+    dialog.geometry(f"+{x}+{y}")
+
+    # 使用说明
+    section1 = ctk.CTkLabel(
+        dialog,
+        text=t("help.section.usage", lang),
+        font=create_ctk_font(size=FONT_SIZE_LABEL + 2, weight='bold'),
+        anchor='w',
+    )
+    section1.pack(fill='x', padx=20, pady=(20, 8))
+
+    for i in range(1, 4):
+        label = ctk.CTkLabel(
+            dialog,
+            text=t(f"help.usage.{i}", lang),
+            font=create_ctk_font(size=FONT_SIZE_LABEL),
+            anchor='w',
+        )
+        label.pack(fill='x', padx=30, pady=2)
+
+    # 键盘快捷键
+    section2 = ctk.CTkLabel(
+        dialog,
+        text=t("help.section.shortcuts", lang),
+        font=create_ctk_font(size=FONT_SIZE_LABEL + 2, weight='bold'),
+        anchor='w',
+    )
+    section2.pack(fill='x', padx=20, pady=(20, 8))
+
+    shortcuts = ['enter', 'space', 'left', 'right', 'home', 'end', 'esc', 'r']
+    for key in shortcuts:
+        label = ctk.CTkLabel(
+            dialog,
+            text=t(f"help.shortcuts.{key}", lang),
+            font=create_ctk_font(size=FONT_SIZE_LABEL),
+            anchor='w',
+        )
+        label.pack(fill='x', padx=30, pady=2)
+
+    # 提示
+    section3 = ctk.CTkLabel(
+        dialog,
+        text=t("help.section.tips", lang),
+        font=create_ctk_font(size=FONT_SIZE_LABEL + 2, weight='bold'),
+        anchor='w',
+    )
+    section3.pack(fill='x', padx=20, pady=(20, 8))
+
+    for i in range(1, 5):
+        label = ctk.CTkLabel(
+            dialog,
+            text=t(f"help.tips.{i}", lang),
+            font=create_ctk_font(size=FONT_SIZE_LABEL),
+            anchor='w',
+        )
+        label.pack(fill='x', padx=30, pady=2)
+
+    # 关闭按钮
+    btn_close = ctk.CTkButton(
+        dialog,
+        text="OK",
+        command=dialog.destroy,
+        corner_radius=CORNER_RADIUS,
+        width=80,
+    )
+    btn_close.pack(pady=(20, 15))
+
+
+def open_github():
+    """打开 GitHub 项目页面"""
+    webbrowser.open("https://github.com/EkaEva/CamForge")
 
 
 class CTkStatusBar:

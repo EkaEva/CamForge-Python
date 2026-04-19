@@ -224,6 +224,12 @@ TRANSLATIONS = {
     "toolbar.btn.load_preset": {
         "zh": "加载预设", "en": "Load Preset",
     },
+    "toolbar.btn.help": {
+        "zh": "帮助", "en": "Help",
+    },
+    "toolbar.btn.github": {
+        "zh": "GitHub", "en": "GitHub",
+    },
     "toolbar.label.speed": {
         "zh": "仿真速度:", "en": "Sim Speed:",
     },
@@ -596,6 +602,27 @@ TRANSLATIONS = {
     "dir.neg_offset": {"zh": "负偏距", "en": "Negative Offset"},
     "theme.light": {"zh": "浅色", "en": "Light"},
     "theme.dark": {"zh": "深色", "en": "Dark"},
+
+    # ---- Help Dialog ----
+    "help.title": {"zh": "CamForge 帮助", "en": "CamForge Help"},
+    "help.section.usage": {"zh": "使用说明", "en": "Usage"},
+    "help.usage.1": {"zh": "1. 在左侧边栏输入凸轮参数", "en": "1. Enter cam parameters in the left sidebar"},
+    "help.usage.2": {"zh": "2. 点击「开始仿真」按钮运行仿真", "en": "2. Click 'Start' button to run simulation"},
+    "help.usage.3": {"zh": "3. 使用「下载」按钮导出图表和数据", "en": "3. Use 'Download' button to export charts and data"},
+    "help.section.shortcuts": {"zh": "键盘快捷键", "en": "Keyboard Shortcuts"},
+    "help.shortcuts.enter": {"zh": "Enter - 开始仿真", "en": "Enter - Start simulation"},
+    "help.shortcuts.space": {"zh": "Space - 暂停/继续", "en": "Space - Pause/Resume"},
+    "help.shortcuts.left": {"zh": "← - 上一帧（暂停时）", "en": "← - Previous frame (when paused)"},
+    "help.shortcuts.right": {"zh": "→ - 下一帧（暂停时）", "en": "→ - Next frame (when paused)"},
+    "help.shortcuts.home": {"zh": "Home - 第一帧", "en": "Home - First frame"},
+    "help.shortcuts.end": {"zh": "End - 最后一帧", "en": "End - Last frame"},
+    "help.shortcuts.esc": {"zh": "Esc - 停止动画", "en": "Esc - Stop animation"},
+    "help.shortcuts.r": {"zh": "R - 随机参数", "en": "R - Random parameters"},
+    "help.section.tips": {"zh": "提示", "en": "Tips"},
+    "help.tips.1": {"zh": "• 四个角度之和必须等于 360°", "en": "• Four angles must sum to 360°"},
+    "help.tips.2": {"zh": "• 滚子半径设为 0 表示尖底从动件", "en": "• Set roller radius to 0 for knife-edge follower"},
+    "help.tips.3": {"zh": "• 使用「快速预设」快速加载常用配置", "en": "• Use 'Quick Preset' to load common configurations"},
+    "help.tips.4": {"zh": "• 压力角超过阈值时会显示警告", "en": "• Warning shown when pressure angle exceeds threshold"},
 }
 
 

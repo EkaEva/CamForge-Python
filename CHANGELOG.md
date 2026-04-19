@@ -5,6 +5,14 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.9] - 2026-04-19
+
+### Added
+- Help button in toolbar: shows usage instructions and keyboard shortcuts
+- GitHub button in toolbar: opens project repository in browser
+- Help dialog with comprehensive usage guide and tips
+- i18n keys for help dialog content (Chinese and English)
+
 ## [0.6.8] - 2026-04-19
 
 ### Changed
