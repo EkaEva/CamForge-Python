@@ -5,6 +5,16 @@ All notable changes to CamForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - 2026-04-19
+
+### Changed
+- GitHub button icon enlarged from 24x24 to 28x28 pixels
+- Sidebar download options layout reorganized:
+  - Row 1: 运动线图 | 几何约束
+  - Row 2: 动态图 | 廓形图
+  - Row 3: CSV | SVG
+  - Row 4: DXF | Excel
+
 ## [0.6.10] - 2026-04-19
 
 ### Changed

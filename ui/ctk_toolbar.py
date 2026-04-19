@@ -314,9 +314,9 @@ class CTkToolbar:
             for path in possible_paths:
                 if os.path.exists(path):
                     img = PILImage.open(path)
-                    # 调整大小以适应按钮
-                    img = img.resize((24, 24), PILImage.Resampling.LANCZOS)
-                    return ctk.CTkImage(light_image=img, dark_image=img, size=(24, 24))
+                    # 调整大小以适应按钮（放大图标）
+                    img = img.resize((28, 28), PILImage.Resampling.LANCZOS)
+                    return ctk.CTkImage(light_image=img, dark_image=img, size=(28, 28))
         except Exception:
             pass
         return None

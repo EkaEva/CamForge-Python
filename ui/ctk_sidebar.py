@@ -186,16 +186,16 @@ class CTkSidebar:
         import customtkinter as ctk
         from ui.ctk_constants import create_ctk_font, FONT_SIZE_LABEL
 
-        # 四行两列布局
+        # 四行两列布局（按用户要求的顺序）
         items = [
             ('dl_motion', 'toolbar.cb.dl_motion', True),
-            ('dl_profile', 'toolbar.cb.dl_profile', True),
-            ('dl_csv', 'toolbar.cb.dl_csv', True),
-            ('dl_excel', 'toolbar.cb.dl_excel', True),
             ('dl_geom', 'toolbar.cb.dl_geom', True),
             ('dl_anim', 'toolbar.cb.dl_anim', True),
+            ('dl_profile', 'toolbar.cb.dl_profile', True),
+            ('dl_csv', 'toolbar.cb.dl_csv', True),
             ('dl_svg', 'toolbar.cb.dl_svg', True),
             ('dl_dxf', 'toolbar.cb.dl_dxf', True),
+            ('dl_excel', 'toolbar.cb.dl_excel', True),
         ]
 
         for i, (name, key, default) in enumerate(items):
