@@ -5,7 +5,7 @@ CamForge - 凸轮机构运动学计算模块
 
 from __future__ import annotations
 
-__version__: str = "0.6.12"
+__version__: str = "0.6.13"
 
 import numpy as np
 from numpy.typing import NDArray

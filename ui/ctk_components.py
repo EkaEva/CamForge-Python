@@ -16,7 +16,7 @@ from ui.ctk_constants import (
     COLORS_LIGHT, COLORS_DARK,
     FONT_SIZE_SECTION, FONT_SIZE_LABEL,
     ENTRY_STYLE, SWITCH_STYLE, OPTION_MENU_STYLE,
-    OPTION_MENU_BUTTON_STYLE, OPTION_MENU_DROPDOWN_STYLE,
+    OPTION_MENU_DROPDOWN_STYLE,
     create_ctk_font, get_colors,
 )
 
@@ -299,9 +299,8 @@ class ComboRow(ctk.CTkFrame):
         )
         self.label.pack(side='left', fill='x', expand=True)
 
-        # 下拉菜单（右侧）- 使用统一样式
+        # 下拉菜单（右侧）- 保持默认按钮样式，仅自定义下拉列表样式
         combo_style = OPTION_MENU_STYLE.copy()
-        combo_style.update(OPTION_MENU_BUTTON_STYLE)
         self.combo = ctk.CTkOptionMenu(
             self,
             values=values,
