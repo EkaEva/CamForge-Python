@@ -8,8 +8,14 @@
 >
 > **新仓库地址：[https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
 >
-> 新版本包含架构重构、平底从动件支持、逆向设计功能等重大更新。
-> 本 ROADMAP 中的 v0.7.0 开发计划将在新项目中继续推进。
+> 新版本 **CamForge-Next** 采用全新技术栈重构：
+> - **Tauri v2 + SolidJS + Rust** 实现跨平台桌面应用
+> - 支持 **Web 服务器** 和 **Docker** 部署模式
+> - 前后端分离架构，Rust 高性能计算引擎
+> - 移动端响应式布局与触摸手势支持
+> - 撤销/重做、无障碍性改进、GIF 异步导出
+>
+> 本 ROADMAP 中的开发计划将在新项目中继续推进。
 >
 > ---
 

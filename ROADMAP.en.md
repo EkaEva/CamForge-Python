@@ -8,8 +8,14 @@
 >
 > **New Repository: [https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
 >
-> The new version includes architecture restructuring, flat-faced follower support, inverse design features, and more.
-> The v0.7.0 development plan in this ROADMAP will be continued in the new project.
+> The new version **CamForge-Next** is rebuilt with a modern tech stack:
+> - **Tauri v2 + SolidJS + Rust** for cross-platform desktop app
+> - Supports **Web Server** and **Docker** deployment modes
+> - Frontend-backend separation with Rust high-performance compute engine
+> - Mobile responsive layout and touch gesture support
+> - Undo/Redo, accessibility improvements, async GIF export
+>
+> The development plan in this ROADMAP will be continued in the new project.
 >
 > ---
 

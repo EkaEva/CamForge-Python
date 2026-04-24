@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **New Repository: [https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
 
-The new version includes:
-- Architecture restructuring (SimulationResult dataclass, SimulationPipeline)
-- Flat-faced follower support
-- Inverse design capabilities
-- Improved test coverage and CI/CD
-- Performance optimizations
+The new version **CamForge-Next** is rebuilt with a modern tech stack:
+- **Tauri v2 + SolidJS + Rust** for cross-platform desktop app
+- Supports **Web Server** and **Docker** deployment modes
+- Frontend-backend separation with Rust high-performance compute engine
+- Mobile responsive layout and touch gesture support
+- Undo/Redo, accessibility improvements, async GIF export
 
 Please visit the new repository for the latest updates and releases.
 
