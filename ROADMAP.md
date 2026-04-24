@@ -1,504 +1,299 @@
-中文 | [English](ROADMAP.en.md)
+[中文](ROADMAP.md) | English
 
 # CamForge Roadmap
 
-> 项目现状分析与后续优化方向
+> ⚠️ **项目已迁移 / Project Moved**
+>
+> 本项目已停止维护，后续开发已迁移至新仓库：
+>
+> **新仓库地址：[https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
+>
+> 新版本包含架构重构、平底从动件支持、逆向设计功能等重大更新。
+> 本 ROADMAP 中的 v0.7.0 开发计划将在新项目中继续推进。
+>
+> ---
+
+> Current status analysis and future optimization directions
 
 ---
 
-## 一、现存问题
+## I. Existing Issues (Updated for v0.6.13)
 
-### 1.1 代码架构
+### 1.1 Code Architecture
 
-| # | 问题 | 位置 | 严重程度 |
-|---|------|------|:--------:|
-| 1 | `CamSimulator` 类超过 **1350 行**，GUI 构建、计算、动画、导出、i18n 逻辑全部耦合 | `main.py` | 高 |
-| 2 | `_build_gui` 方法约 **270 行**，侧边栏/工具栏/图表布局全部内联，label+entry 模式重复 8 次未提取 | `main.py:261-565` | 中 |
-| 3 | 计算状态（`sim_data`）与 GUI 状态（widget 引用、动画标志）混存于同一类，无独立数据模型 | `main.py:149-180` | 中 |
+| # | Issue | Location | Severity | Status |
+|---|------|------|:--------:|--------|
+| 1 | `CamSimulator` 仍然是 **1094 行**的 God Class，GUI 构建、仿真管线、导出调度、动画控制逻辑全部耦合 | `main.py` | High | Open |
+| 2 | `_on_start` 方法 **110 行**（407-516），参数校验 → 计算 → 缓存 → 绘图 → 启动动画全部内联，无法独立测试 | `main.py:407-516` | High | Open |
+| 3 | `sim_data` 是原始 dict（含 22+ key），无类型安全，拼写错误无编译期检测 | `main.py:494-508` | Medium | Open |
+| 4 | `_build_gui` / `_on_language_change` / `_on_theme_change` 中回调函数列表重复手写 3 次（11 个 callback），修改极易遗漏 | `main.py:193-198, 277-297, 214-227` | Medium | Open |
+| 5 | `_do_export` 直接调用 `export_mgr._export_excel`（访问私有方法），违反封装 | `main.py:656` | Low | Open |
 
-### 1.2 健壮性
+### 1.2 Robustness
 
-| # | 问题 | 位置 | 严重程度 |
-|---|------|------|:--------:|
-| 4 | GIF 导出线程读取 `sim_data` 无锁保护，`saved_list.append()` 与主线程并发无同步 | `main.py:1273-1438` | 高 |
-| 5 | `_on_start` 中 `compute_full_motion`/`compute_cam_profile` 无 try/except 包裹，异常时应用崩溃 | `main.py:672-735` | 中 |
-| 6 | `_read_params` 静默截断浮点角度（`int(float(...))`），用户输入 90.9 变为 90 无提示 | `main.py:629-639` | 中 |
-| 7 | `validate_params` 允许 `e < 0`（检查 `abs(e)`），但 `compute_cam_profile` 拒绝 `e < 0`，不一致 | `cam_mechanics.py:541 vs 289` | 中 |
-| 8 | `_export_excel` 的 `wb.save()` 无 try/except，磁盘满或路径无效时崩溃 | `main.py` | 中 |
-| 9 | `_on_download` 中各 `fig.savefig()` 无错误处理 | `main.py` | 中 |
-| 10 | `_on_close` 不等待 GIF 导出线程完成，可能中断导出 | `main.py` | 低 |
+| # | Issue | Location | Severity | Status |
+|---|------|------|:--------:|--------|
+| 6 | GIF 导出线程使用 `thread_data` 副本安全，但 `saved_list` 是共享列表，后台线程 `append()` 无同步保护 | `main.py:669, 786-793` | Medium | Open |
+| 7 | `_on_close` 仍未等待 GIF 线程完成；用户关闭窗口时可能中断导出导致残缺文件 | `main.py:1075-1079` | Medium | Open |
+| 8 | `_export_gif` 中 `progress_win.grab_set()` 如果导出线程异常，弹窗可能永远不关闭（`_on_done` 不执行） | `main.py:747, 797-805` | Medium | Open |
+| 9 | DXF 导出手写原始 DXF 格式，缺少 `ezdxf` 依赖（requirements 有但 `dxf_export.py` 未使用）；LWPOLYLINE 顶点数超过 9999 时部分 CAD 软件不支持 | `ui/dxf_export.py` | Low | Open |
+| 10 | `generate_random_params` 仍只生成 law 1-5，遗漏 law 6（七次多项式） | `ui/params.py:121-122` | Medium | Open |
+| 11 | `ParameterModel` docstring 写 `tc_law, hc_law : int — 推程/回程运动规律编号 (1-5)`，遗漏 6 | `ui/params.py:57` | Low | Open |
 
-### 1.3 计算引擎
+### 1.3 Computation Engine
 
-| # | 问题 | 位置 | 严重程度 |
-|---|------|------|:--------:|
-| 11 | `compute_full_motion` 中 `i1/i2/i3` 由 `int(round(...))` 计算，四角之和为 360 时 i3 可能不等于 360，导致索引越界 | `cam_mechanics.py:226-228` | 高 |
-| 12 | `compute_full_motion` 不验证四角之和为 360°，仅 `validate_params` 检查，直接调用可产生错误结果 | `cam_mechanics.py:168-262` | 中 |
-| 13 | `compute_anim_frame_data` 不验证帧索引 `i` 的范围（`0 <= i < len(s)`），越界时 IndexError 无描述 | `cam_mechanics.py:369-450` | 中 |
-| 14 | `e ≈ r_0` 时 `s_0` 极小，`compute_pressure_angle` 中 `s_0 + s` 接近零，压力角跳至 ±90° 无警告 | `cam_mechanics.py:296,336` | 中 |
-| 15 | `compute_rise` 允许 `h=0` 但 `compute_full_motion` 拒绝 `h<=0`，API 不一致 | `cam_mechanics.py:35 vs 198` | 低 |
-| 16 | `N_POINTS = 360` 硬编码，无法调整分辨率 | `cam_mechanics.py:8` | 低 |
+| # | Issue | Location | Severity | Status |
+|---|------|------|:--------:|--------|
+| 12 | `compute_rise`/`compute_return` ValueError 消息全为英文（如 `"law must be 1-6"`），不经过 i18n，中文用户看到英文异常 | `cam_mechanics.py:33-39, 108-115` | Medium | Open |
+| 13 | `compute_rise` 允许 `h=0` 但 `compute_full_motion` 拒绝 `h<=0`，API 不一致 | `cam_mechanics.py:35 vs 198` | Low | Open |
+| 14 | 当 `e ≈ r_0` 时，`s_0` 极小，`compute_pressure_angle` 中 `s_0 + s` 接近零，压力角跳至 ±90°，无警告 | `cam_mechanics.py:296, 336` | Medium | Open |
+| 15 | `compute_curvature_radius` 对于凸轮尖点（曲率半径→0）返回极小负值/`inf`，无下界保护；下游 `r_r >= min_abs_rho` 判断可能产生误报 | `cam_mechanics.py` | Medium | Open |
 
-### 1.4 国际化
+### 1.4 Internationalization
 
-| # | 问题 | 位置 | 严重程度 |
-|---|------|------|:--------:|
-| 17 | `compute_rise`/`compute_return` 的 `ValueError` 消息为纯英文，未走 i18n，异常传播到 UI 时中文用户看到英文 | `cam_mechanics.py:33-39,108-115` | 中 |
-| 18 | `error.unknown_law` 在 `cam_mechanics.py` 中使用管道格式 `error.unknown_law|{law}`，与 i18n 键 `error.unknown_law` 不匹配，翻译永远无法命中 | `cam_mechanics.py:83,159` | 中 |
-| 19 | 运动规律下拉列表中文"规律"后缀不一致（1/2 无，3/4/5 有） | `i18n.py:law.combo.*` | 低 |
-| 20 | Logo 文本 "CamForge"、GIF 进度标签 "0 / 360" 等硬编码字符串未走 i18n | `main.py:294,1315` | 低 |
+| # | Issue | Location | Severity | Status |
+|---|------|------|:--------:|--------|
+| 16 | GIF 进度标签 `"0 / 360"` 和帧号显示为硬编码，未经过 i18n | `main.py:765-768, 777` | Low | Open |
+| 17 | 信息面板背景色硬编码 `(1.0, 1.0, 1.0, 0.8)` 白色，暗色模式下不可读 | `main.py:916` | Medium | Open |
+| 18 | ROADMAP 中文/英文版本不同步：英文版缺失 Phase 16+ 内容 | `ROADMAP.en.md` | Low | Open |
 
-### 1.5 性能
+### 1.5 Performance
 
-| # | 问题 | 位置 | 严重程度 |
-|---|------|------|:--------:|
-| 21 | GIF 导出逐帧 `ax.clear()` + 全量重绘 360 次，极慢（30-60 秒），应使用 blitting 或预渲染 | `main.py:1338-1405` | 高 |
-| 22 | GIF 导出将 360 帧 PIL Image 全部保留在内存（360-720 MB），可能导致内存不足 | `main.py:1327-1410` | 中 |
+| # | Issue | Location | Severity | Status |
+|---|------|------|:--------:|--------|
+| 19 | GIF 导出已改为帧流式写入，但每帧仍需创建独立 `Figure` → `savefig` → 关闭，360 帧约 12-20 秒；可用 `FigureCanvasAgg` 直接渲染避免文件 I/O | `ui/animation.py` | Medium | Open |
+| 20 | 动画帧更新使用 `canvas.draw_idle()` 带 `ANIM_FRAME_SKIP` 跳帧，但 `draw_idle` 仍重绘整个 Figure；可用 `blit` 局部刷新仅动画区域 | `main.py:1004-1005` | Medium | Open |
+| 21 | `_on_start` 每次重新计算 `delta_full = np.linspace(0, 2π, 360)` 和基圆/偏距圆，但 `n_points` 可能不是 360，硬编码 360 导致基圆/偏距圆与凸轮廓形状点数不匹配 | `main.py:468-472` | Medium | Open |
 
-### 1.6 测试与工程化
+### 1.6 Testing & Engineering
 
-| # | 问题 | 位置 | 严重程度 |
-|---|------|------|:--------:|
-| 23 | 无 i18n 测试（键完整性、回退行为、格式化参数） | `tests/` | 中 |
-| 24 | 无压力角推程/回程阶段测试 | `tests/` | 中 |
-| 25 | 无 `sn=-1`/`pz=-1`（旋向/偏距方向）的廓形测试 | `tests/` | 中 |
-| 26 | 无 `compute_full_motion` 非整角度测试（如 91+59+120+90），未覆盖索引舍入逻辑 | `tests/` | 中 |
-| 27 | 无 `compute_anim_frame_data` 边界帧索引测试（帧 0、帧 N-1） | `tests/` | 中 |
-| 28 | 无 `pyproject.toml`、无版本号、无 `conftest.py` | 项目根目录 | 中 |
-| 29 | `requirements.txt` 无上界约束，numpy 2.x 可能破坏兼容性 | `requirements.txt` | 中 |
-| 30 | 无类型注解，无法进行静态检查 | 全部文件 | 低 |
+| # | Issue | Location | Severity | Status |
+|---|------|------|:--------:|--------|
+| 22 | UI 组件（`ctk_sidebar`, `ctk_toolbar`, `ctk_components`）零测试覆盖 | `tests/` | High | Open |
+| 23 | `ConfigManager` 涉及文件 I/O (`~/.camforge/config.json`)，无任何测试（损坏文件/权限错误/缺失目录） | `tests/` | Medium | Open |
+| 24 | `dxf_export.py` 无测试（顶点数、闭合标志、图层名验证） | `tests/` | Medium | Open |
+| 25 | 测试硬编码依赖 `N_POINTS=360`（如 `alpha[45]`、`x[270:]`），若默认分辨率变更则全部失败 | `tests/test_cam_mechanics.py` | Medium | Open |
+| 26 | `TestI18n` 在 `test_cam_mechanics.py` 和 `test_i18n.py` 中重复 | `tests/` | Low | Open |
+| 27 | CI 仅运行 `ruff lint` + `pytest`，缺少 mypy/pyright 类型检查步骤 | `.github/workflows/ci.yml` | Low | Open |
 
----
+### 1.7 Feature Gaps
 
-## 二、优化方向
-
-### Phase 1 — 修复与加固（v0.2）✅ 已完成
-
-- [x] **P1-1** 补全 `requirements.txt`，添加 `Pillow` 依赖
-- [x] **P1-2** 修复跨平台字体：运行时检测系统可用中文字体，自动回退
-- [x] **P1-3** 修复跨平台滚轮事件：区分 Windows / macOS / Linux 的 `delta` 值与事件类型
-- [x] **P1-4** 修复窗口最大化兼容性：按平台选择 `state('zoomed')` 或 `attributes('-fullscreen')`
-- [x] **P1-5** 修复浮点校验问题：`_read_params` 中角度先转 `int` 再传入 `validate_params`
-- [x] **P1-6** 添加 `LICENSE` 文件（MIT）
-- [x] **P1-7** 完善 `.gitignore`（IDE 目录、虚拟环境、构建产物等）
-- [x] **P1-8** 为 `cam_mechanics.py` 添加单元测试（pytest，59 项全部通过）
-
-### Phase 2 — 重构与性能（v0.3）✅ 已完成
-
-- [x] **P2-2** 提取魔法数字为命名常量或配置项
-- [x] **P2-3** GIF 导出改为后台线程 + 进度条，避免 UI 冻结
-- [x] **P2-4** 消除动画与 GIF 导出间的推杆绘制重复代码，抽取为共享函数
-- [x] **P2-5** 静态图导出改为直接重新计算绘图，消除 `BlendedGenericTransform` hack
-- [x] **P2-6** 动画结束后支持「重播」按钮，无需重新计算
-- [x] **P2-7** 下载文件名通过 i18n 键值动态生成，随语言切换
-- [x] **P2-8** 提取颜色常量为主题字典，为深色模式做准备
-- [x] **P2-9** 将方法内标准库 `import` 移至模块顶层
-- [x] **P2-10** 消除 `_plot_static` 与 `_on_download` 间的静态绘图代码重复
-
-### Phase 3 — 正确性修复（v0.4）✅ 已完成
-
-目标：修复影响功能正确性的关键问题，补全测试覆盖。
-
-- [x] **P3-1** 修复 `compute_full_motion` 索引舍入问题：添加 `i1/i2/i3` 边界检查，确保 `i3 <= N_POINTS`
-- [x] **P3-2** `compute_full_motion` 添加四角之和验证（与 `validate_params` 一致）
-- [x] **P3-3** `compute_anim_frame_data` 添加帧索引范围检查
-- [x] **P3-4** `_on_start` 添加 try/except 包裹计算调用，异常时显示友好错误而非崩溃
-- [x] **P3-5** 修复 `validate_params` 与计算引擎的验证不一致：`e` 不允许为负值
-- [x] **P3-6** 修复 `error.unknown_law` 格式：`cam_mechanics.py` 中使用 i18n 键格式而非管道格式
-- [x] **P3-7** `_read_params` 浮点截断时添加用户提示（如 "角度 90.9 已取整为 90"）
-- [x] **P3-8** `_export_excel` 和 `_on_download` 添加 try/except 错误处理
-- [x] **P3-9** GIF 导出线程安全：添加 `threading.Lock` 保护 `sim_data` 读取
-- [x] **P3-10** 补全测试：i18n 键完整性、非整角度索引、边界帧索引、`sn=-1`/`pz=-1` 廓形、压力角推程/回程
-
-### Phase 4 — 性能优化（v0.5）✅ 已完成
-
-目标：提升 GIF 导出性能和内存效率。
-
-- [x] **P4-1** GIF 导出改为逐帧渲染+即时写入流，避免 360 帧 PIL Image 全部驻留内存
-- [x] **P4-2** GIF 导出使用 blitting 或预渲染优化，减少逐帧 `ax.clear()` + 全量重绘开销
-- [x] **P4-3** Excel 导出改为批量写入（`ws.append` 行写入替代逐单元格）
-
-### Phase 5 — 代码架构（v0.6）✅ 已完成
-
-目标：拆分大类，改善可维护性。
-
-- [x] **P5-1** 拆分 `CamSimulator` 为独立模块：
-  ```
-  ui/
-  ├── __init__.py     # 包初始化
-  ├── constants.py    # 渲染常量与主题颜色
-  ├── drawing.py      # 共享绘图函数
-  ├── params.py       # 参数数据模型与随机参数生成
-  └── plots.py        # 静态图表绘制
-  ```
-- [x] **P5-2** 提取参数数据模型类（`ParameterModel`），分离计算状态与 GUI 状态
-- [x] **P5-3** `_build_gui` 拆分为 `_build_sidebar`、`_build_toolbar`、`_build_figure` 等子方法
-
-### Phase 6 — 功能增强（v0.7）✅ 已完成
-
-目标：扩展仿真功能，提升工程实用性。
-
-- [x] **P6-1** 滚子从动件支持：增加滚子半径参数，计算实际廓形（等距曲线）与理论廓形
-- [x] **P6-2** 压力角曲线图：新增压力角随转角变化的独立图表
-- [x] **P6-3** 凸轮轮廓曲率半径计算与显示，标注最小曲率半径位置
-- [x] **P6-4** 参数预设系统：保存/加载常用凸轮配置（JSON 文件）
-- [x] **P6-5** 压力角阈值可配置（侧边栏输入框）
-- [x] **P6-6** `N_POINTS` 可配置化，支持更高或更低的离散分辨率
-
-### Phase 7 — 体验升级（v0.8）✅ 已完成
-
-目标：打磨交互细节，提升视觉与操作体验。
-
-- [x] **P7-1** 深色模式支持（tkinter 主题 + matplotlib 样式切换）
-- [x] **P7-2** 动画帧进度条：显示当前帧/总帧数，支持拖动跳转
-- [x] **P7-3** 窗口缩放自适应：监听 `Configure` 事件动态调整 Figure 尺寸
-- [x] **P7-4** 参数输入实时校验：输入时即时提示范围错误
-- [x] **P7-5** 导出格式扩展：支持 SVG 矢量图、CSV 数据表导出
-- [x] **P7-6** i18n 细节修复：运动规律后缀统一、Logo/进度标签国际化
-
-### Phase 8 — 工程化与发布（v1.0）✅ 已完成
-
-目标：达到可发布质量，支持便捷安装与分发。
-
-- [x] **P8-1** 添加 `pyproject.toml`，支持 `pip install camforge`
-- [x] **P8-2** 添加版本号（`__version__`），窗口标题显示版本
-- [x] **P8-3** GitHub Actions CI：自动运行测试、代码风格检查（ruff）
-- [x] **P8-4** 代码覆盖率目标：`cam_mechanics.py` ≥ 90%（实际 95%），整体 ≥ 70%（实际 95%）
-- [x] **P8-5** 添加类型注解，配置 pyright 静态检查
-- [x] **P8-6** `requirements.txt` 添加上界约束，防止 numpy 2.x 等破坏性升级
-- [x] **P8-7** 变更日志（CHANGELOG.md）维护
-
-### Phase 9 — v0.2 现代化 UI 与性能（v0.2）✅ 已完成
-
-目标：现代化 UI 布局，提升性能和可维护性。
-
-- [x] **P9-1** 新 2 行 4 列网格布局：第一行（位移 | 速度 | 加速度 | 廓形），第二行（压力角 | 曲率 | 动画 | 信息面板）
-- [x] **P9-2** 模块化架构：提取 `I18nManager`、`ThemeManager`、`ExportManager`、`SidebarBuilder`、`AnimationController` 到 `ui/` 包
-- [x] **P9-3** NumPy 向量化：`compute_roller_profile` 和 `compute_curvature_radius` 使用 `np.roll`，10 倍 + 性能提升
-- [x] **P9-4** 主题切换控件缓存：遍历缓存控件列表替代递归树遍历，5 倍 + 性能提升
-- [x] **P9-5** `ParameterModel` 类型安全数据模型：带校验和转换的类型安全参数传递
-- [x] **P9-6** 动画渲染提取：`ui/animation.py` 中的 `render_frame_artists` 和 `update_info_panel` 纯函数
-- [x] **P9-7** GIF 生成提取：带进度回调的 `generate_gif_frames` 独立函数
-- [x] **P9-8** Windows 独立执行文件：PyInstaller 打包带图标，70 MB 单文件
-
-### Phase 10 — v0.3 简化布局（v0.3）✅ 已完成
-
-目标：简化布局，合并相关图表。
-
-- [x] **P10-1** v0.3.0：三 Y 轴运动线图（位移/速度/加速度合并）
-- [x] **P10-2** v0.3.1：双 Y 轴几何约束图（压力角/曲率半径合并）
-- [x] **P10-3** 移除静态廓形图（廓形仍在动画中显示）
-- [x] **P10-4** 简化布局为 2x2 网格：上方静态图，下方动态图
-
-### Phase 11 — v0.3.2 左右分区布局 ✅ 已完成
-
-目标：优化动画显示区域。
-
-- [x] **P11-1** 左右分区：左侧静态图（运动线图+几何约束），右侧动态图（动画+信息面板）
-- [x] **P11-2** 动画区域扩大，信息面板移至右侧边缘
-- [x] **P11-3** GridSpec 2x3，宽度比例 [1, 1.6, 0.4]
-
-### Phase 12 — v0.4.0 布局优化与i18n完善 ✅ 已完成
-
-目标：优化布局间距，完善国际化支持。
-
-- [x] **P12-1** 三列布局：静态图 | 空白间隔 | 动态图，宽度比例 [1, 0.25, 0.9]
-- [x] **P12-2** 增大运动线图右侧第二 Y 轴偏移量（45→60 像素）
-- [x] **P12-3** 状态栏改为两行布局：第一行状态消息，第二行行程/初始位移/最大压力角
-- [x] **P12-4** 按钮顺序调整：加载预设 → 保存预设 → 下载
-- [x] **P12-5** CSV/SVG/预设文件名国际化（中文模式下使用中文文件名）
-- [x] **P12-6** 状态栏标签使用纯文本（避免 LaTeX 符号显示问题）
-
-### Phase 13 — v0.4.1 Bug 修复与优化 ✅ 已完成
-
-目标：修复 n_points 相关 bug，优化显示效果。
-
-- [x] **P13-1** 修复 `compute_full_motion` 索引缩放：`i = angle_deg * (n_points / 360)`
-- [x] **P13-2** 修复动画帧角度缩放：凸轮旋转角度、法线/切线计算
-- [x] **P13-3** `n_points` 改为函数参数传递，不再修改全局变量
-- [x] **P13-4** GIF 导出修复：横纵轴等比例、滚子数据传递
-- [x] **P13-5** 曲率半径干涉警告使用绝对值比较
-- [x] **P13-6** 滚子可视化线宽与凸轮廓形一致（linewidth=2）
-- [x] **P13-7** 下载选项"廓形"改为"廓形图"
-- [x] **P13-8** 速度滑块标签与滑块水平对齐
-- [x] **P13-9** 低离散点数时样条插值平滑显示（n_points < 180）
-
-### Phase 14 — v0.4.2 代码清理 ✅ 已完成
-
-目标：清理冗余文件和代码，提升代码质量。
-
-- [x] **P14-1** 删除重复图标文件 `CamForge.ico`（保留 `camforge.ico`）
-- [x] **P14-2** 删除自动生成的 `CamForge-v0.4.1.spec`
-- [x] **P14-3** 移除 `main.py` 未使用的导入：`BytesIO`, `compute_rotated_cam`, `compute_anim_frame_data`, `compute_pressure_angle_arc`
-- [x] **P14-4** 移除 `cam_mechanics.py` 未使用的变量：`delta_01`, `delta_02`
-- [x] **P14-5** 修复 `i18n.py` 行过长问题（拆分长字符串）
-- [x] **P14-6** 重组 `main.py` 导入语句（排序、分组）
-- [x] **P14-7** 更新 `.gitignore` 忽略自动生成的 spec 文件
-
-### Phase 15 — v0.4.3 七次多项式运动规律 ✅ 已完成
-
-目标：添加七次多项式运动规律（4-5-6-7 多项式）。
-
-- [x] **P15-1** 在 `compute_rise()` 中添加 law=6 七次多项式计算
-- [x] **P15-2** 在 `compute_return()` 中添加 law=6 七次多项式计算
-- [x] **P15-3** 更新运动规律验证从 (1,2,3,4,5) 到 (1,2,3,4,5,6)
-- [x] **P15-4** 更新错误消息从 "law must be 1-5" 到 "law must be 1-6"
-- [x] **P15-5** 添加 i18n 翻译：`law.6`、`law.combo.6`
-- [x] **P15-6** 更新 `get_motion_law_list()` 返回 6 个选项
-- [x] **P15-7** 添加 law=6 单元测试：边界条件、平滑性对比
-- [x] **P15-8** 更新 README.md 和 README.en.md 运动规律表格
-- [x] **P15-9** 更新 CHANGELOG.md 添加 v0.4.3 条目
+| # | Feature | Description | Priority |
+|---|---------|-------------|:--------:|
+| 28 | 平底从动件 | 目前仅支持尖底(r_r=0)和滚子从动件，缺少平底从动件类型 | High |
+| 29 | 逆向设计 | 给定输出要求反推凸轮参数（ROADMAP Phase 16.1 #4），当前只能正向计算 | High |
+| 30 | 运动曲线对比 | 支持加载参考曲线叠加显示（ROADMAP Sprint 2 S2-2），当前无法对比 | Medium |
+| 31 | 摆动从动件 | 仅支持直动从动件，不支持摆动从动件凸轮机构 | Medium |
+| 32 | 凸轮廓形公差标注 | DXF/SVG 导出缺少公差、粗糙度等制造标注 | Low |
+| 33 | 批量参数分析 | 无法对参数范围进行扫描，生成参数敏感度图 | Low |
 
 ---
 
-## 三、v0.5.0 优化更新计划
+## II. v0.7.0 Development Plan
 
-> **版本目标**：用户体验提升、功能扩展、代码质量进一步优化
-
-### Phase 16 — v0.5.0 问题分析与痛点识别 ✅ 已完成
-
-#### 16.1 现存问题分析
-
-| # | 问题类别 | 具体问题 | 严重程度 | 状态 |
-|---|----------|----------|:--------:|:----:|
-| 1 | **用户体验** | 缺少参数输入的快捷方式（如常用预设一键加载） | 中 | ✅ 已解决 |
-| 2 | **用户体验** | 动画播放缺少键盘快捷键控制（空格暂停、左右跳帧） | 中 | ✅ 已解决 |
-| 3 | **用户体验** | 导出选项无记忆功能，每次需重新勾选 | 低 | ✅ 已解决 |
-| 4 | **功能缺失** | 缺少凸轮机构参数的逆向设计功能 | 中 | 🔴 待解决 |
-| 5 | **功能缺失** | 无凸轮廓形的 CAD 导出（DXF/DWG 格式） | 中 | ✅ 已解决 |
-| 6 | **功能缺失** | 无运动曲线的数据导出对比功能 | 低 | 🔴 待解决 |
-| 7 | **代码质量** | `main.py` 仍有 1290 行，部分功能可进一步拆分 | 中 | ✅ 已解决 |
-| 8 | **代码质量** | 部分错误消息仍为英文硬编码，未走 i18n | 低 | 🔴 待解决 |
-| 9 | **测试覆盖** | 缺少 UI 集成测试和端到端测试 | 中 | 🔴 待解决 |
-| 10 | **文档完善** | 缺少用户手册和 API 文档 | 低 | 🔴 待解决 |
-
-#### 16.2 用户痛点总结
-
-1. **参数输入效率低**：每次启动需手动输入所有参数，无"最近使用"记忆 ✅ 已解决
-2. **动画控制不便**：仅能通过鼠标点击按钮控制，缺少键盘快捷键 ✅ 已解决
-3. **导出流程繁琐**：导出选项不记忆，每次需重新勾选 ✅ 已解决
-4. **工程实用性不足**：无法导出 CAD 格式，无法进行逆向设计 ✅ DXF 已支持
-5. **学习曲线**：缺少详细的用户手册和帮助文档 🔴 待解决
-
-### Phase 17 — v0.5.0 短期发展方向与开发计划 ✅ 已完成
-
-#### 17.1 发展方向
-
-1. **用户体验优先**：提升参数输入效率、动画控制便捷性
-2. **工程实用性**：增加 CAD 导出、逆向设计辅助功能
-3. **代码质量**：进一步模块化、完善测试覆盖
-4. **文档完善**：提供用户手册、API 文档
-
-#### 17.2 详细开发计划
-
-##### Sprint 1：用户体验提升 ✅ 已完成
-
-- [x] **S1-1** 参数记忆功能：启动时自动加载上次使用的参数
-- [x] **S1-2** 导出选项记忆：记住用户上次勾选的导出选项
-- [x] **S1-3** 键盘快捷键：空格暂停/继续、左右箭头跳帧、R 重播
-- [x] **S1-4** 快速预设菜单：工具栏添加常用预设下拉菜单
-
-##### Sprint 2：功能扩展 ✅ 已完成
-
-- [x] **S2-1** DXF 导出：凸轮廓形导出为 DXF 格式（CAD 兼容）
-- [ ] **S2-2** 运动曲线对比：支持加载参考曲线进行对比显示
-- [x] **S2-3** 参数范围提示：输入框添加合法范围 tooltip
-- [x] **S2-4** 批量导出：一键导出所有格式（TIFF、SVG、CSV、Excel、DXF）
-
-##### Sprint 3：代码质量优化 ✅ 已完成
-
-- [x] **S3-1** 拆分 `main.py`：提取 `ConfigManager`、`ShortcutManager` 类
-- [ ] **S3-2** 完善错误消息 i18n：所有错误消息走国际化系统
-- [x] **S3-3** 添加配置文件支持：`~/.camforge/config.json` 存储用户偏好
-- [ ] **S3-4** 代码注释完善：关键算法添加中文注释
-
-##### Sprint 4：测试与文档 🔄 进行中
-
-- [ ] **S4-1** UI 集成测试：使用 pytest-qt 或类似框架
-- [ ] **S4-2** 用户手册：编写中文用户手册（USER_GUIDE.md）
-- [ ] **S4-3** API 文档：为 `cam_mechanics.py` 添加 docstring
-- [ ] **S4-4** 更新 README：添加 v0.5.0 新功能说明
-
-##### Sprint 5：发布准备 ✅ 已完成
-
-- [x] **S5-1** 更新版本号：pyproject.toml、cam_mechanics.py
-- [x] **S5-2** 更新 CHANGELOG.md
-- [x] **S5-3** 更新 ROADMAP.md
-- [ ] **S5-4** PyInstaller 打包测试
-- [ ] **S5-5** GitHub Release 发布
-
-#### 17.3 里程碑
-
-| 里程碑 | 目标日期 | 交付物 |
-|--------|----------|--------|
-| M1 | Sprint 1 完成 | 用户体验提升版本 |
-| M2 | Sprint 2 完成 | 功能扩展版本 |
-| M3 | Sprint 3 完成 | 代码质量优化版本 |
-| M4 | Sprint 4 完成 | 测试与文档完善版本 |
-| M5 | Sprint 5 完成 | v0.5.0 正式发布 |
+> **Target Version**: v0.7.0
+> **Theme**: Architecture Restructuring + Core Feature Expansion + Quality Hardening
+> **Principle**: Each Sprint delivers independently verifiable results; each task has clear acceptance criteria.
 
 ---
 
-## 三、v0.6.0 UI 现代化重构计划
+### Sprint 1 — Architecture Decoupling & Type Safety (v0.7.0-alpha.1)
 
-> **版本目标**：使用 CustomTkinter 全面重构 UI，实现现代化 Apple/iOS 风格界面
+**Goal**: Split `CamSimulator` God Class, introduce typed data model for simulation results, make core pipeline independently testable.
 
-### Phase 16 — v0.6.0 CustomTkinter 全面迁移 ✅ 已完成
+| ID | Task | Files | Acceptance Criteria |
+|----|------|-------|---------------------|
+| S1-1 | Extract `SimulationResult` dataclass from `sim_data` dict — encapsulate all 22+ keys with typed fields | New `ui/sim_result.py`, modify `main.py`, `ui/animation.py`, `ui/export.py`, `ui/plots.py` | (1) `SimulationResult` is a `@dataclass` with all fields typed; (2) `main.py:_on_start` returns `SimulationResult`; (3) All consumers use attribute access instead of dict key; (4) All existing tests pass; (5) `mypy --strict` passes on new file |
+| S1-2 | Extract `SimulationPipeline` class from `_on_start` — encapsulate parameter validation → computation → result assembly as a stateless callable | New `ui/pipeline.py`, modify `main.py` | (1) `_on_start` reduced to ≤30 lines (call pipeline + update UI); (2) `SimulationPipeline.run(model) -> SimulationResult` can be unit-tested without GUI; (3) Add `test_pipeline.py` with ≥5 tests covering valid, invalid, edge cases; (4) All existing tests pass |
+| S1-3 | Extract `AnimationController` from `CamSimulator` — encapsulate `_start_animation`, `_stop_animation`, `_animate_frame`, `_draw_single_frame`, frame navigation | New `ui/anim_controller.py`, modify `main.py` | (1) `CamSimulator` no longer has `animating`, `paused`, `current_frame`, `anim_id` attributes; (2) These are managed by `AnimationController`; (3) Animation functionality unchanged; (4) `CamSimulator.__init__` body ≤50 lines |
+| S1-4 | Extract callback list into reusable constant — eliminate 3×11 callback repetition | `main.py`, optionally new `ui/callbacks.py` | (1) Callback list defined once, shared by `_build_gui`, `_on_language_change`, `_on_theme_change`; (2) Adding a new callback requires editing only one place |
+| S1-5 | Fix `generate_random_params` — add law 6 support, update `ParameterModel` docstring | `ui/params.py` | (1) `tc_law = random.randint(1, 6)`; (2) `hc_law = random.randint(1, 6)`; (3) docstring says `(1-6)`; (4) Test in `test_ui.py` updated to accept law 6 |
 
-#### 16.1 重构目标
+**Verification**: Run `pytest` — all pass. `ruff check .` — clean. Manual test: start simulation, pause, resume, random params — all work.
 
-| 目标 | 描述 | 优先级 |
-|------|------|:------:|
-| 现代化外观 | 使用 CustomTkinter 实现 Apple/iOS 风格 UI | 高 |
-| 卡片式布局 | 相关元素包裹在圆角卡片中，背景色差区分 | 高 |
-| 拨动开关 | 用 CTkSwitch 替代传统 Checkbutton | 高 |
-| 深色模式 | 原生支持 System/Light/Dark 三种模式 | 中 |
-| 响应式布局 | 优化窗口缩放自适应 | 中 |
+---
 
-#### 16.2 技术可行性分析
+### Sprint 2 — Computation Engine Hardening (v0.7.0-alpha.2)
 
-| 组件 | 当前实现 | CustomTkinter 替代 | 兼容性 | 工作量 |
-|------|----------|-------------------|:------:|:------:|
-| 主窗口 | `tk.Tk()` | `ctk.CTk()` | ✅ 完全兼容 | 低 |
-| 侧边栏 | `tk.Frame` + `tk.Canvas` 滚动 | `ctk.CTkScrollableFrame` | ✅ 更简洁 | 低 |
-| 输入框 | `tk.Entry` | `ctk.CTkEntry` | ✅ 完全兼容 | 低 |
-| 下拉框 | `ttk.Combobox` | `ctk.CTkOptionMenu` | ✅ 功能对等 | 低 |
-| 复选框 | `tk.Checkbutton` | `ctk.CTkSwitch` (拨动开关) | ✅ 更现代 | 低 |
-| 按钮 | `tk.Button` | `ctk.CTkButton` | ✅ 更美观 | 低 |
-| 滑块 | `tk.Scale` | `ctk.CTkSlider` | ✅ 功能对等 | 低 |
-| 标签 | `tk.Label` | `ctk.CTkLabel` | ✅ 完全兼容 | 低 |
-| Matplotlib | `FigureCanvasTkAgg` | 保持不变 | ✅ 兼容 | 无 |
-| 主题切换 | 手动管理 | `ctk.set_appearance_mode()` | ✅ 更简洁 | 低 |
+**Goal**: Fix computation edge cases, complete i18n for engine errors, improve numerical robustness.
 
-**结论**：CustomTkinter 与现有架构完全兼容，迁移风险低。
+| ID | Task | Files | Acceptance Criteria |
+|----|------|-------|---------------------|
+| S2-1 | Add `e ≈ r_0` warning in `compute_pressure_angle` — when `s_0 < epsilon` (e.g., `s_0 < r_0 * 0.05`), return a warning flag alongside the computed values | `cam_mechanics.py` | (1) `compute_pressure_angle` returns `(alpha_deg, warning)` or raises `ValueError` when `s_0` is unreasonably small; (2) UI shows warning in status bar; (3) Add test for `e = r_0 - 0.01` case |
+| S2-2 | Unify `h=0` handling — `compute_rise`/`compute_return` should accept `h=0` (returns zero array), and `compute_full_motion` should also accept it (degenerate cam, valid for analysis) | `cam_mechanics.py` | (1) `compute_full_motion(h=0, ...)` returns valid arrays of zeros; (2) `compute_rise(h=0, ...)` returns zeros; (3) Add tests for `h=0` full motion; (4) UI handles `h=0` gracefully |
+| S2-3 | Complete engine error i18n — all `ValueError` messages in `cam_mechanics.py` use i18n keys; add corresponding zh/en translations to `i18n.py` | `cam_mechanics.py`, `i18n.py` | (1) No raw English error strings in `cam_mechanics.py`; (2) All errors have i18n keys like `error.param.delta_positive`, `error.param.law_range`; (3) Add tests verifying error messages are localized |
+| S2-4 | Fix base/offset circle hardcoding — use `n_points` from `sim_data` for `delta_full`, `x_base`, `y_base`, `x_offset`, `y_offset` | `main.py:468-472`, `ui/pipeline.py` (after S1-2) | (1) `delta_full = np.linspace(0, 2π, n_points, endpoint=False)`; (2) Base/offset circles match profile point count; (3) Verify with `n_points=720` that all arrays are same length |
+| S2-5 | Add curvature radius lower bound protection — clamp extreme outliers (e.g., `|rho| > 1e6`) to `inf` for cleaner downstream analysis | `cam_mechanics.py` | (1) `compute_curvature_radius` clips `|rho| > threshold` to `±inf`; (2) Clipping threshold configurable (default 1e6); (3) Add test; (4) Min curvature warning more reliable |
 
-#### 16.3 详细开发计划
+**Verification**: Run `pytest` — all pass including new tests. Manual test: try `e = r_0`, `h = 0`, `n_points = 720` — proper warnings shown, no crashes.
 
-##### Sprint 1：基础设施搭建 ✅ 已完成
+---
 
-- [x] **P16-1** 添加 `customtkinter` 依赖到 `pyproject.toml`
-- [x] **P16-2** 创建 `ui/ctk_constants.py`：定义 UI 常量（padding、圆角、颜色）
-- [x] **P16-3** 创建 `ui/ctk_components.py`：封装可复用组件（Card、SwitchRow、EntryRow）
+### Sprint 3 — UI Robustness & Info Panel Improvements (v0.7.0-beta.1)
 
-##### Sprint 2：侧边栏重构 ✅ 已完成
+**Goal**: Fix thread safety, dark mode issues, info panel, and i18n gaps.
 
-- [x] **P16-4** 创建 `ui/ctk_sidebar.py`：使用 `CTkScrollableFrame` 重构侧边栏
-- [x] **P16-5** 实现 `CardGroup` 组件：圆角卡片包裹相关参数
-- [x] **P16-6** 实现 `SwitchRow` 组件：标签 + 拨动开关的行布局
-- [x] **P16-7** 实现 `EntryRow` 组件：标签 + 输入框的行布局
-- [x] **P16-8** 迁移快速预设、语言、主题选择器
+| ID | Task | Files | Acceptance Criteria |
+|----|------|-------|---------------------|
+| S3-1 | Fix GIF export `saved_list` thread safety — use `threading.Lock` or `queue.Queue` for sharing between main thread and GIF thread | `main.py` | (1) `saved_list.append()` in background thread is protected by lock; (2) No race condition on rapid export; (3) Manual test: export GIF twice rapidly — no crash |
+| S3-2 | Fix `_on_close` to wait for GIF thread — set a `_gif_thread` reference, join with timeout on close | `main.py` | (1) On close, if GIF thread is running, wait up to 5 seconds then destroy; (2) No orphaned threads; (3) No partial files left |
+| S3-3 | Fix GIF progress dialog stuck on exception — add `finally` block with `progress_win.destroy()` guarantee; add timeout fallback | `main.py:796-805` | (1) Even if `generate_gif_frames` raises, progress dialog closes; (2) Error shown in status bar; (3) Add manual test: induce GIF export error → dialog closes |
+| S3-4 | Fix info panel dark mode — info panel background adapts to theme (`rgba` based on `_dark_mode`) | `main.py:916`, `ui/animation.py` | (1) Light mode: white semi-transparent background; (2) Dark mode: dark semi-transparent background; (3) Text color adapts; (4) Manual test: toggle theme — info panel readable in both |
+| S3-5 | i18n progress label — replace hardcoded `"0 / 360"` and `f"{i+1} / {t}"` with i18n template | `main.py:765-768, 777` | (1) Add i18n key `export.gif_dialog.progress` with `{current}/{total}` format; (2) Chinese: `0 / 360` (unchanged), English: `0 / 360` (unchanged, but template-driven) |
+| S3-6 | Fix DXF export — migrate from hand-written DXF to `ezdxf` library (already in requirements.txt as `ezdxf>=1.0,<2` but unused) | `ui/dxf_export.py` | (1) Use `ezdxf` for DXF generation; (2) Proper LWPOLYLINE with no 9999-vertex limit; (3) Support `CAM_THEORY` and `CAM_ACTUAL` layers; (4) Add `test_dxf_export.py` with ≥3 tests; (5) Files open correctly in AutoCAD/LibreCAD |
 
-##### Sprint 3：工具栏重构 ✅ 已完成
+**Verification**: `pytest` all pass. Manual test: dark mode info panel readable; GIF export + close window; DXF opens in CAD viewer.
 
-- [x] **P16-9** 创建 `ui/ctk_toolbar.py`：使用 `CTkButton` 重构工具栏
-- [x] **P16-10** 实现圆角按钮样式（填充/轮廓两种风格）
-- [x] **P16-11** 迁移下载勾选项为 `CTkCheckBox`
-- [x] **P16-12** 迁移速度滑块和帧进度条为 `CTkSlider`
+---
 
-##### Sprint 4：主窗口重构 ✅ 已完成
+### Sprint 4 — Flat-Faced Follower Support (v0.7.0-beta.2)
 
-- [x] **P16-13** 修改 `main.py`：`CamSimulator` 继承 `ctk.CTk`
-- [x] **P16-14** 更新布局使用 `grid()` 配合权重分配
-- [x] **P16-15** 集成新的侧边栏和工具栏组件
-- [x] **P16-16** 保持 Matplotlib 图表区域不变
+**Goal**: Add flat-faced (平底) follower type as first new engineering feature.
 
-##### Sprint 5：主题与国际化适配 ✅ 已完成
+| ID | Task | Files | Acceptance Criteria |
+|----|------|-------|---------------------|
+| S4-1 | Add follower type enum/parameter to `ParameterModel` — `follower_type: str` with values `'knife'`, `'roller'`, `'flat'` | `ui/params.py`, `cam_mechanics.py` | (1) `ParameterModel` includes `follower_type` field; (2) Default `'knife'` for backward compatibility; (3) Preset JSON includes follower type |
+| S4-2 | Implement flat-faced follower computation in `cam_mechanics.py` — actual profile = envelope of follower face positions; cam width calculation (`b >= 2*ρ_min`) | `cam_mechanics.py` | (1) New function `compute_flat follower_profile(x, y, ...)`; (2) Returns actual profile coordinates and min cam width; (3) Add ≥5 unit tests with analytical verification for simple case (circular cam) |
+| S4-3 | Add flat-faced follower visualization — draw flat face rectangle instead of roller circle in animation | `ui/animation.py`, `main.py` | (1) When `follower_type='flat'`, animation shows flat face; (2) No roller circle drawn; (3) Info panel shows cam width; (4) Manual test: flat follower animates correctly |
+| S4-4 | Add sidebar follower type selector — combo box or radio buttons switching between knife/roller/flat | `ui/ctk_sidebar.py` | (1) New combo row for follower type; (2) Roller radius input is disabled when type is not 'roller'; (3) i18n keys for follower type names |
+| S4-5 | Export flat-faced follower data — CSV/Excel include cam width column; DXF exports actual profile; SVG/PNG show flat face | `ui/export.py`, `ui/dxf_export.py` | (1) CSV/Excel have `cam_width` column for flat follower; (2) DXF includes actual profile; (3) Static plots show cam width annotation |
 
-- [x] **P16-17** 更新 `ui/theme.py`：使用 `ctk.set_appearance_mode()` 管理主题
-- [x] **P16-18** 更新 `ui/i18n_manager.py`：适配 CustomTkinter 字体
-- [x] **P16-19** 实现 System/Light/Dark 三种模式切换
-- [x] **P16-20** Matplotlib 图表颜色随主题动态调整
+**Verification**: `pytest` all pass. Manual test: select flat follower → compute → animation shows flat face → export DXF → open in CAD → verify profile. Compare analytical solution for circular cam.
 
-##### Sprint 6：测试与发布 ✅ 已完成
+---
 
-- [x] **P16-21** 功能测试：所有按钮、输入框、开关正常工作
-- [x] **P16-22** 主题切换测试：浅色/深色/系统模式正常
-- [x] **P16-23** 更新 `pyproject.toml` 版本号为 0.6.0
-- [x] **P16-24** 更新 `CHANGELOG.md` 添加 v0.6.0 条目
-- [x] **P16-25** 更新 `README.md` 截图和说明
-- [x] **P16-26** PyInstaller 打包测试
+### Sprint 5 — Test Coverage & CI Hardening (v0.7.0-rc.1)
 
-#### 16.4 UI 设计规范
+**Goal**: Bring test coverage to critical modules, add CI type checking, clean up test structure.
+
+| ID | Task | Files | Acceptance Criteria |
+|----|------|-------|---------------------|
+| S5-1 | Add `test_pipeline.py` — test `SimulationPipeline.run()` with valid/invalid/edge models (leveraging S1-2) | `tests/test_pipeline.py` | (1) ≥8 tests: valid params, invalid angles sum, zero stroke, extreme offset, law 6, high n_points; (2) All pass; (3) Pipeline is importable without GUI |
+| S5-2 | Add `test_config.py` — test `ConfigManager` with temp directory, corrupt file, missing file, permission error | `tests/test_config.py` | (1) ≥6 tests: load/save round-trip, corrupt JSON, missing file, invalid paths; (2) Uses `tmp_path` fixture; (3) No side effects on real `~/.camforge/` |
+| S5-3 | Add `test_dxf_export.py` — verify DXF content structure (header, entities, layer names, closure flag) | `tests/test_dxf_export.py` | (1) ≥4 tests: single profile, dual profile, empty profile, layer name verification; (2) Can be parsed by `ezdxf`; (3) Vertex count matches input |
+| S5-4 | Remove `TestI18n` duplication from `test_cam_mechanics.py` — keep only in `test_i18n.py`, add any missing test cases | `tests/test_cam_mechanics.py`, `tests/test_i18n.py` | (1) No i18n tests in `test_cam_mechanics.py`; (2) `test_i18n.py` covers all previously tested scenarios; (3) All tests pass |
+| S5-5 | Fix N_POINTS-dependent test fragility — compute expected indices from `n_points` parameter instead of hardcoding | `tests/test_cam_mechanics.py` | (1) No hardcoded index values like `alpha[45]` or `x[270:]`; (2) Use `int(angle * n_points / 360)` pattern; (3) Tests pass with `n_points=360`, `n_points=720`, `n_points=180` |
+| S5-6 | Add pyright/mypy step to CI — type check on Python 3.12 | `.github/workflows/ci.yml` | (1) CI runs `pyright` or `mypy` after lint; (2) Existing code passes with `basic` mode; (3) New `SimulationResult` dataclass passes `strict` mode |
+| S5-7 | Add `test_ui_params.py` — comprehensive `ParameterModel` tests including `from_dict`, `to_dict`, `validate`, `angles_sum_to_360`, random params with law 6 | `tests/test_ui_params.py` | (1) ≥10 tests; (2) `generate_random_params()` returns law 1-6; (3) `from_dict` / `to_dict` round-trip; (4) `angles_sum_to_360` edge cases |
+
+**Verification**: `pytest --cov` shows ≥90% coverage for `cam_mechanics.py`, `ui/params.py`, `ui/pipeline.py`, `ui/config.py`, `ui/dxf_export.py`. CI green on all 3 OS.
+
+---
+
+### Sprint 6 — Performance Optimization & UX Polish (v0.7.0)
+
+**Goal**: Optimize animation rendering, improve GIF export speed, polish dark mode, prepare release.
+
+| ID | Task | Files | Acceptance Criteria |
+|----|------|-------|---------------------|
+| S6-1 | Implement matplotlib blitting for animation — `canvas.copy_from_bbox` + `restore_region` + selective artist redraw | `main.py`, `ui/anim_controller.py` | (1) `_animate_frame` uses blit instead of `draw_idle`; (2) Measurable FPS improvement: ≥30% faster rendering; (3) No visual artifacts; (4) Fallback to `draw_idle` if blit fails |
+| S6-2 | Optimize GIF export — use `FigureCanvasAgg` direct rendering instead of `savefig`; skip `Figure` recreation per frame | `ui/animation.py` | (1) Per-frame overhead reduced by ≥40% (measure with `time.perf_counter`); (2) Total GIF export <10 seconds for 360 frames; (3) Output quality unchanged; (4) Add benchmark test |
+| S6-3 | Dark mode polish — ensure all plot elements (grid, spines, tick labels, legend, title) adapt to dark mode | `main.py`, `ui/plots.py`, `ui/animation.py` | (1) No white-on-white or black-on-black text in dark mode; (2) Grid lines subtle but visible; (3) Legend background matches theme |
+| S6-4 | Add motion law name annotations on motion curves — show law name at midpoint of rise/return phases | `ui/plots.py` | (1) Rise phase midpoint shows `t("law.N", lang)` in appropriate color; (2) Return phase same; (3) No overlap with data; (4) Toggle-able via sidebar switch |
+| S6-5 | Update documentation — README, ROADMAP.en.md, CHANGELOG, help dialog for v0.7.0 | `README.md`, `README.en.md`, `ROADMAP.en.md`, `CHANGELOG.md`, `ui/ctk_toolbar.py` | (1) README mentions flat follower; (2) ROADMAP.en.md syncs with Chinese version; (3) CHANGELOG has v0.7.0 entry; (4) Help dialog lists new features and shortcuts |
+| S6-6 | Version bump & release — update `pyproject.toml`, `cam_mechanics.__version__`, build & test executable | `pyproject.toml`, `cam_mechanics.py`, `build.bat` | (1) Version is `0.7.0`; (2) `pip install -e .` works; (3) `camforge` console command launches; (4) PyInstaller build succeeds on Windows |
+
+**Verification**: Full regression test. GIF export benchmark <10s. Dark mode fully readable. Flat follower works end-to-end. Version 0.7.0 binary builds and runs.
+
+---
+
+## III. Sprint Dependency Graph
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  CamForge v0.6.0 - Modern Apple Style UI                        │
-├──────────────────┬──────────────────────────────────────────────┤
-│                  │  ┌──────────────────────────────────────────┐ │
-│  ┌────────────┐  │  │  Toolbar                                  │ │
-│  │   Logo     │  │  │  [Start] [Pause] [Clear] [Random] ...    │ │
-│  └────────────┘  │  └──────────────────────────────────────────┘ │
-│                  │                                              │
-│  ┌────────────┐  │  ┌──────────────────────────────────────────┐ │
-│  │ Card:      │  │  │                                          │ │
-│  │ General    │  │  │                                          │ │
-│  │ ┌────────┐ │  │  │     Matplotlib Figure                    │ │
-│  │ │Theme ▼ │ │  │  │     (Motion Curves + Geometry + Anim)    │ │
-│  │ └────────┘ │  │  │                                          │ │
-│  └────────────┘  │  │                                          │ │
-│                  │  │                                          │ │
-│  ┌────────────┐  │  │                                          │ │
-│  │ Card:      │  │  │                                          │ │
-│  │ Motion     │  │  │                                          │ │
-│  │ ┌────────┐ │  │  └──────────────────────────────────────────┘ │
-│  │ │Angle   │ │  │                                              │
-│  │ │    [90]│ │  │  ┌──────────────────────────────────────────┐ │
-│  │ └────────┘ │  │  │  Status Bar                              │ │
-│  │ ┌────────┐ │  │  │  Stroke: 10mm | s₀: 42.7mm | α_max: 25° │ │
-│  │ │Stroke  │ │  │  └──────────────────────────────────────────┘ │
-│  │ │    [10]│ │  │                                              │
-│  └────────────┘  │                                              │
-│                  │                                              │
-│  ┌────────────┐  │                                              │
-│  │ Card:      │  │                                              │
-│  │ Display    │  │                                              │
-│  │ Tangent ○──│  │                                              │
-│  │ Grid    ──●│  │                                              │
-│  └────────────┘  │                                              │
-│                  │                                              │
-│  (CTkScrollable  │                                              │
-│   Frame)         │                                              │
-└──────────────────┴──────────────────────────────────────────────┘
+Sprint 1 (Architecture) ──── Sprint 2 (Engine) ──── Sprint 3 (UI Robustness)
+      │                                                   │
+      └────────────────── Sprint 4 (Flat Follower) ◄──────┘
+                                    │
+                            Sprint 5 (Tests & CI)
+                                    │
+                            Sprint 6 (Perf & Polish)
 ```
 
-#### 16.5 颜色方案
-
-| 元素 | 浅色模式 | 深色模式 |
-|------|----------|----------|
-| 侧边栏背景 | `#f2f2f7` (iOS 灰) | `#1c1c1e` |
-| 卡片背景 | `#ffffff` | `#2c2c2e` |
-| 主区域背景 | `#ffffff` | `#000000` |
-| 主色调 | `#007aff` (Apple Blue) | `#0a84ff` |
-| 成功色 | `#34c759` (Apple Green) | `#30d158` |
-| 警告色 | `#ff9500` (Apple Orange) | `#ff9f0a` |
-| 文字色 | `#1d1d1f` | `#f5f5f7` |
-| 次要文字 | `#8e8e93` | `#8e8e93` |
-
-#### 16.6 里程碑
-
-| 里程碑 | 目标 | 交付物 |
-|--------|------|--------|
-| M1 | Sprint 1-2 完成 | 新侧边栏组件 |
-| M2 | Sprint 3-4 完成 | 完整 UI 重构 |
-| M3 | Sprint 5-6 完成 | v0.6.0 正式发布 |
+- **Sprint 1 → Sprint 2**: Pipeline extraction (S1-2) enables S2-4 fix
+- **Sprint 1 → Sprint 4**: `SimulationResult` (S1-1) needed for flat follower data flow
+- **Sprint 3 → Sprint 4**: Dark mode fix (S3-4) needed before flat follower visualization (S4-3)
+- **Sprint 4 → Sprint 5**: Flat follower tests are part of S5
+- **Sprint 5 → Sprint 6**: Test infrastructure needed before performance refactoring
 
 ---
 
-## 四、问题统计（历史）
+## IV. Risk Assessment
+
+| Risk | Mitigation |
+|------|------------|
+| God Class 拆分引起回归 | 每步拆分后运行全量 pytest + 手动验证核心流程 |
+| matplotlib blitting 与 CustomTkinter 不兼容 | 预留 fallback 到 `draw_idle`；先在独立脚本验证 blit |
+| 平底从动件数学复杂度 | 先实现最简情况（对心平底），再扩展偏置；有解析解验证 |
+| `ezdxf` 迁移导致 DXF 格式变化 | 增加对比测试：旧输出 vs 新输出在 LibreCAD 中打开一致 |
+| 性能优化影响输出质量 | GIF 逐帧像素对比（允许 <1% 像素差异） |
+
+---
+
+## V. Version Milestones
+
+| Milestone | Version | Sprint | Key Deliverables |
+|-----------|---------|--------|-----------------|
+| Alpha 1 | v0.7.0a1 | Sprint 1 | `SimulationResult` + `SimulationPipeline` + `AnimationController` + callback refactor |
+| Alpha 2 | v0.7.0a2 | Sprint 2 | Engine i18n, `e≈r_0` warning, `h=0` support, curvature clamp, n_points fix |
+| Beta 1 | v0.7.0b1 | Sprint 3 | Thread safety, dark mode info panel, `ezdxf` migration, progress i18n |
+| Beta 2 | v0.7.0b2 | Sprint 4 | Flat-faced follower computation, visualization, export |
+| RC | v0.7.0rc1 | Sprint 5 | Full test coverage, CI hardening, test cleanup |
+| Release | v0.7.0 | Sprint 6 | Blitting animation, fast GIF export, dark mode polish, docs, release |
+
+---
+
+## VI. Issue Status Summary
 
 ```
-严重程度分布：
-  高  ██████░░░░  3 项  （线程安全、索引越界、GIF 性能）
-  中  ██████████████████  18 项  （验证不一致、错误处理、测试缺口、内存等）
-  低  ████████░░░░░░  8 项  （i18n 细节、硬编码、类型注解等）
+Resolved in prior phases:
+  #11 (index bounds)     → P3-1 ✅
+  #12 (angle sum)        → P3-2 ✅
+  #13 (frame index)      → P3-3 ✅
+  #23 (i18n tests)       → test_i18n.py ✅
+  #24-27 (test gaps)     → Phase 3 tests ✅
+  #16 (N_POINTS hardcode) → P6-6/Phase 13 ✅
+  #19 (规律 suffix)      → Fixed ✅
+  #18 (error.unknown_law) → P3-6 ✅
+
+Targeted in v0.7.0:
+  #1  (God Class)          → S1-1, S1-2, S1-3
+  #2  (_on_start length)   → S1-2
+  #3  (sim_data dict)      → S1-1
+  #4  (callback repetition) → S1-4
+  #5  (private method)     → S1-2
+  #6  (saved_list race)    → S3-1
+  #7  (on_close thread)    → S3-2
+  #8  (progress stuck)     → S3-3
+  #9  (DXF raw format)     → S3-6
+  #10 (random law 6)       → S1-5
+  #11 (docstring 1-5)      → S1-5
+  #12 (engine i18n)        → S2-3
+  #13 (h=0 inconsistency)  → S2-2
+  #14 (e≈r_0 warning)      → S2-1
+  #15 (curvature outliers) → S2-5
+  #16 (progress i18n)      → S3-5
+  #17 (info panel dark)    → S3-4
+  #19 (GIF perf)           → S6-2
+  #20 (blit animation)     → S6-1
+  #21 (n_points 360)       → S2-4
+  #22-27 (test gaps)       → S5-1 through S5-7
+  #28 (flat follower)      → S4-1 through S4-5
+
+Deferred beyond v0.7.0:
+  #18 (ROADMAP EN sync)   → Post-release doc task
+  #29 (inverse design)    → v0.8.0
+  #30 (curve comparison)   → v0.8.0
+  #31 (oscillating follower) → v1.0.0
+  #32 (tolerance annotation) → v1.0.0
+  #33 (batch param sweep)  → v1.0.0
 ```
 
 ---
 
-## 四、优先级原则
+## VII. Priority Principles
 
-1. **正确性优先** — 影响功能结果的问题（索引越界、线程安全、验证不一致）优先于体验问题
-2. **可测试性优先** — 为纯计算模块添加测试是后续所有重构的安全网
-3. **性能其次** — GIF 导出 30-60 秒和 720 MB 内存是用户可感知的严重问题
-4. **渐进重构** — 拆分大类时保持功能不变，每步可独立验证
-5. **国际化一致性** — 所有用户可见字符串必须走 i18n，包括错误提示和格式细节
+1. **Correctness First** — Issues affecting results (e≈r₀ warning, h=0 inconsistency, curvature outliers) before UX
+2. **Architecture Before Feature** — Split God Class first (Sprint 1), then add flat follower (Sprint 4) on clean architecture
+3. **Testability First** — Every extracted module must be unit-testable without GUI (Sprint 1 enables Sprint 5)
+4. **Performance Incrementally** — Blitting and GIF optimization only after correctness is locked (Sprint 6)
+5. **Incremental & Verifiable** — Each Sprint produces a runnable alpha/beta/rc with all tests passing

@@ -1,5 +1,15 @@
 中文 | [English](README.en.md)
 
+> ⚠️ **项目已迁移 / Project Moved**
+>
+> 本项目已停止维护，后续开发已迁移至新仓库：
+>
+> **新仓库地址：[https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
+>
+> 新版本包含架构重构、平底从动件支持、逆向设计功能等重大更新，欢迎前往查看最新版本。
+>
+> ---
+
 <div align="center">
 
 # CamForge

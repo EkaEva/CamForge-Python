@@ -1,5 +1,15 @@
 [中文](README.md) | English
 
+> ⚠️ **Project Moved**
+>
+> This project is no longer maintained. Development has moved to a new repository:
+>
+> **New Repository: [https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
+>
+> The new version includes architecture restructuring, flat-faced follower support, inverse design features, and more. Please visit the new repository for the latest updates.
+>
+> ---
+
 <div align="center">
 
 # CamForge

@@ -2,6 +2,17 @@
 
 # CamForge Roadmap
 
+> ⚠️ **Project Moved**
+>
+> This project is no longer maintained. Development has moved to a new repository:
+>
+> **New Repository: [https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
+>
+> The new version includes architecture restructuring, flat-faced follower support, inverse design features, and more.
+> The v0.7.0 development plan in this ROADMAP will be continued in the new project.
+>
+> ---
+
 > Current status analysis and future optimization directions
 
 ---
