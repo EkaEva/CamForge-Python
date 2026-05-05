@@ -4,7 +4,7 @@
 >
 > This project is no longer maintained. Development has moved to a new repository:
 >
-> **New Repository: [https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge-Next)**
+> **New Repository: [https://github.com/EkaEva/CamForge](https://github.com/EkaEva/CamForge)**
 >
 > The new version **CamForge-Next** is rebuilt with a modern tech stack:
 > - **Tauri v2 + SolidJS + Rust** for cross-platform desktop app
