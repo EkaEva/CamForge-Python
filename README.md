@@ -4,7 +4,7 @@
 >
 > 本项目已停止维护，后续开发已迁移至新仓库：
 >
-> **新仓库地址：[https://github.com/EkaEva/CamForge-Next](https://github.com/EkaEva/CamForge)**
+> **新仓库地址：[https://github.com/EkaEva/CamForge](https://github.com/EkaEva/CamForge)**
 >
 > 新版本 **CamForge** 采用全新技术栈重构：
 > - **Tauri v2 + SolidJS + Rust** 实现跨平台桌面应用
